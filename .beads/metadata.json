@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "bareaga_web",
+  "project_id": "b9f9fab6-80e5-4152-af3d-4417f542b237"
+}
