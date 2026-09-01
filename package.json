@@ -1,17 +1,23 @@
 {
-  "name": "brutalist-report-plus",
+  "name": "bareaga",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "hotdev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "next": "16.2.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "rss-parser": "^3.13.0"
   },
   "devDependencies": {
     "@types/node": "^20",

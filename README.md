@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bareaga
 
-## Getting Started
+Bareaga is a standalone, local-first RSS reader for building a deliberate reading stack. It combines source discovery, configurable feed views, transparent personal ranking, a portable archive, and sourced social sharing in a sparse editorial interface.
 
-First, run the development server:
+It is inspired by [brutalist.report](https://brutalist.report/) and is not affiliated with it.
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). For a production check:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test
+./node_modules/.bin/tsc --noEmit
+npm run lint
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Routes
 
-## Learn More
+| Route | Purpose |
+|---|---|
+| `/` | Reader with Grid, Top, Focus, and opt-in Ranked views |
+| `/discover` | Search, filter, rate, add, and remove known sources |
+| `/archive` | Saved articles, notes, tags, collections, search, and export |
+| `/social` | Local preview of sourced clips and community collections |
+| `/product` | Product principles, system map, and roadmap |
+| `/api/feeds` | Validated server-side RSS aggregation endpoint |
 
-To learn more about Next.js, take a look at the following resources:
+## Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```text
+src/
+  app/                         Next.js routes and the feed route handler
+  components/                  Route applications and shared UI
+    AppProviders.tsx           Shared preference/theme and archive state
+    PrimaryNav.tsx             Shared application navigation
+  hooks/
+    useFeedQuery.ts            Reader feed lifecycle
+  lib/
+    feedContract.ts            Public API query validation
+    feedApi.ts                 Testable HTTP response/cache policy
+    feeds.ts                   Server-only RSS cache and aggregation
+    engagement.server.ts       Server-only provider enrichment
+    feedQuery.ts               Browser batching and progressive merge
+    prefs.ts                   Validated local preference store
+    archiveTypes.ts            Archive contracts and repository interface
+    archiveDomain.ts           Pure archive operations
+    archiveFixtures.ts         Seeded local demo data
+    archiveValidation.ts       Runtime validation and migrations
+    localArchiveRepository.ts  Browser persistence adapter
+  styles/
+    base.css                   Tokens, themes, fonts, and document defaults
+    reader.css                 Reader, settings, search, and feed views
+    archive-social.css         Archive, sharing, and social surfaces
+    product.css                Product dossier
+    discover.css               Source directory
+    responsive.css             Cross-feature responsive overrides
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The root provider is the only UI integration point for preferences, theme hydration, and archive persistence. Screens mutate archives through a typed repository boundary, allowing synced storage to replace `localStorage` without changing route components.
 
-## Deploy on Vercel
+The feed endpoint validates and deduplicates inputs, rejects unknown sources and topics, rate-limits forced refresh fan-out, and marks server-only RSS/provider modules explicitly. Ordinary responses expose short public cache headers; forced refreshes and errors are `no-store`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Local data
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Preferences: `bareaga.prefs.v1`, with migration from `brp.prefs.v1`.
+- Archive: `bareaga.archive.v1`, runtime-validated and migrated on read.
+- Feed responses: short browser-session cache plus a process-local server cache.
+
+Archive exports remain portable Markdown and CSV. Account-backed sync is not implemented yet.
+
+## Adding a built-in source
+
+Edit [`src/lib/sources.ts`](src/lib/sources.ts) and provide the full `SourceDef` metadata. Source IDs are validated by `/api/feeds`; adding a catalog entry does not silently enable it for existing users.
+
+## Project workflow
+
+This repository uses Beads for durable work tracking. Run `bd ready` to see unblocked work and `bd show <id>` for acceptance criteria.

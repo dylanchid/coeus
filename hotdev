@@ -1,0 +1,204 @@
+#!/usr/bin/env sh
+set -eu
+
+script_path=$0
+
+while [ -L "$script_path" ]; do
+  script_dir=$(cd -P "$(dirname "$script_path")" >/dev/null 2>&1 && pwd)
+  link_target=$(readlink "$script_path")
+  case "$link_target" in
+    /*) script_path=$link_target ;;
+    *) script_path=$script_dir/$link_target ;;
+  esac
+done
+
+hotdev_home=$(cd -P "$(dirname "$script_path")" >/dev/null 2>&1 && pwd)
+registry_file=${HOTDEV_REGISTRY:-"$HOME/.config/hotdev/products"}
+
+# Built-in product registry. User-added products are stored in:
+#   ~/.config/hotdev/products
+product_names="bareaga"
+
+product_builtin_path() {
+  case "$1" in
+    bareaga) printf '%s\n' "$hotdev_home" ;;
+    *) return 1 ;;
+  esac
+}
+
+product_user_path() {
+  [ -f "$registry_file" ] || return 1
+
+  while IFS='|' read -r product_name product_dir; do
+    case "$product_name" in
+      ""|\#*) continue ;;
+    esac
+
+    if [ "$product_name" = "$1" ]; then
+      printf '%s\n' "$product_dir"
+      return 0
+    fi
+  done < "$registry_file"
+
+  return 1
+}
+
+product_path() {
+  product_user_path "$1" || product_builtin_path "$1"
+}
+
+print_products() {
+  for product_name in $product_names; do
+    product_path_value=$(product_builtin_path "$product_name")
+    printf '%s\t%s\n' "$product_name" "$product_path_value"
+  done
+
+  [ -f "$registry_file" ] || return 0
+
+  while IFS='|' read -r product_name product_dir; do
+    case "$product_name" in
+      ""|\#*) continue ;;
+    esac
+
+    printf '%s\t%s\n' "$product_name" "$product_dir"
+  done < "$registry_file"
+}
+
+usage() {
+  cat <<EOF
+Usage:
+  hotdev                  Run the current product's dev server when inside a registered repo
+  hotdev <product>        Run a registered product from anywhere
+  hotdev --<product>      Same as hotdev <product>
+  hotdev add              Register the current directory using its folder name
+  hotdev add <product>    Register the current directory as a product
+  hotdev add <product> <path>
+                          Register a product at a specific path
+  hotdev --list           List registered products
+
+Registered products:
+EOF
+
+  print_products | while IFS='	' read -r product_name product_path_value; do
+    printf '  %s  %s\n' "$product_name" "$product_path_value"
+  done
+}
+
+is_inside_dir() {
+  case "$1/" in
+    "$2"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+basename_of() {
+  path_without_trailing_slashes=${1%/}
+  printf '%s\n' "${path_without_trailing_slashes##*/}"
+}
+
+validate_product_name() {
+  case "$1" in
+    ""|*[!abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-]*)
+      printf 'hotdev: invalid product name "%s"; use letters, numbers, underscores, or hyphens\n' "$1" >&2
+      return 1
+      ;;
+  esac
+}
+
+register_product() {
+  product_name=$1
+  product_dir=$2
+
+  validate_product_name "$product_name"
+  product_dir=$(cd "$product_dir" >/dev/null 2>&1 && pwd -P) || {
+    printf 'hotdev: product path does not exist: %s\n' "$product_dir" >&2
+    return 1
+  }
+
+  registry_dir=$(dirname "$registry_file")
+  mkdir -p "$registry_dir"
+
+  temp_file=$registry_file.tmp.$$
+  if [ -f "$registry_file" ]; then
+    while IFS='|' read -r existing_name existing_dir; do
+      [ "$existing_name" = "$product_name" ] && continue
+      printf '%s|%s\n' "$existing_name" "$existing_dir"
+    done < "$registry_file" > "$temp_file"
+  else
+    : > "$temp_file"
+  fi
+
+  printf '%s|%s\n' "$product_name" "$product_dir" >> "$temp_file"
+  mv "$temp_file" "$registry_file"
+
+  printf 'Registered %s -> %s\n' "$product_name" "$product_dir"
+}
+
+current_dir=$(pwd -P)
+target_product=
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  --list)
+    print_products
+    exit 0
+    ;;
+  add)
+    shift
+    case $# in
+      0)
+        register_product "$(basename_of "$current_dir")" "$current_dir"
+        ;;
+      1)
+        register_product "$1" "$current_dir"
+        ;;
+      2)
+        register_product "$1" "$2"
+        ;;
+      *)
+        printf '%s\n\n' "hotdev: too many arguments for add" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+    exit 0
+    ;;
+  --*)
+    target_product=${1#--}
+    shift
+    ;;
+  "")
+    target_product=$(
+      print_products | while IFS='	' read -r product_name product_path_value; do
+        [ -n "$product_name" ] || continue
+      if is_inside_dir "$current_dir" "$product_path_value"; then
+          printf '%s\n' "$product_name"
+          break
+      fi
+      done
+    )
+
+    if [ -z "$target_product" ]; then
+      printf '%s\n\n' "hotdev: no product specified and current directory is not inside a registered product." >&2
+      usage >&2
+      exit 2
+    fi
+    ;;
+  *)
+    target_product=$1
+    shift
+    ;;
+esac
+
+if ! repo_dir=$(product_path "$target_product"); then
+  printf 'hotdev: unknown product "%s"\n\n' "$target_product" >&2
+  usage >&2
+  exit 2
+fi
+
+cd "$repo_dir"
+
+exec npm run hotdev -- "$@"
