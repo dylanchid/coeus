@@ -12,15 +12,16 @@ Before changing Next.js code, read the relevant installed guide under `node_modu
 ## Current product surfaces
 
 - `/`: Reader. Grid groups stories by source; Top balances sources; Focus orders newest-first; Ranked applies inspectable user rules.
-- `/discover`: Source catalog, filtering, ratings, and enabled-source management.
+- `/sources`: Source catalog, filtering, ratings, custom feeds, and enabled-source management.
+- `/discover`: Local preview of shared links, sourced posts, and community collections.
 - `/archive`: Local archive, notes, reading state, collections, Markdown/CSV export.
-- `/social`: Local preview of sourced posts and community collections.
-- `/product`: Product explanation and roadmap.
+- `/about`: Compact explanation of Reader, Sources, Discover, and Archive.
+- `/social` and `/product`: Permanent legacy redirects.
 - `/api/feeds`: Validated, rate-limited RSS aggregation route.
 
 ## State and persistence
 
-`src/components/AppProviders.tsx` owns preference loading/saving, theme attributes, archive loading/saving, and cross-tab archive updates. Reader, Discover, Archive, Social, and ShareSheet consume its hooks; route components must not call `localStorage` directly.
+`src/components/AppProviders.tsx` owns preference loading/saving, theme attributes, archive loading/saving, and cross-tab archive updates. Reader, Sources, Discover, Archive, and ShareSheet consume its hooks; route components must not call `localStorage` directly.
 
 Preferences use `PrefsStore` in `src/lib/prefs.ts`. Archive persistence is replaceable through `ArchiveRepository` in `src/lib/archiveTypes.ts`:
 
@@ -63,8 +64,8 @@ Cached columns must remain visible during background refresh, and one failed bat
 - `src/styles/base.css`
 - `src/styles/reader.css`
 - `src/styles/archive-social.css`
-- `src/styles/product.css`
-- `src/styles/discover.css`
+- `src/styles/product.css` (About)
+- `src/styles/discover.css` (Sources)
 - `src/styles/responsive.css`
 
 Fonts are self-hosted through `next/font` in `src/app/layout.tsx`. The old Gallery UI has been removed; preference migration still maps legacy `gallery` values to Focus and must remain until that migration is intentionally retired.

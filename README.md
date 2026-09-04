@@ -25,10 +25,11 @@ npm run build
 | Route | Purpose |
 |---|---|
 | `/` | Reader with Grid, Top, Focus, and opt-in Ranked views |
-| `/discover` | Search, filter, rate, add, and remove known sources |
+| `/sources` | Search, filter, rate, add, and remove reading sources |
+| `/discover` | Shared collections, sourced articles, and links from people |
 | `/archive` | Saved articles, notes, tags, collections, search, and export |
-| `/social` | Local preview of sourced clips and community collections |
-| `/product` | Product principles, system map, and roadmap |
+| `/about` | Concise guide to the product and its core sections |
+| `/social`, `/product` | Legacy redirects to `/discover` and `/about` |
 | `/api/feeds` | Validated server-side RSS aggregation endpoint |
 
 ## Architecture
@@ -57,8 +58,8 @@ src/
     base.css                   Tokens, themes, fonts, and document defaults
     reader.css                 Reader, settings, search, and feed views
     archive-social.css         Archive, sharing, and social surfaces
-    product.css                Product dossier
-    discover.css               Source directory
+    product.css                About page
+    discover.css               Sources directory
     responsive.css             Cross-feature responsive overrides
 ```
 
