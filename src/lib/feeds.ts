@@ -5,8 +5,9 @@ import {
   enrichHnEngagement,
   extractEngagementFromRssItem,
 } from "./engagement.server";
-import { SOURCE_CATALOG } from "./sources";
-import type { Article, Engagement, SourceFeed } from "./types";
+import { sourceByIdMap } from "./sources";
+import type { Article, Engagement, SourceDef, SourceFeed } from "./types";
+import { fetchFeedText } from "./safeFeedFetch.server";
 import {
   decodeHtmlEntities,
   extractSummary,
@@ -71,8 +72,6 @@ type CacheEntry = {
   error?: string;
   summaryQuality?: number;
 };
-
-const sourceById = new Map(SOURCE_CATALOG.map((s) => [s.id, s]));
 
 /** Process-local feed cache (survives across requests in Node). */
 const feedCache = new Map<string, CacheEntry>();
@@ -141,7 +140,7 @@ function humanizeFeedError(error: unknown): string {
   return "the publisher’s feed is temporarily unavailable";
 }
 
-async function networkFetch(sourceId: string): Promise<CacheEntry> {
+async function networkFetch(sourceId: string, sourceById: Map<string, SourceDef>): Promise<CacheEntry> {
   const def = sourceById.get(sourceId);
   if (!def) {
     return {
@@ -153,7 +152,7 @@ async function networkFetch(sourceId: string): Promise<CacheEntry> {
   }
 
   try {
-    const feed = await parser.parseURL(def.feedUrl);
+    const feed = await parser.parseString(await fetchFeedText(def.feedUrl));
     const articles: CachedArticle[] = [];
 
     for (const item of feed.items) {
@@ -202,7 +201,7 @@ async function networkFetch(sourceId: string): Promise<CacheEntry> {
   }
 }
 
-function getOrFetchEntry(sourceId: string, forceRefresh: boolean): {
+function getOrFetchEntry(sourceId: string, forceRefresh: boolean, sourceById: Map<string, SourceDef>): {
   entry: CacheEntry | null;
   promise: Promise<CacheEntry> | null;
   fromCache: boolean;
@@ -223,7 +222,7 @@ function getOrFetchEntry(sourceId: string, forceRefresh: boolean): {
       // Stale-while-revalidate
       let promise = inflight.get(sourceId) ?? null;
       if (!promise) {
-        promise = networkFetch(sourceId).then((entry) => {
+        promise = networkFetch(sourceId, sourceById).then((entry) => {
           // Keep previous good data if revalidate fails empty with error
           if (entry.error && cached.articles.length && !entry.articles.length) {
             const merged = { ...cached, fetchedAt: Date.now() };
@@ -243,7 +242,7 @@ function getOrFetchEntry(sourceId: string, forceRefresh: boolean): {
 
   let promise = inflight.get(sourceId);
   if (!promise) {
-    promise = networkFetch(sourceId).then((entry) => {
+    promise = networkFetch(sourceId, sourceById).then((entry) => {
       feedCache.set(sourceId, entry);
       inflight.delete(sourceId);
       return entry;
@@ -258,7 +257,8 @@ function materialize(
   sourceId: string,
   entry: CacheEntry,
   limit: number,
-  hours: number
+  hours: number,
+  sourceById: Map<string, SourceDef>
 ): SourceFeed {
   const def = sourceById.get(sourceId);
   const cutoff = Date.now() - hours * 60 * 60 * 1000;
@@ -317,12 +317,14 @@ export async function fetchFeeds(options: {
   limit: number;
   hours: number;
   forceRefresh?: boolean;
+  customSources?: SourceDef[];
 }): Promise<{
   sources: SourceFeed[];
   updatedAt: string;
   cache: { hits: number; misses: number; revalidating: number };
 }> {
-  const { sourceIds, limit, hours, forceRefresh = false } = options;
+  const { sourceIds, limit, hours, forceRefresh = false, customSources = [] } = options;
+  const sourceById = sourceByIdMap(customSources);
   let hits = 0;
   let misses = 0;
   let revalidating = 0;
@@ -330,17 +332,18 @@ export async function fetchFeeds(options: {
   const sources = await mapPool(sourceIds, FETCH_CONCURRENCY, async (id) => {
     const { entry, promise, fromCache, revalidating: rev } = getOrFetchEntry(
       id,
-      forceRefresh
+      forceRefresh,
+      sourceById
     );
     if (fromCache && entry) {
       hits++;
       if (rev) revalidating++;
       // Fire-and-forget revalidation; don't wait
-      return materialize(id, entry, limit, hours);
+      return materialize(id, entry, limit, hours, sourceById);
     }
     misses++;
     const resolved = promise ? await promise : feedCache.get(id)!;
-    return materialize(id, resolved, limit, hours);
+    return materialize(id, resolved, limit, hours, sourceById);
   });
 
   const newest = Math.max(

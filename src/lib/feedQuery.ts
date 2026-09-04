@@ -1,6 +1,6 @@
 import { chunkIds } from "./clientCache.ts";
 import { getSource, orderByIds, sourceTopic, type Topic } from "./sources.ts";
-import type { SourceFeed } from "./types.ts";
+import type { SourceDef, SourceFeed } from "./types.ts";
 
 export const FEED_BATCH_SIZE = 6;
 export const FEED_BATCH_CONCURRENCY = 2;
@@ -10,6 +10,8 @@ export interface FeedQuery {
   order: string[];
   limit: number;
   hours: number;
+  /** User-added feeds not in the built-in catalog; routes requests through POST. */
+  customSources?: SourceDef[];
 }
 
 export interface FeedBatchResponse {
@@ -49,11 +51,12 @@ export function friendlyFeedError(error: unknown): string {
 export function visibleSourceIds(
   order: string[],
   hidden: Set<string>,
-  topic: Topic
+  topic: Topic,
+  customSources: readonly SourceDef[] = []
 ): string[] {
   return order.filter((id) => {
     if (hidden.has(id)) return false;
-    return topic === "all" || sourceTopic(id) === topic;
+    return topic === "all" || sourceTopic(id, customSources) === topic;
   });
 }
 
@@ -71,8 +74,13 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-function failedSource(id: string, error: unknown, previous?: SourceFeed): SourceFeed {
-  const definition = getSource(id);
+function failedSource(
+  id: string,
+  error: unknown,
+  customSources: readonly SourceDef[],
+  previous?: SourceFeed
+): SourceFeed {
+  const definition = getSource(id, customSources);
   return {
     id,
     name: previous?.name ?? definition?.name ?? id,
@@ -85,21 +93,43 @@ function failedSource(id: string, error: unknown, previous?: SourceFeed): Source
 
 export async function fetchFeedBatch(
   ids: string[],
-  query: Pick<FeedQuery, "limit" | "hours">,
+  query: Pick<FeedQuery, "limit" | "hours" | "customSources">,
   options: { force: boolean; signal: AbortSignal; fetcher?: FeedFetch }
 ): Promise<FeedBatchResponse> {
   const fetcher = options.fetcher ?? fetch;
-  const params = new URLSearchParams({
-    limit: String(query.limit),
-    hours: String(query.hours),
-    ids: ids.join(","),
-  });
-  if (options.force) params.set("refresh", "1");
+  const customSources = query.customSources ?? [];
+  const relevantCustomSources = customSources.filter((source) => ids.includes(source.id));
 
-  const response = await fetcher(`/api/feeds?${params}`, {
-    signal: options.signal,
-    cache: options.force ? "no-store" : "default",
-  });
+  let response;
+  if (relevantCustomSources.length > 0) {
+    // A custom feed URL is only known to this visitor — POST it directly
+    // rather than smuggling it into a cacheable GET query string.
+    response = await fetcher("/api/feeds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ids,
+        customSources: relevantCustomSources,
+        limit: query.limit,
+        hours: query.hours,
+        ...(options.force ? { refresh: true } : {}),
+      }),
+      signal: options.signal,
+      cache: "no-store",
+    });
+  } else {
+    const params = new URLSearchParams({
+      limit: String(query.limit),
+      hours: String(query.hours),
+      ids: ids.join(","),
+    });
+    if (options.force) params.set("refresh", "1");
+
+    response = await fetcher(`/api/feeds?${params}`, {
+      signal: options.signal,
+      cache: options.force ? "no-store" : "default",
+    });
+  }
   if (!response.ok) throw new Error(`Feed API ${response.status}`);
   return (await response.json()) as FeedBatchResponse;
 }
@@ -159,7 +189,7 @@ export async function runFeedQuery(
         if (options.signal.aborted || isAbortError(error)) throw error;
         for (const id of ids) {
           failedIds.add(id);
-          byId.set(id, failedSource(id, error, byId.get(id)));
+          byId.set(id, failedSource(id, error, query.customSources ?? [], byId.get(id)));
         }
       }
 

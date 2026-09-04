@@ -190,6 +190,64 @@ test("single-source retry and force refresh use the protected refresh request sh
   assert.equal(captured.init.cache, "no-store");
 });
 
+test("custom source ids route through a POST body instead of the cacheable GET", async () => {
+  let captured;
+  const customSource = {
+    id: "my-blog",
+    name: "My Blog",
+    feedUrl: "https://example.com/feed",
+    homeUrl: "https://example.com",
+    topic: "all",
+    topics: [],
+    tags: ["custom"],
+    description: "",
+    language: "English",
+    region: "Global",
+    sourceType: "publisher",
+    cadence: "daily",
+    depth: "mixed",
+    defaultRank: 50,
+  };
+  await fetchFeedBatch(
+    ["my-blog"],
+    { limit: 10, hours: 24, customSources: [customSource] },
+    {
+      force: false,
+      signal: new AbortController().signal,
+      fetcher: async (url, init) => {
+        captured = { url: String(url), init };
+        return response(["my-blog"]);
+      },
+    }
+  );
+  assert.equal(captured.url, "/api/feeds");
+  assert.equal(captured.init.method, "POST");
+  assert.equal(captured.init.cache, "no-store");
+  const body = JSON.parse(captured.init.body);
+  assert.deepEqual(body.ids, ["my-blog"]);
+  assert.equal(body.customSources.length, 1);
+  assert.equal(body.customSources[0].id, "my-blog");
+});
+
+test("a batch of only catalog ids still uses the cacheable GET even when customSources is populated", async () => {
+  let captured;
+  await fetchFeedBatch(
+    ["hn"],
+    { limit: 10, hours: 24, customSources: [{ id: "my-blog", feedUrl: "https://example.com/feed" }] },
+    {
+      force: false,
+      signal: new AbortController().signal,
+      fetcher: async (url, init) => {
+        captured = { url: String(url), init };
+        return response(["hn"]);
+      },
+    }
+  );
+  const url = new URL(captured.url, "https://bareaga.test");
+  assert.equal(url.searchParams.get("ids"), "hn");
+  assert.equal(captured.init.method, undefined);
+});
+
 test("a successful retry replaces only the requested failed source", () => {
   const failed = { ...source("a"), articles: [], error: "Feed API 503" };
   const retried = source("a", "retried");

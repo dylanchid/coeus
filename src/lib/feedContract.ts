@@ -1,4 +1,12 @@
-import { TOPICS, catalogSourceIds, defaultSourceOrder, type Topic } from "./sources.ts";
+import {
+  TOPICS,
+  allSources,
+  catalogSourceIds,
+  defaultSourceOrder,
+  sanitizeCustomSources,
+  type Topic,
+} from "./sources.ts";
+import type { SourceDef } from "./types.ts";
 
 export const FEED_QUERY_LIMITS = {
   maxSources: 40,
@@ -14,8 +22,17 @@ export interface FeedRequestQuery {
   forceRefresh: boolean;
 }
 
+/** Body-request variant: carries the requester's custom (non-catalog) sources. */
+export interface FeedBodyRequestQuery extends FeedRequestQuery {
+  customSources: SourceDef[];
+}
+
 export type FeedQueryParseResult =
   | { ok: true; value: FeedRequestQuery }
+  | { ok: false; error: string };
+
+export type FeedBodyParseResult =
+  | { ok: true; value: FeedBodyRequestQuery }
   | { ok: false; error: string };
 
 const ALLOWED_PARAMETERS = new Set(["ids", "limit", "hours", "topic", "refresh"]);
@@ -93,6 +110,88 @@ export function parseFeedQuery(params: URLSearchParams): FeedQueryParseResult {
       hours,
       topic: topic as Topic,
       forceRefresh: refresh === "1" || refresh === "true",
+    },
+  };
+}
+
+const ALLOWED_BODY_KEYS = new Set(["ids", "customSources", "limit", "hours", "topic", "refresh"]);
+
+function clampBodyNumber(
+  name: "limit" | "hours",
+  value: unknown,
+  bounds: { default: number; min: number; max: number }
+): number | string {
+  if (value === undefined) return bounds.default;
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return `${name} must be an integer`;
+  }
+  if (value < bounds.min || value > bounds.max) {
+    return `${name} must be between ${bounds.min} and ${bounds.max}`;
+  }
+  return value;
+}
+
+/**
+ * Body variant of parseFeedQuery for requests that reference custom
+ * (non-catalog) sources. This path never trusts the client's sanitization —
+ * customSources is re-validated here exactly as prefs.ts validates on load.
+ */
+export function parseFeedBody(raw: unknown): FeedBodyParseResult {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, error: "Request body must be a JSON object" };
+  }
+  const body = raw as Record<string, unknown>;
+  for (const key of Object.keys(body)) {
+    if (!ALLOWED_BODY_KEYS.has(key)) {
+      return { ok: false, error: `Unknown field: ${key}` };
+    }
+  }
+
+  const customSources = sanitizeCustomSources(body.customSources);
+
+  if (!Array.isArray(body.ids) || !body.ids.every((id) => typeof id === "string")) {
+    return { ok: false, error: "ids must be an array of strings" };
+  }
+  const requestedIds = body.ids.map((id) => id.trim()).filter(Boolean);
+  if (!requestedIds.length) {
+    return { ok: false, error: "ids must contain at least one source" };
+  }
+  const sourceIds = [...new Set(requestedIds)];
+  if (sourceIds.length > FEED_QUERY_LIMITS.maxSources) {
+    return {
+      ok: false,
+      error: `ids may contain at most ${FEED_QUERY_LIMITS.maxSources} sources`,
+    };
+  }
+  const knownIds = new Set(allSources(customSources).map((source) => source.id));
+  const unknownIds = sourceIds.filter((id) => !knownIds.has(id));
+  if (unknownIds.length) {
+    return { ok: false, error: `Unknown source ids: ${unknownIds.join(", ")}` };
+  }
+
+  const limit = clampBodyNumber("limit", body.limit, FEED_QUERY_LIMITS.limit);
+  if (typeof limit === "string") return { ok: false, error: limit };
+  const hours = clampBodyNumber("hours", body.hours, FEED_QUERY_LIMITS.hours);
+  if (typeof hours === "string") return { ok: false, error: hours };
+
+  const topic = typeof body.topic === "string" ? body.topic : "all";
+  if (!TOPICS.includes(topic as Topic)) {
+    return { ok: false, error: `Unknown topic: ${topic}` };
+  }
+
+  if (body.refresh !== undefined && typeof body.refresh !== "boolean") {
+    return { ok: false, error: "refresh must be a boolean" };
+  }
+
+  return {
+    ok: true,
+    value: {
+      sourceIds,
+      customSources,
+      limit,
+      hours,
+      topic: topic as Topic,
+      forceRefresh: body.refresh === true,
     },
   };
 }

@@ -14,7 +14,10 @@ import {
   visibleSourceIds,
 } from "@/lib/feedQuery";
 import { orderByIds, type Topic } from "@/lib/sources";
-import type { SourceFeed } from "@/lib/types";
+import type { SourceDef, SourceFeed } from "@/lib/types";
+
+const EMPTY_SOURCES: SourceFeed[] = [];
+const EMPTY_CUSTOM_SOURCES: SourceDef[] = [];
 
 export type FeedQueryStatus = "idle" | "loading" | "refreshing" | "success" | "error";
 
@@ -32,6 +35,8 @@ interface UseFeedQueryOptions {
   limit: number;
   hours: number;
   topic: Topic;
+  /** User-added feeds not in the built-in catalog. */
+  customSources?: SourceDef[];
 }
 
 export function useFeedQuery(options: UseFeedQueryOptions) {
@@ -48,11 +53,12 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
 
   const orderKey = options.sourceOrder.join(",");
   const hiddenKey = options.hiddenSources.join(",");
+  const customSources = options.customSources ?? EMPTY_CUSTOM_SOURCES;
   const ids = useMemo(
-    () => visibleSourceIds(options.sourceOrder, new Set(options.hiddenSources), options.topic),
+    () => visibleSourceIds(options.sourceOrder, new Set(options.hiddenSources), options.topic, customSources),
     // Primitive keys prevent unrelated preference updates from restarting requests.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orderKey, hiddenKey, options.topic]
+    [orderKey, hiddenKey, options.topic, customSources]
   );
   const idsKey = ids.join(",");
 
@@ -63,7 +69,7 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
     const controller = new AbortController();
     abortRef.current = controller;
     const order = orderKey.split(",").filter(Boolean);
-    const query = { ids, order, limit: options.limit, hours: options.hours };
+    const query = { ids, order, limit: options.limit, hours: options.hours, customSources };
     const cacheKey = clientCacheKey({
       ids: idsKey,
       limit: options.limit,
@@ -134,7 +140,7 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
         error: friendlyFeedError(error),
       }));
     }
-  }, [orderKey, ids, idsKey, options.limit, options.hours, options.topic, startTransition]);
+  }, [orderKey, ids, idsKey, options.limit, options.hours, options.topic, customSources, startTransition]);
 
   useEffect(() => {
     void load();
@@ -145,7 +151,7 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
     const controller = new AbortController();
     const data = await fetchFeedBatch(
       [sourceId],
-      { limit: options.limit, hours: options.hours },
+      { limit: options.limit, hours: options.hours, customSources },
       { force: true, signal: controller.signal }
     );
     const source = data.sources[0];
@@ -156,7 +162,7 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
       updatedAt: data.updatedAt || previous.updatedAt,
       error: null,
     }));
-  }, [options.limit, options.hours, options.sourceOrder]);
+  }, [options.limit, options.hours, options.sourceOrder, customSources]);
 
   const reorderSources = useCallback((order: string[]) => {
     setState((previous) => ({
@@ -165,7 +171,11 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
     }));
   }, []);
 
-  const currentSources = state.topic === options.topic ? state.sources : [];
+  const refresh = useCallback(() => {
+    void load({ force: true });
+  }, [load]);
+
+  const currentSources = state.topic === options.topic ? state.sources : EMPTY_SOURCES;
   return {
     sources: currentSources,
     updatedAt: state.updatedAt,
@@ -173,7 +183,7 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
     status: state.status,
     loading: state.status === "loading",
     refreshing: state.status === "refreshing",
-    refresh: () => load({ force: true }),
+    refresh,
     retrySource,
     reorderSources,
   };
