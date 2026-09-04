@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   type ArchiveCollection,
   type ArchiveData,
@@ -14,6 +14,7 @@ import { useArchive } from "./AppProviders";
 import { AppShell } from "./AppShell";
 import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archiveRecovery";
 import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
+import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
 type Sort = "newest" | "oldest" | "title";
@@ -42,6 +43,51 @@ function matches(item: ArchiveItem, query: string): boolean {
   return terms.every((term) => haystack.includes(term));
 }
 
+/** Keyed by collectionId in its parent so switching collections resets these drafts. */
+function PublishPanel({
+  collectionId,
+  publication,
+  busy,
+  onPublish,
+  onUnpublish,
+}: {
+  collectionId: string;
+  publication: CollectionPublication | undefined;
+  busy: boolean;
+  onPublish: (visibility: PublicationVisibility, curatorNote: string, attribution: string) => void;
+  onUnpublish: () => void;
+}) {
+  const [visibility, setVisibility] = useState<PublicationVisibility>(publication?.visibility ?? "unlisted");
+  const [curatorNote, setCuratorNote] = useState(publication?.curatorNote ?? "");
+  const [attribution, setAttribution] = useState(publication?.attribution ?? "");
+
+  return (
+    <details className="archive-portability">
+      <summary>Publish &amp; follow</summary>
+      <div className="archive-sidebar-actions" aria-label="Publish this collection">
+        <p className="archive-sync-state" role="status">
+          {publication
+            ? <>Published at <code>/c/{publication.slug}</code> · {publication.visibility}</>
+            : "Not published yet"}
+        </p>
+        <label htmlFor={`publish-visibility-${collectionId}`}>Visibility</label>
+        <select id={`publish-visibility-${collectionId}`} value={visibility} onChange={(event) => setVisibility(event.target.value as PublicationVisibility)}>
+          <option value="unlisted">Unlisted — link only</option>
+          <option value="public">Public — discoverable</option>
+        </select>
+        <label htmlFor={`publish-curator-note-${collectionId}`}>Curator note</label>
+        <textarea id={`publish-curator-note-${collectionId}`} value={curatorNote} onChange={(event) => setCuratorNote(event.target.value)} placeholder="Why does this collection matter? What should followers expect?" />
+        <label htmlFor={`publish-attribution-${collectionId}`}>Attribution</label>
+        <input id={`publish-attribution-${collectionId}`} type="text" value={attribution} onChange={(event) => setAttribution(event.target.value)} placeholder="Curated by…" />
+        <button type="button" disabled={busy} onClick={() => onPublish(visibility, curatorNote, attribution)}>{publication ? "Update publication" : "Publish collection"}</button>
+        {publication ? (
+          <button type="button" className="archive-danger" disabled={busy} onClick={onUnpublish}>Unpublish</button>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
 export function ArchiveApp() {
   const { archive: data, updateArchive, sync, replaceArchiveFromServer } = useArchive();
   const [query, setQuery] = useState("");
@@ -56,12 +102,33 @@ export function ArchiveApp() {
   const [revisions, setRevisions] = useState<ArchiveRevisionSummary[]>([]);
   const [contentSnapshots, setContentSnapshots] = useState<ContentSnapshotSummary[]>([]);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [publications, setPublications] = useState<CollectionPublication[]>([]);
+  const [publishBusy, setPublishBusy] = useState(false);
 
   const update = (recipe: (current: ArchiveData) => ArchiveData) => {
     updateArchive(recipe);
   };
 
   const selectedCollection = data?.collections.find((collection) => collection.id === collectionId);
+  const currentPublication = selectedCollection
+    ? publications.find((publication) => publication.collectionLocalId === selectedCollection.id && !publication.unpublishedAt)
+    : undefined;
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/collections", { credentials: "same-origin", cache: "no-store" });
+        if (!response.ok) return;
+        const body = await response.json() as { publications: CollectionPublication[] };
+        if (!cancelled) setPublications(body.publications);
+      } catch {
+        // Not signed in, or publications are unavailable; publish status stays unknown until the next attempt.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const collectionItems = useMemo(() => {
     const items = data?.items ?? [];
     return collectionId === "all"
@@ -212,16 +279,39 @@ export function ArchiveApp() {
     finally { setRecoveryBusy(false); }
   };
 
-  const shareCollection = async () => {
-    if (!selectedCollection) return;
-    const text = `Bareaga collection: ${selectedCollection.name}`;
+  const publishCollection = async (collectionLocalId: string, visibility: PublicationVisibility, curatorNote: string, attribution: string) => {
+    setPublishBusy(true);
     try {
-      await navigator.clipboard.writeText(`${text}\n${window.location.href}`);
-      setShareNotice("Collection link copied");
-    } catch {
-      setShareNotice("Ready to share when this archive is synced");
-    }
-    window.setTimeout(() => setShareNotice(""), 2600);
+      const response = await requestJson("/api/collections/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collectionLocalId, visibility, curatorNote, attribution }),
+      });
+      const publication = await response.json() as CollectionPublication;
+      setPublications((current) => [publication, ...current.filter((entry) => entry.id !== publication.id)]);
+      const link = `${window.location.origin}/c/${publication.slug}`;
+      try { await navigator.clipboard.writeText(link); setShareNotice(`Published at /c/${publication.slug} — link copied`); }
+      catch { setShareNotice(`Published at /c/${publication.slug}`); }
+    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Publishing failed"); }
+    finally { setPublishBusy(false); }
+  };
+
+  const unpublishCollection = async (collectionLocalId: string) => {
+    setPublishBusy(true);
+    try {
+      await requestJson("/api/collections/unpublish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collectionLocalId }),
+      });
+      setPublications((current) => current.map((entry) => (
+        entry.collectionLocalId === collectionLocalId
+          ? { ...entry, unpublishedAt: new Date().toISOString() }
+          : entry
+      )));
+      setShareNotice("Collection unpublished");
+    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Unpublishing failed"); }
+    finally { setPublishBusy(false); }
   };
 
   if (!data) return <p className="boot">Opening your archive…</p>;
@@ -305,11 +395,18 @@ export function ArchiveApp() {
                 <button type="button" onClick={exportMarkdown}>Markdown <span aria-hidden="true">↓</span></button>
                 <button type="button" onClick={exportCsv}>Notion CSV <span aria-hidden="true">↓</span></button>
                 <button type="button" onClick={() => void exportArchiveJson()}>Full JSON archive <span aria-hidden="true">↓</span></button>
-                {selectedCollection && selectedCollection.id !== "inbox" ? (
-                  <button type="button" onClick={() => void shareCollection()}>Copy collection link <span aria-hidden="true">↗</span></button>
-                ) : null}
               </div>
             </details>
+            {selectedCollection && selectedCollection.id !== "inbox" ? (
+              <PublishPanel
+                key={selectedCollection.id}
+                collectionId={selectedCollection.id}
+                publication={currentPublication}
+                busy={publishBusy}
+                onPublish={(visibility, curatorNote, attribution) => void publishCollection(selectedCollection.id, visibility, curatorNote, attribution)}
+                onUnpublish={() => void unpublishCollection(selectedCollection.id)}
+              />
+            ) : null}
             <details className="archive-portability">
               <summary>Sync, recovery &amp; account</summary>
               <div className="archive-sidebar-actions" aria-label="Archive sync and recovery">

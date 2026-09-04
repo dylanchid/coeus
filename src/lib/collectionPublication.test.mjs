@@ -6,6 +6,8 @@ import {
   derivePublicationSnapshot,
   isValidSlug,
   parsePublicationSnapshot,
+  parsePublishRequest,
+  parseUnpublishRequest,
   proposeSlug,
   slugWithSuffix,
 } from "./collectionPublication.ts";
@@ -163,4 +165,38 @@ test("parsePublicationSnapshot rejects unknown top-level fields", () => {
   });
   assert.equal(result.ok, false);
   assert.match(result.error, /Unknown publication field/);
+});
+
+test("parsePublishRequest accepts a minimal request and defaults optional text fields", () => {
+  const result = parsePublishRequest({ collectionLocalId: "humane-internet", visibility: "public" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value, {
+    collectionLocalId: "humane-internet",
+    visibility: "public",
+    curatorNote: "",
+    attribution: "",
+  });
+});
+
+test("parsePublishRequest rejects an invalid visibility", () => {
+  const result = parsePublishRequest({ collectionLocalId: "humane-internet", visibility: "friends-only" });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /visibility/);
+});
+
+test("parsePublishRequest rejects unknown fields", () => {
+  const result = parsePublishRequest({ collectionLocalId: "c1", visibility: "unlisted", slug: "sneaky" });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /Unknown field/);
+});
+
+test("parseUnpublishRequest accepts a bare collectionLocalId", () => {
+  const result = parseUnpublishRequest({ collectionLocalId: "humane-internet" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value, { collectionLocalId: "humane-internet" });
+});
+
+test("parseUnpublishRequest rejects a missing collectionLocalId", () => {
+  const result = parseUnpublishRequest({});
+  assert.equal(result.ok, false);
 });

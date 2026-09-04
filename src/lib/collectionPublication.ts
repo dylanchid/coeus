@@ -207,3 +207,48 @@ export function parsePublicationSnapshot(raw: unknown): PublicationParseResult {
     } as unknown as CollectionPublicationSnapshot,
   };
 }
+
+/** What a client sends to publish or republish a collection; the server derives the rest from its own archive data. */
+export interface PublishCollectionRequest {
+  collectionLocalId: string;
+  visibility: PublicationVisibility;
+  curatorNote: string;
+  attribution: string;
+}
+
+export type PublishRequestParseResult =
+  | { ok: true; value: PublishCollectionRequest }
+  | { ok: false; error: string };
+
+export function parsePublishRequest(raw: unknown): PublishRequestParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Request body must be a JSON object" };
+  const allowed = new Set(["collectionLocalId", "visibility", "curatorNote", "attribution"]);
+  const unknownField = Object.keys(raw).find((key) => !allowed.has(key));
+  if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
+  if (!isNonEmptyString(raw.collectionLocalId, 160)) return { ok: false, error: "collectionLocalId must be a non-empty string" };
+  if (raw.visibility !== "unlisted" && raw.visibility !== "public") return { ok: false, error: "visibility must be 'unlisted' or 'public'" };
+  const curatorNote = raw.curatorNote === undefined ? "" : raw.curatorNote;
+  const attribution = raw.attribution === undefined ? "" : raw.attribution;
+  if (!isBoundedString(curatorNote, MAX_TEXT_LENGTH)) return { ok: false, error: "curatorNote is invalid" };
+  if (!isBoundedString(attribution, MAX_TEXT_LENGTH)) return { ok: false, error: "attribution is invalid" };
+  return {
+    ok: true,
+    value: { collectionLocalId: raw.collectionLocalId, visibility: raw.visibility, curatorNote, attribution },
+  };
+}
+
+export interface UnpublishCollectionRequest {
+  collectionLocalId: string;
+}
+
+export type UnpublishRequestParseResult =
+  | { ok: true; value: UnpublishCollectionRequest }
+  | { ok: false; error: string };
+
+export function parseUnpublishRequest(raw: unknown): UnpublishRequestParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Request body must be a JSON object" };
+  const unknownField = Object.keys(raw).find((key) => key !== "collectionLocalId");
+  if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
+  if (!isNonEmptyString(raw.collectionLocalId, 160)) return { ok: false, error: "collectionLocalId must be a non-empty string" };
+  return { ok: true, value: { collectionLocalId: raw.collectionLocalId } };
+}

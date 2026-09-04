@@ -124,7 +124,7 @@ export function ShareSheet({ article, sourceName, topic, onClose, onDone }: Prop
           ) : null}
         </div>
         <footer>
-          <p>{destination === "social" ? "Your clip keeps its original source and canonical link." : destination === "friend" ? "Nothing is posted publicly." : "You can change collection visibility later."}</p>
+          <p>{destination === "social" ? "Your clip keeps its original source and canonical link." : destination === "friend" ? "Nothing is posted publicly." : destination === "public" || destination === "community" ? "Publish this collection from the Archive sidebar to put it at a stable public link." : "You can change collection visibility later."}</p>
           <div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="share-primary" disabled={busy || (destination === "social" && !excerpt.trim())} onClick={() => void submit()}>{busy ? "Working…" : destination === "friend" ? "Share ↗" : destination === "social" ? "Publish clip" : "Save here"}</button></div>
         </footer>
       </section>

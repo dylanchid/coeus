@@ -88,6 +88,11 @@
 .archive-snapshot-list a { color: var(--link); font-size: 0.66rem; line-height: 1.35; }
 .archive-sidebar-actions .archive-danger { border-color: #a33232; color: #a33232; }
 .archive-sidebar-actions .archive-danger:hover { background: #a33232; color: white; }
+.archive-sidebar-actions label { display: grid; gap: 0.3rem; color: var(--muted); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.archive-sidebar-actions select,
+.archive-sidebar-actions textarea,
+.archive-sidebar-actions input[type="text"] { width: 100%; border: 1px solid var(--line); border-radius: 0; padding: 0.45rem; background: transparent; color: var(--fg); font: 0.74rem var(--font); }
+.archive-sidebar-actions textarea { min-height: 4rem; resize: vertical; }
 
 .collection-composer {
   display: grid;
