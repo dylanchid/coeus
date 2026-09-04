@@ -10,7 +10,13 @@ import type {
   ThemeMode,
   UserPrefs,
 } from "./types";
-import { catalogSourceIds, defaultSourceOrder, storedSourceOrder } from "./sources";
+import {
+  allSources,
+  catalogSourceIds,
+  defaultSourceOrder,
+  sanitizeCustomSources,
+  storedSourceOrder,
+} from "./sources";
 
 const STORAGE_KEY = "bareaga.prefs.v1";
 const LEGACY_STORAGE_KEY = "brp.prefs.v1";
@@ -25,6 +31,7 @@ const STORY_REPRESENTATIONS: StoryRepresentationId[] = ["compact", "detailed"];
 
 export const DEFAULT_PREFS: UserPrefs = {
   version: 1,
+  customSources: [],
   sourceOrder: defaultSourceOrder(),
   hiddenSources: [],
   theme: "system",
@@ -119,11 +126,13 @@ export function mergeWithDefaults(raw: Partial<UserPrefs> | null): UserPrefs {
     ...DEFAULT_PREFS,
     sourceOrder: [...DEFAULT_PREFS.sourceOrder],
     hiddenSources: [],
+    customSources: [],
   };
   if (!raw || raw.version !== 1) return base;
 
-  const known = new Set(catalogSourceIds());
-  const order = storedSourceOrder(raw.sourceOrder) ?? base.sourceOrder;
+  const customSources = sanitizeCustomSources(raw.customSources);
+  const known = new Set(allSources(customSources).map((source) => source.id));
+  const order = storedSourceOrder(raw.sourceOrder, customSources) ?? base.sourceOrder;
 
   const legacy = raw as Omit<Partial<UserPrefs>, "homeView"> & {
     homeView?: HomeViewId | "grid" | "gallery";
@@ -141,6 +150,7 @@ export function mergeWithDefaults(raw: Partial<UserPrefs> | null): UserPrefs {
 
   return {
     version: 1,
+    customSources,
     sourceOrder: order,
     hiddenSources: (raw.hiddenSources ?? []).filter((id) => known.has(id)),
     theme: pick(raw.theme, THEMES, "system"),

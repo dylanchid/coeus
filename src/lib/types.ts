@@ -74,6 +74,8 @@ export interface SourceFeed {
 
 export interface UserPrefs {
   version: 1;
+  /** User-added RSS/Atom sources, persisted alongside the built-in catalog. */
+  customSources: SourceDef[];
   sourceOrder: string[];
   hiddenSources: string[];
   theme: ThemeMode;
@@ -101,7 +103,7 @@ export interface UserPrefs {
   keywordRules: KeywordRule[];
   /** Per-source affinity where 1 is neutral, 0.5 deprioritizes, and 1.5 favors. */
   sourceWeights: Record<string, number>;
-  /** Private, browser-local 1–5 ratings used by Discover. */
+  /** Private, browser-local 1–5 ratings used by Sources. */
   sourceRatings: Record<string, number>;
 }
 

@@ -102,8 +102,25 @@ export const TOPICS = ["all", "tech", "news", "business", "science"] as const;
 export type Topic = (typeof TOPICS)[number];
 
 export function sourcesByTopic(topic: Topic): SourceDef[] {
-  if (topic === "all") return SOURCE_CATALOG;
-  return SOURCE_CATALOG.filter((item) => item.topic === topic);
+  return sourcesByTopicWithCustom(topic);
+}
+
+/** Merge persisted user sources without allowing them to shadow built-ins. */
+export function allSources(customSources: readonly SourceDef[] = []): SourceDef[] {
+  const builtInIds = new Set(SOURCE_CATALOG.map((item) => item.id));
+  const custom = customSources.filter(
+    (item, index, list) =>
+      !builtInIds.has(item.id) && list.findIndex((candidate) => candidate.id === item.id) === index
+  );
+  return [...SOURCE_CATALOG, ...custom];
+}
+
+export function sourcesByTopicWithCustom(
+  topic: Topic,
+  customSources: readonly SourceDef[] = []
+): SourceDef[] {
+  const sources = allSources(customSources);
+  return topic === "all" ? sources : sources.filter((item) => item.topic === topic);
 }
 
 export function defaultSourceOrder(): string[] {
@@ -115,23 +132,74 @@ export function catalogSourceIds(): string[] {
 }
 
 /** Sanitize an explicitly stored enabled set; null means no set was stored. */
-export function storedSourceOrder(value: unknown): string[] | null {
+export function storedSourceOrder(
+  value: unknown,
+  customSources: readonly SourceDef[] = []
+): string[] | null {
   if (!Array.isArray(value)) return null;
-  const known = new Set(catalogSourceIds());
+  const known = new Set(allSources(customSources).map((item) => item.id));
   return [...new Set(value.filter((id): id is string => typeof id === "string" && known.has(id)))];
 }
 
-const sourceById = new Map(SOURCE_CATALOG.map((item) => [item.id, item]));
-
-export function getSource(id: string): SourceDef | undefined {
-  return sourceById.get(id);
+export function sourceByIdMap(customSources: readonly SourceDef[] = []) {
+  return new Map(allSources(customSources).map((item) => [item.id, item]));
 }
 
-export function sourceTopic(id: string): string | undefined {
-  return sourceById.get(id)?.topic;
+export function getSource(id: string, customSources: readonly SourceDef[] = []): SourceDef | undefined {
+  return sourceByIdMap(customSources).get(id);
+}
+
+export function sourceTopic(id: string, customSources: readonly SourceDef[] = []): string | undefined {
+  return sourceByIdMap(customSources).get(id)?.topic;
 }
 
 /** Order list items by id sequence; append any leftovers. */
+/** Turn a display name into a short, URL/id-safe slug; never empty. */
+export function slugifyId(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+  return slug.slice(0, 60) || "custom-source";
+}
+
+/** Sanitize user-supplied custom sources; used for both prefs load and server-side revalidation. */
+export function sanitizeCustomSources(value: unknown): SourceDef[] {
+  if (!Array.isArray(value)) return [];
+  const builtInIds = new Set(catalogSourceIds());
+  const seen = new Set<string>();
+  return value.flatMap((candidate): SourceDef[] => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const raw = candidate as Partial<SourceDef>;
+    const id = typeof raw.id === "string" ? raw.id.trim().slice(0, 80) : "";
+    const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 120) : "";
+    const feedUrl = typeof raw.feedUrl === "string" ? raw.feedUrl.trim() : "";
+    const homeUrl = typeof raw.homeUrl === "string" ? raw.homeUrl.trim() : feedUrl;
+    if (!id || !name || !feedUrl || builtInIds.has(id) || seen.has(id)) return [];
+    try {
+      if (new URL(feedUrl).protocol !== "https:") return [];
+      if (new URL(homeUrl).protocol !== "https:") return [];
+    } catch {
+      return [];
+    }
+    seen.add(id);
+    return [{
+      id, name, feedUrl, homeUrl,
+      topic: typeof raw.topic === "string" && raw.topic ? raw.topic : "all",
+      topics: Array.isArray(raw.topics) ? raw.topics.filter((v): v is string => typeof v === "string").slice(0, 20) : [],
+      tags: Array.isArray(raw.tags) ? raw.tags.filter((v): v is string => typeof v === "string").slice(0, 20) : ["custom"],
+      description: typeof raw.description === "string" ? raw.description : "User-added feed",
+      language: typeof raw.language === "string" ? raw.language : "Unknown",
+      region: typeof raw.region === "string" ? raw.region : "Global",
+      sourceType: raw.sourceType === "community" || raw.sourceType === "primary-source" || raw.sourceType === "research" ? raw.sourceType : "publisher",
+      cadence: raw.cadence === "live" || raw.cadence === "weekly" ? raw.cadence : "daily",
+      depth: raw.depth === "brief" || raw.depth === "deep" ? raw.depth : "mixed",
+      defaultRank: Number.isFinite(Number(raw.defaultRank)) ? Number(raw.defaultRank) : 50,
+    }];
+  }).slice(0, 100);
+}
+
 export function orderByIds<T extends { id: string }>(list: T[], order: string[]): T[] {
   const byId = new Map(list.map((item) => [item.id, item]));
   const ordered: T[] = [];
