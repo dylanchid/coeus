@@ -20,6 +20,11 @@ export interface CollectionPublicationStore {
   unpublish(ownerId: string, collectionLocalId: string): Promise<boolean>;
 }
 
+/** Unauthenticated read path for public collection pages and RSS output. */
+export interface PublicCollectionReader {
+  getBySlug(slug: string): Promise<CollectionPublication | null>;
+}
+
 export class CollectionNotFoundError extends Error {}
 export class SlugExhaustedError extends Error {}
 
@@ -57,8 +62,32 @@ function toPublication(data: Record<string, unknown>, items: Record<string, unkn
   };
 }
 
-export class SupabaseCollectionPublicationStore implements CollectionPublicationStore {
+export class SupabaseCollectionPublicationStore implements CollectionPublicationStore, PublicCollectionReader {
   constructor(private readonly supabase: SupabaseClient) {}
+
+  /**
+   * Unauthenticated read by stable slug. The admin client bypasses RLS, so
+   * visibility/unpublished filtering happens explicitly here rather than
+   * relying on the collection_publications RLS policy (defense-in-depth for
+   * a hypothetical future direct client read, not the enforcement point).
+   */
+  async getBySlug(slug: string): Promise<CollectionPublication | null> {
+    const { data, error } = await this.supabase
+      .from("collection_publications")
+      .select("*")
+      .eq("slug", slug)
+      .is("unpublished_at", null)
+      .in("visibility", ["public", "unlisted"])
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const { data: items, error: itemsError } = await this.supabase
+      .from("collection_publication_items")
+      .select("*")
+      .eq("publication_id", (data as { id: string }).id);
+    if (itemsError) throw itemsError;
+    return toPublication(data as Record<string, unknown>, (items ?? []) as Record<string, unknown>[]);
+  }
 
   async list(ownerId: string): Promise<CollectionPublication[]> {
     const archiveId = await this.archiveId(ownerId);
