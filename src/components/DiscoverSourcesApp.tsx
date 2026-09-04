@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { SOURCE_CATALOG } from "@/lib/sources";
 import type { SourceDef, UserPrefs } from "@/lib/types";
+import { AddSourceForm } from "./AddSourceForm";
 import { usePreferences } from "./AppProviders";
-import { PrimaryNav } from "./PrimaryNav";
+import { AppShell } from "./AppShell";
 
 const FEATURED_CATEGORIES = [
   "all",
@@ -85,7 +85,7 @@ function compareSources(a: SourceDef, b: SourceDef, sort: SortMode, prefs: UserP
   return a.defaultRank - b.defaultRank;
 }
 
-export function DiscoverSourcesApp() {
+export function SourcesApp() {
   const { prefs, updatePrefs: setSharedPrefs } = usePreferences();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -159,26 +159,16 @@ export function DiscoverSourcesApp() {
   };
 
   return (
-    <div className="discover-page">
-      <header className="discover-header">
-        <div>
-          <Link className="discover-wordmark" href="/">Bareaga</Link>
-          <span>Discover sources</span>
-        </div>
-        <PrimaryNav current="discover" />
-      </header>
-
-      <section className="discover-intro">
-        <p className="discover-kicker">Source directory · {SOURCE_CATALOG.length} feeds</p>
-        <div>
-          <h1>Build a better reading stack.</h1>
-          <p>
-            Explore independent reporting, primary sources, specialist publications,
-            and familiar newsrooms. Additions stay private in this browser.
-          </p>
-        </div>
+    <AppShell section="sources">
+      <div className="discover-page">
+      <section className="sources-intro" aria-labelledby="sources-title">
+        <p>Sources for your Reader</p>
+        <h1 id="sources-title">Find publications worth following.</h1>
+        <span>Browse the directory or bring any RSS or Atom feed.</span>
       </section>
-
+      <section className="discover-section discover-add" aria-label="Add your own feed">
+        <AddSourceForm prefs={prefs} onChange={setSharedPrefs} />
+      </section>
       <section className="discover-controls" aria-label="Source filters">
         <label className="discover-search">
           <span>Search the directory</span>
@@ -279,6 +269,7 @@ export function DiscoverSourcesApp() {
           )}
         </section>
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }

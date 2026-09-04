@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   type ArchiveCollection,
@@ -12,9 +11,12 @@ import {
 } from "@/lib/archive";
 import { archiveToCsv, archiveToMarkdown, itemToMarkdown } from "@/lib/archiveExport";
 import { useArchive } from "./AppProviders";
-import { PrimaryNav } from "./PrimaryNav";
+import { AppShell } from "./AppShell";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
+type Sort = "newest" | "oldest" | "title";
+
+const FILTERS: Filter[] = ["all", "unread", "starred", "annotated"];
 
 function relativeDate(iso: string): string {
   const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
@@ -42,6 +44,7 @@ export function ArchiveApp() {
   const { archive: data, updateArchive } = useArchive();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [sort, setSort] = useState<Sort>("newest");
   const [collectionId, setCollectionId] = useState("all");
   const [newCollection, setNewCollection] = useState("");
   const [newCollectionKind, setNewCollectionKind] = useState<CollectionKind>("personal");
@@ -54,25 +57,34 @@ export function ArchiveApp() {
   };
 
   const selectedCollection = data?.collections.find((collection) => collection.id === collectionId);
+  const collectionItems = useMemo(() => {
+    const items = data?.items ?? [];
+    return collectionId === "all"
+      ? items
+      : items.filter((item) => item.collectionIds.includes(collectionId));
+  }, [data, collectionId]);
+
+  const counts = useMemo(() => ({
+    all: collectionItems.length,
+    unread: collectionItems.filter((item) => item.state === "unread").length,
+    starred: collectionItems.filter((item) => item.starred).length,
+    annotated: collectionItems.filter((item) => item.note.trim()).length,
+  }), [collectionItems]);
+
   const visible = useMemo(() => {
-    if (!data) return [];
-    return data.items.filter((item) => {
-      if (collectionId !== "all" && !item.collectionIds.includes(collectionId)) return false;
+    const filtered = collectionItems.filter((item) => {
       if (filter === "unread" && item.state !== "unread") return false;
       if (filter === "starred" && !item.starred) return false;
       if (filter === "annotated" && !item.note.trim()) return false;
       return matches(item, query);
     });
-  }, [data, collectionId, filter, query]);
 
-  const counts = useMemo(() => {
-    const items = data?.items ?? [];
-    return {
-      unread: items.filter((item) => item.state === "unread").length,
-      starred: items.filter((item) => item.starred).length,
-      annotated: items.filter((item) => item.note.trim()).length,
-    };
-  }, [data]);
+    return [...filtered].sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title);
+      const newestFirst = Date.parse(b.savedAt) - Date.parse(a.savedAt);
+      return sort === "oldest" ? -newestFirst : newestFirst;
+    });
+  }, [collectionItems, filter, query, sort]);
 
   const patchItem = (id: string, patch: Partial<ArchiveItem>) => {
     update((current) => ({
@@ -139,142 +151,184 @@ export function ArchiveApp() {
 
   if (!data) return <p className="boot">Opening your archive…</p>;
 
+  const namedCollections = data.collections.filter((collection) => collection.id !== "inbox");
+  const inbox = data.collections.find((collection) => collection.id === "inbox");
+  const itemCountIn = (id: string) => data.items.filter((item) => item.collectionIds.includes(id)).length;
+
   return (
-    <div className="archive-page">
-      <header className="archive-header">
-        <div>
-          <Link className="archive-wordmark" href="/">Bareaga</Link>
-          <span className="archive-section-name">/ archive</span>
-        </div>
-        <PrimaryNav current="archive" />
-      </header>
-
-      <section className="archive-intro">
-        <p className="archive-kicker">A place for the web worth keeping</p>
-        <div>
-          <h1>Save is only<br />the beginning.</h1>
-          <p>
-            Read later, remember why it mattered, connect it to other ideas, then
-            keep it private or share a path for others to follow.
-          </p>
-        </div>
-      </section>
-
-      <div className="archive-workspace">
-        <aside className="archive-sidebar" aria-label="Archive collections">
-          <div className="archive-sidebar-head">
-            <span>Library</span>
-            <span>{data.items.length} items</span>
+    <AppShell
+      section="archive"
+      footerNote={
+        <>
+          <strong>Private by default.</strong> Your archive lives on this device
+          today; shared collections are the next layer.
+        </>
+      }
+    >
+      <div className="archive-page">
+        <section className="archive-overview" aria-labelledby="archive-title">
+          <div className="archive-overview-copy">
+            <p className="archive-eyebrow">
+              {selectedCollection
+                ? `${selectedCollection.kind} collection · ${selectedCollection.visibility}`
+                : "Personal library"}
+            </p>
+            <h1 id="archive-title">{selectedCollection?.name ?? "Everything worth returning to."}</h1>
+            <p>
+              {selectedCollection?.description
+                ?? "Your saved reading, kept with the notes and context that made it matter."}
+            </p>
           </div>
-          <button className={collectionId === "all" ? "is-active" : ""} onClick={() => setCollectionId("all")}>
-            <span>Everything</span><small>{data.items.length}</small>
-          </button>
-          <div className="archive-collection-label">Collections</div>
-          {data.collections.map((collection) => (
-            <button key={collection.id} className={collectionId === collection.id ? "is-active" : ""} onClick={() => setCollectionId(collection.id)}>
-              <span>{collection.kind === "community" ? "◎ " : ""}{collection.name}</span>
-              <small>{data.items.filter((item) => item.collectionIds.includes(collection.id)).length}</small>
-            </button>
-          ))}
-          {composerOpen ? (
-            <form className="collection-composer" onSubmit={(event) => { event.preventDefault(); createCollection(); }}>
-              <label htmlFor="new-collection">Collection name</label>
-              <input id="new-collection" autoFocus value={newCollection} onChange={(event) => setNewCollection(event.target.value)} placeholder="e.g. Local futures" />
-              <label htmlFor="collection-kind">Ownership</label>
-              <select id="collection-kind" value={newCollectionKind} onChange={(event) => setNewCollectionKind(event.target.value as CollectionKind)}><option value="personal">Personal</option><option value="community">Community</option></select>
-              <label htmlFor="collection-visibility">Visibility</label>
-              <select id="collection-visibility" value={newCollectionVisibility} onChange={(event) => setNewCollectionVisibility(event.target.value as CollectionVisibility)}><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select>
-              <div><button type="submit">Create</button><button type="button" onClick={() => setComposerOpen(false)}>Cancel</button></div>
-            </form>
-          ) : (
-            <button className="new-collection-button" onClick={() => setComposerOpen(true)}>+ New collection</button>
-          )}
-        </aside>
+          <dl className="archive-overview-stats" aria-label="Archive summary">
+            <div><dt>Saved</dt><dd>{collectionItems.length}</dd></div>
+            <div><dt>Unread</dt><dd>{counts.unread}</dd></div>
+            <div><dt>With notes</dt><dd>{counts.annotated}</dd></div>
+          </dl>
+        </section>
 
-        <section className="archive-main">
-          <div className="archive-context">
-            <div>
-              <p>{selectedCollection ? `Collection · ${selectedCollection.visibility}` : "Your complete archive"}</p>
-              <h2>{selectedCollection?.name ?? "Everything"}</h2>
-              <span>{selectedCollection?.description ?? "Every saved article, note, and connection in one searchable place."}</span>
+        <div className="archive-workspace">
+          <aside className="archive-sidebar" aria-label="Archive collections">
+            <div className="archive-sidebar-head">
+              <span>Browse library</span>
+              <span>{data.items.length} saved</span>
             </div>
-            {selectedCollection && selectedCollection.id !== "inbox" ? (
-              <button onClick={() => void shareCollection()}>Share collection ↗</button>
-            ) : null}
-          </div>
-          {shareNotice ? <p className="archive-notice" role="status">{shareNotice}</p> : null}
-
-          <section className="archive-integrations" aria-label="Archive portability">
-            <div><p>Open by design</p><strong>Keep using the archive you already trust.</strong><span>Markdown preserves links, notes, tags, and frontmatter for Obsidian. CSV maps cleanly into a Notion database.</span></div>
-            <div><button type="button" onClick={exportMarkdown}>Export Markdown</button><button type="button" onClick={exportCsv}>Export Notion CSV</button></div>
-          </section>
-
-          <div className="archive-controls">
-            <label>
-              <span>Search archive</span>
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, notes, tags, people…" />
-            </label>
-            <div className="archive-filters" role="group" aria-label="Filter archive">
-              {(["all", "unread", "starred", "annotated"] as const).map((value) => (
-                <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>
-                  {value === "all" ? "All" : value[0].toUpperCase() + value.slice(1)}
-                  {value !== "all" ? ` ${counts[value]}` : ""}
+            <nav className="archive-collection-nav" aria-label="Library views">
+              <button className={collectionId === "all" ? "is-active" : ""} aria-current={collectionId === "all" ? "page" : undefined} onClick={() => setCollectionId("all")}>
+                <span><i aria-hidden="true">⌂</i>Everything</span><small>{data.items.length}</small>
+              </button>
+              {inbox ? (
+                <button className={collectionId === inbox.id ? "is-active" : ""} aria-current={collectionId === inbox.id ? "page" : undefined} onClick={() => setCollectionId(inbox.id)}>
+                  <span><i aria-hidden="true">↓</i>{inbox.name}</span><small>{itemCountIn(inbox.id)}</small>
+                </button>
+              ) : null}
+            </nav>
+            <div className="archive-collection-label"><span>Collections</span><span>{namedCollections.length}</span></div>
+            <nav className="archive-collection-nav" aria-label="Collections">
+              {namedCollections.map((collection) => (
+                <button key={collection.id} className={collectionId === collection.id ? "is-active" : ""} aria-current={collectionId === collection.id ? "page" : undefined} onClick={() => setCollectionId(collection.id)}>
+                  <span><i aria-hidden="true">{collection.kind === "community" ? "◎" : "◇"}</i>{collection.name}</span>
+                  <small>{itemCountIn(collection.id)}</small>
                 </button>
               ))}
+            </nav>
+            {composerOpen ? (
+              <form className="collection-composer" onSubmit={(event) => { event.preventDefault(); createCollection(); }}>
+                <label htmlFor="new-collection">Collection name</label>
+                <input id="new-collection" autoFocus value={newCollection} onChange={(event) => setNewCollection(event.target.value)} placeholder="e.g. Local futures" />
+                <label htmlFor="collection-kind">Ownership</label>
+                <select id="collection-kind" value={newCollectionKind} onChange={(event) => setNewCollectionKind(event.target.value as CollectionKind)}><option value="personal">Personal</option><option value="community">Community</option></select>
+                <label htmlFor="collection-visibility">Visibility</label>
+                <select id="collection-visibility" value={newCollectionVisibility} onChange={(event) => setNewCollectionVisibility(event.target.value as CollectionVisibility)}><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select>
+                <div><button type="submit">Create</button><button type="button" onClick={() => setComposerOpen(false)}>Cancel</button></div>
+              </form>
+            ) : (
+              <button className="new-collection-button" onClick={() => setComposerOpen(true)}><span aria-hidden="true">＋</span> New collection</button>
+            )}
+            <details className="archive-portability">
+              <summary>Export &amp; share</summary>
+              <div className="archive-sidebar-actions" aria-label="Archive portability">
+                <button type="button" onClick={exportMarkdown}>Markdown <span aria-hidden="true">↓</span></button>
+                <button type="button" onClick={exportCsv}>Notion CSV <span aria-hidden="true">↓</span></button>
+                {selectedCollection && selectedCollection.id !== "inbox" ? (
+                  <button type="button" onClick={() => void shareCollection()}>Copy collection link <span aria-hidden="true">↗</span></button>
+                ) : null}
+              </div>
+            </details>
+          </aside>
+
+          <section className="archive-main" aria-label="Saved pieces">
+            {shareNotice ? <p className="archive-notice" role="status">{shareNotice}</p> : null}
+
+            <div className="archive-controls">
+              <div className="archive-search">
+                <label htmlFor="archive-search">Search this view</label>
+                <span aria-hidden="true">⌕</span>
+                <input id="archive-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Titles, notes, tags, authors…" />
+                {query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear archive search">×</button> : null}
+              </div>
+              <div className="archive-filters" role="group" aria-label="Filter archive">
+                {FILTERS.map((value) => (
+                  <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>
+                    <span>{value === "all" ? "All" : value[0].toUpperCase() + value.slice(1)}</span>
+                    <small>{counts[value]}</small>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="archive-result-meta"><span>{visible.length} {visible.length === 1 ? "piece" : "pieces"}</span><span>Newest saves first</span></div>
-          {visible.length ? (
-            <ol className="archive-list">
-              {visible.map((item) => (
-                <li key={item.id} className={`archive-item is-${item.state}`}>
-                  <div className="archive-item-index" aria-hidden="true">{String(data.items.indexOf(item) + 1).padStart(2, "0")}</div>
-                  <article>
-                    <div className="archive-item-meta">
-                      <span>{item.sourceName}</span><span>·</span><span>{item.topic}</span><span>·</span><span>saved {relativeDate(item.savedAt)}</span>
+            <div className="archive-result-meta">
+              <span>{visible.length} {visible.length === 1 ? "piece" : "pieces"}{query ? ` matching “${query}”` : ""}</span>
+              <label htmlFor="archive-sort">Sort <select id="archive-sort" value={sort} onChange={(event) => setSort(event.target.value as Sort)}><option value="newest">Newest saved</option><option value="oldest">Oldest saved</option><option value="title">Title A–Z</option></select></label>
+            </div>
+
+            {visible.length ? (
+              <ol className="archive-list">
+                {visible.map((item) => (
+                  <li key={item.id} className={`archive-item is-${item.state}`}>
+                    <div className="archive-item-index" aria-hidden="true">
+                      <span>{String(data.items.indexOf(item) + 1).padStart(2, "0")}</span>
+                      {item.state === "unread" ? <i /> : null}
                     </div>
-                    <h3><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></h3>
-                    {item.summary ? <p className="archive-summary">{item.summary}</p> : null}
-                    {item.note ? <blockquote>{item.note}</blockquote> : null}
-                    {item.tags.length ? <div className="archive-tags">{item.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div> : null}
-                    <div className="archive-item-actions">
-                      <select aria-label={`Reading state for ${item.title}`} value={item.state} onChange={(event) => patchItem(item.id, { state: event.target.value as ArchiveState })}>
-                        <option value="unread">Unread</option><option value="read">Read</option><option value="kept">Keep</option>
-                      </select>
-                      <button aria-pressed={item.starred} onClick={() => patchItem(item.id, { starred: !item.starred })}>{item.starred ? "★ Starred" : "☆ Star"}</button>
-                      <button onClick={() => void navigator.clipboard.writeText(itemToMarkdown(item)).then(() => setShareNotice("Markdown clip copied"))}>Copy Markdown</button>
-                      <select aria-label={`Collection for ${item.title}`} value={item.collectionIds[0] ?? ""} onChange={(event) => patchItem(item.id, { collectionIds: event.target.value ? [event.target.value] : [] })}>
-                        <option value="">No collection</option>
-                        {data.collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
-                      </select>
-                    </div>
-                    <details className="archive-note-editor">
-                      <summary>{item.note ? "Edit note" : "+ Add why this matters"}</summary>
-                      <label>
-                        <span>Private note</span>
-                        <textarea
-                          key={item.note}
-                          defaultValue={item.note}
-                          placeholder="Capture the idea, connection, or question you want to return to…"
-                          onBlur={(event) => patchItem(item.id, { note: event.target.value.trim() })}
-                        />
-                      </label>
-                    </details>
-                  </article>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <div className="archive-empty"><p>No pieces found.</p><span>Try a broader search, another filter, or save something from the reader.</span></div>
-          )}
-        </section>
+                    <article>
+                      <header className="archive-item-header">
+                        <div className="archive-item-meta">
+                          <span className="archive-source">{item.sourceName}</span><span>{item.topic}</span><span>Saved {relativeDate(item.savedAt)}</span>
+                        </div>
+                        <button className="archive-star" type="button" aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`} aria-pressed={item.starred} onClick={() => patchItem(item.id, { starred: !item.starred })}><span aria-hidden="true">{item.starred ? "★" : "☆"}</span></button>
+                      </header>
+                      <h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}<span className="archive-external" aria-hidden="true">↗</span></a></h2>
+                      {item.summary ? <p className="archive-summary">{item.summary}</p> : null}
+                      {item.note ? <blockquote><span>Your note</span>{item.note}</blockquote> : null}
+                      {item.tags.length ? <div className="archive-tags" aria-label="Tags">{item.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div> : null}
+                      <div className="archive-item-actions">
+                        <label className="archive-state">
+                          <span className="visually-hidden">Reading state for {item.title}</span>
+                          <i className={`archive-state-dot is-${item.state}`} aria-hidden="true" />
+                          <select value={item.state} onChange={(event) => patchItem(item.id, { state: event.target.value as ArchiveState })}>
+                            <option value="unread">Unread</option><option value="read">Read</option><option value="kept">Kept</option>
+                          </select>
+                        </label>
+                        <details className="archive-note-editor">
+                          <summary>{item.note ? "Edit note" : "Add a note"}</summary>
+                          <label>
+                            <span>Why this matters</span>
+                            <textarea
+                              key={item.note}
+                              defaultValue={item.note}
+                              placeholder="Capture the idea, connection, or question you want to return to…"
+                              onBlur={(event) => patchItem(item.id, { note: event.target.value.trim() })}
+                            />
+                          </label>
+                        </details>
+                        <details className="archive-item-tools">
+                          <summary>Organize</summary>
+                          <div>
+                            <label>
+                              <span>Collection</span>
+                              <select aria-label={`Collection for ${item.title}`} value={item.collectionIds[0] ?? ""} onChange={(event) => patchItem(item.id, { collectionIds: event.target.value ? [event.target.value] : [] })}>
+                                <option value="">No collection</option>
+                                {data.collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+                              </select>
+                            </label>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText(itemToMarkdown(item)).then(() => setShareNotice("Markdown clip copied"))}>Copy Markdown</button>
+                          </div>
+                        </details>
+                      </div>
+                    </article>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="archive-empty">
+                <span aria-hidden="true">◇</span>
+                <p>No pieces found.</p>
+                <small>Try a broader search, another filter, or save something from the reader.</small>
+                {query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</button> : null}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
-
-      <footer className="archive-footer">
-        <p><strong>Private by default.</strong> Your archive lives on this device today. Shared collections are the next layer.</p>
-        <p>Collect deliberately. Preserve context. Build paths, not piles.</p>
-      </footer>
-    </div>
+    </AppShell>
   );
 }

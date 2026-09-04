@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { getPrefsStore } from "@/lib/prefs";
+import { ChromeProvider } from "./ChromeProvider";
 import { LocalStorageArchiveRepository } from "@/lib/localArchiveRepository";
 import { configureArchiveRepository } from "@/lib/archiveRepository";
 import type { ArchiveData } from "@/lib/archiveTypes";
@@ -83,7 +84,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const archiveValue = useMemo(() => ({ archive, updateArchive }), [archive, updateArchive]);
   return (
     <PreferencesContext.Provider value={prefsValue}>
-      <ArchiveContext.Provider value={archiveValue}>{children}</ArchiveContext.Provider>
+      <ArchiveContext.Provider value={archiveValue}>
+        <ChromeProvider>{children}</ChromeProvider>
+      </ArchiveContext.Provider>
     </PreferencesContext.Provider>
   );
 }

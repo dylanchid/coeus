@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { DiscoverSourcesApp } from "@/components/DiscoverSourcesApp";
+import { DiscoverApp } from "@/components/SocialApp";
 
 export const metadata: Metadata = {
-  title: "Discover Sources · Bareaga",
-  description: "Explore and add news, research, culture, and primary-source feeds to Bareaga.",
+  title: "Discover — Bareaga",
+  description: "Explore collections, articles, and links shared by people across the open web.",
 };
 
 export default function DiscoverPage() {
-  return <DiscoverSourcesApp />;
+  return <DiscoverApp />;
 }

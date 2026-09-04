@@ -8,9 +8,10 @@ import {
   STORY_REPRESENTATION_OPTIONS,
   mergeWithDefaults,
 } from "@/lib/prefs";
-import { SOURCE_CATALOG, orderByIds } from "@/lib/sources";
+import { allSources, orderByIds } from "@/lib/sources";
 import type { SourceDef } from "@/lib/types";
 import { formatKeywordRules, parseKeywordRules } from "@/lib/ranking";
+import { AddSourceForm } from "./AddSourceForm";
 import type {
   ColumnCount,
   DensityId,
@@ -31,6 +32,7 @@ type Props = {
   prefs: UserPrefs;
   onClose: () => void;
   onChange: (patch: Partial<UserPrefs>) => void;
+  initialTab?: SettingsTab;
 };
 
 function ChoiceRow<T extends string | number>({
@@ -100,7 +102,7 @@ function RankingControls({
   const [rulesText, setRulesText] = useState(() =>
     formatKeywordRules(prefs.keywordRules)
   );
-  const knownSourceIds = new Set(SOURCE_CATALOG.map((source) => source.id));
+  const knownSourceIds = new Set(orderedSources.map((source) => source.id));
   const nonemptyLineCount = rulesText
     .split(/\r?\n/)
     .filter((line) => line.trim()).length;
@@ -184,14 +186,20 @@ function RankingControls({
   );
 }
 
-export function SettingsPanel({ open, prefs, onClose, onChange }: Props) {
+export function SettingsPanel({
+  open,
+  prefs,
+  onClose,
+  onChange,
+  initialTab = "reading",
+}: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("reading");
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [sourceQuery, setSourceQuery] = useState("");
   const hidden = new Set(prefs.hiddenSources);
-  const enabledSources = SOURCE_CATALOG.filter((source) =>
+  const enabledSources = allSources(prefs.customSources).filter((source) =>
     prefs.sourceOrder.includes(source.id)
   );
   const orderedSources = orderByIds(enabledSources, prefs.sourceOrder);
@@ -437,6 +445,10 @@ export function SettingsPanel({ open, prefs, onClose, onChange }: Props) {
       </div>
 
       <div hidden={activeTab !== "sources"}>
+      <section className="settings-section">
+        <h3>Your feeds</h3>
+        <AddSourceForm prefs={prefs} onChange={onChange} />
+      </section>
       <section className="settings-section">
         <h3>Sources</h3>
         <label className="source-search-label" htmlFor="settings-source-search">

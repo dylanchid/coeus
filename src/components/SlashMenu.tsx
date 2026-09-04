@@ -14,7 +14,10 @@ import {
   groupRankedItems,
   type SlashBuildContext,
   type RankedSlashItem,
+  type SlashItem,
 } from "@/lib/slashCommands";
+
+const EMPTY_SLASH_ITEMS: SlashItem[] = [];
 
 type Props = {
   open: boolean;
@@ -31,7 +34,7 @@ export function SlashMenu({ open, onClose, context }: Props) {
 
   // Build every open render so command handlers always see latest prefs/actions
   const items = useMemo(
-    () => (open ? buildSlashItems(context) : []),
+    () => (open ? buildSlashItems(context) : EMPTY_SLASH_ITEMS),
     [open, context]
   );
   const ranked = useMemo(
@@ -55,9 +58,16 @@ export function SlashMenu({ open, onClose, context }: Props) {
 
   // Clamp active index when results change
   useEffect(() => {
+    if (flat.length === 0) {
+      if (activeIndex !== 0) {
+        const t = window.setTimeout(() => setActiveIndex(0), 0);
+        return () => window.clearTimeout(t);
+      }
+      return;
+    }
     if (activeIndex >= flat.length) {
       const t = window.setTimeout(() => {
-        setActiveIndex(flat.length ? flat.length - 1 : 0);
+        setActiveIndex(flat.length - 1);
       }, 0);
       return () => window.clearTimeout(t);
     }

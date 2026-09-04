@@ -23,6 +23,7 @@ import type {
 } from "./types";
 
 export type SlashGroup =
+  | "Navigate"
   | "Actions"
   | "Topics"
   | "Display"
@@ -44,25 +45,35 @@ export type SlashItem = {
   run: () => void;
 };
 
-export type SlashBuildContext = {
-  prefs: UserPrefs;
+/** Feed-specific slash commands, present only while the Reader is mounted. */
+export type ReaderSlashContext = {
   topic: Topic;
   search: string;
   sources: SourceFeed[];
   busy: boolean;
-  onPrefs: (patch: Partial<UserPrefs>) => void;
   onTopic: (t: Topic) => void;
   onSearch: (q: string) => void;
   onRefresh: () => void;
-  onOpenSettings: () => void;
   onFocusSearch: () => void;
+};
+
+export type SlashBuildContext = {
+  prefs: UserPrefs;
+  /** Route id of the current page, so "Go to …" skips it. */
+  currentSection: string;
+  onPrefs: (patch: Partial<UserPrefs>) => void;
+  onOpenSettings: () => void;
   onExportPrefs: () => void;
+  onNavigate: (href: string) => void;
+  /** Reader-only command context; omitted on every other page. */
+  reader?: ReaderSlashContext;
 };
 
 const LIMITS = [5, 10, 15, 25, 50] as const;
 const HOURS = [1, 3, 6, 12, 24, 48, 72] as const;
 const COLUMNS: ColumnCount[] = [1, 2, 3, 4];
 const GROUP_ORDER: SlashGroup[] = [
+  "Navigate",
   "Actions",
   "Topics",
   "Display",
@@ -70,6 +81,14 @@ const GROUP_ORDER: SlashGroup[] = [
   "Feed",
   "Sources",
   "Articles",
+];
+
+const NAV_TARGETS: { id: string; href: string; label: string }[] = [
+  { id: "reader", href: "/", label: "Reader" },
+  { id: "sources", href: "/sources", label: "Sources" },
+  { id: "discover", href: "/discover", label: "Discover" },
+  { id: "archive", href: "/archive", label: "Archive" },
+  { id: "about", href: "/about", label: "About" },
 ];
 
 function toggleHidden(
@@ -84,57 +103,61 @@ function toggleHidden(
 }
 
 export function buildSlashItems(ctx: SlashBuildContext): SlashItem[] {
-  const {
-    prefs,
-    topic,
-    search,
-    sources,
-    busy,
-    onPrefs,
-    onTopic,
-    onSearch,
-    onRefresh,
-    onOpenSettings,
-    onFocusSearch,
-    onExportPrefs,
-  } = ctx;
+  const { prefs, onPrefs, onOpenSettings, onExportPrefs, onNavigate, reader } = ctx;
 
   const items: SlashItem[] = [];
 
+  // —— Navigate (every page) ——
+  for (const target of NAV_TARGETS) {
+    if (target.id === ctx.currentSection) continue;
+    items.push({
+      id: `navigate:${target.id}`,
+      label: `Go to ${target.label}`,
+      group: "Navigate",
+      keywords: `open page section jump ${target.id} ${target.href}`,
+      primary: true,
+      run: () => onNavigate(target.href),
+    });
+  }
+
   // —— Actions ——
-  items.push({
-    id: "action:refresh",
-    label: busy ? "Refresh feeds (busy…)" : "Refresh feeds",
-    group: "Actions",
-    keywords: "reload update force fetch",
-    hint: "R",
-    primary: true,
-    run: () => {
-      if (!busy) onRefresh();
-    },
-  });
-  items.push({
-    id: "action:search",
-    label: "Focus keyword search",
-    group: "Actions",
-    keywords: "find filter headlines titles",
-    hint: "?",
-    primary: true,
-    run: () => onFocusSearch(),
-  });
-  items.push({
-    id: "action:clear-search",
-    label: search.trim() ? `Clear search (“${search.trim().slice(0, 24)}”)` : "Clear search",
-    group: "Actions",
-    keywords: "reset filter empty",
-    primary: true,
-    run: () => onSearch(""),
-  });
+  if (reader) {
+    items.push({
+      id: "action:refresh",
+      label: reader.busy ? "Refresh feeds (busy…)" : "Refresh feeds",
+      group: "Actions",
+      keywords: "reload update force fetch",
+      hint: "R",
+      primary: true,
+      run: () => {
+        if (!reader.busy) reader.onRefresh();
+      },
+    });
+    items.push({
+      id: "action:search",
+      label: "Focus keyword search",
+      group: "Actions",
+      keywords: "find filter headlines titles",
+      hint: "?",
+      primary: true,
+      run: () => reader.onFocusSearch(),
+    });
+    items.push({
+      id: "action:clear-search",
+      label: reader.search.trim()
+        ? `Clear search (“${reader.search.trim().slice(0, 24)}”)`
+        : "Clear search",
+      group: "Actions",
+      keywords: "reset filter empty",
+      primary: true,
+      run: () => reader.onSearch(""),
+    });
+  }
   items.push({
     id: "action:settings",
     label: "Open settings",
     group: "Actions",
-    keywords: "preferences config panel",
+    keywords: "preferences config panel appearance theme",
     hint: ",",
     primary: true,
     run: () => onOpenSettings(),
@@ -148,18 +171,20 @@ export function buildSlashItems(ctx: SlashBuildContext): SlashItem[] {
     run: () => onExportPrefs(),
   });
 
-  // —— Topics ——
-  for (const t of TOPICS) {
-    const label = t[0]!.toUpperCase() + t.slice(1);
-    items.push({
-      id: `topic:${t}`,
-      label: `Topic: ${label}`,
-      group: "Topics",
-      keywords: `filter category ${t}`,
-      hint: topic === t ? "current" : undefined,
-      primary: true,
-      run: () => onTopic(t),
-    });
+  // —— Topics (reader only) ——
+  if (reader) {
+    for (const t of TOPICS) {
+      const label = t[0]!.toUpperCase() + t.slice(1);
+      items.push({
+        id: `topic:${t}`,
+        label: `Topic: ${label}`,
+        group: "Topics",
+        keywords: `filter category ${t}`,
+        hint: reader.topic === t ? "current" : undefined,
+        primary: true,
+        run: () => reader.onTopic(t),
+      });
+    }
   }
 
   // —— Display: homescreen layout ——
@@ -349,8 +374,8 @@ export function buildSlashItems(ctx: SlashBuildContext): SlashItem[] {
     });
   }
 
-  // —— Articles (loaded headlines) ——
-  for (const src of sources) {
+  // —— Articles (reader only, loaded headlines) ——
+  for (const src of reader?.sources ?? []) {
     for (const a of src.articles) {
       items.push({
         id: `article:${a.id}`,

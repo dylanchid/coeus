@@ -21,6 +21,27 @@
   --gap: 1.5rem;
   --col-pad: 0;
   --li-pad: 0.45rem;
+
+  /* —— Layout + spacing scale (shared shell) —— */
+  --content-max: 1480px;
+  --pad-inline: clamp(1rem, 3.5vw, 1.35rem);
+  --header-py: 0.85rem;
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.4rem;
+  --space-xs: 0.65rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: clamp(2rem, 5vw, 3.5rem);
+  --space-xl: clamp(3rem, 7vw, 6rem);
+  --space-2xl: clamp(4rem, 10vw, 8rem);
+
+  /* —— Type scale —— */
+  --text-kicker: 0.7rem;
+  --text-meta: 0.72rem;
+  --text-body: 0.9rem;
+  --wordmark: clamp(1.5rem, 2.6vw, 2rem);
+  --text-h2: clamp(1.9rem, 4.2vw, 3.6rem);
+  --text-display: clamp(3rem, 8vw, 7.2rem);
   --font: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
   --font-display: var(--font);
@@ -230,7 +251,7 @@ a:visited {
 }
 
 main {
-  max-width: 1480px;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 1.1rem 1.35rem 3rem;
+  padding: 1.1rem var(--pad-inline) 3rem;
 }

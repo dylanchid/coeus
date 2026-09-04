@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { type ArchiveData, type ArchiveItem } from "@/lib/archive";
 import { useArchive } from "./AppProviders";
-import { PrimaryNav } from "./PrimaryNav";
+import { AppShell } from "./AppShell";
 
 function timeAgo(iso: string): string {
   const hours = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 3_600_000));
@@ -13,7 +13,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export function SocialApp() {
+export function DiscoverApp() {
   const { archive: data, updateArchive } = useArchive();
   const [composerOpen, setComposerOpen] = useState(false);
   const [url, setUrl] = useState("");
@@ -68,21 +68,14 @@ export function SocialApp() {
     } catch { /* user cancelled */ }
   };
 
-  if (!data) return <p className="boot">Opening the social layer…</p>;
+  if (!data) return <p className="boot">Opening Discover…</p>;
 
   return (
-    <div className="social-page">
-      <header className="archive-header">
-        <div><Link className="archive-wordmark" href="/">Bareaga</Link><span className="archive-section-name">/ social</span></div>
-        <PrimaryNav current="social" />
-      </header>
-
-      <section className="social-hero">
-        <p className="archive-kicker">The web, passed hand to hand</p>
-        <div><h1>Share the part<br />that mattered.</h1><p>Post a sourced passage, add what you see in it, or contribute it to a collection people build together.</p></div>
-        <button type="button" onClick={() => setComposerOpen((open) => !open)}>{composerOpen ? "Close" : "+ Share a link or clip"}</button>
-      </section>
-
+    <AppShell
+      section="discover"
+      subline="Collections, articles, and links shared by people—not ranked by an engagement algorithm."
+    >
+      <div className="social-page">
       {composerOpen ? (
         <section className="social-composer" aria-label="Share a link or clip">
           <div className="social-composer-head"><span>New sourced post</span><small>The original URL always travels with the clip.</small></div>
@@ -99,7 +92,19 @@ export function SocialApp() {
 
       <div className="social-layout">
         <main className="social-feed">
-          <div className="social-feed-head"><h2>Following</h2><span>{data.socialPosts.length} sourced posts</span></div>
+          <div className="social-feed-head">
+            <h2>Shared by people you follow</h2>
+            <div className="social-feed-actions">
+              <span>{data.socialPosts.length} shared links</span>
+              <button
+                type="button"
+                className="btn btn--solid"
+                onClick={() => setComposerOpen((open) => !open)}
+              >
+                {composerOpen ? "Close" : "+ Share a link or clip"}
+              </button>
+            </div>
+          </div>
           {data.socialPosts.map((post) => {
             const item = itemById.get(post.itemId);
             if (!item) return null;
@@ -116,13 +121,14 @@ export function SocialApp() {
         </main>
 
         <aside className="social-communities">
-          <div><p>Community collections</p><span>Shared shelves turn scattered posts into durable paths.</span></div>
+          <div><p>Collections to follow</p><span>Shared shelves turn scattered links into durable paths.</span></div>
           {communityCollections.map((collection) => (
             <article key={collection.id}><span>◎ Community · {collection.visibility}</span><h3>{collection.name}</h3><p>{collection.description}</p><small>{data.items.filter((item) => item.collectionIds.includes(collection.id)).length} pieces · 3 curators</small><button type="button" aria-pressed={following.has(collection.id)} onClick={() => setFollowing((current) => { const next = new Set(current); if (next.has(collection.id)) next.delete(collection.id); else next.add(collection.id); return next; })}>{following.has(collection.id) ? "Following" : "+ Follow"}</button></article>
           ))}
-          <p className="social-preview-note"><strong>Local preview.</strong> Posts and follows live on this device until account-backed sync and community permissions land.</p>
+          <p className="social-preview-note"><strong>Discover preview.</strong> Shared items and follows live on this device until account-backed sync and community permissions land.</p>
         </aside>
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }

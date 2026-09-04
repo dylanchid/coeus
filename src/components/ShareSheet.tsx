@@ -19,7 +19,7 @@ type Props = {
 };
 
 const DESTINATIONS: { id: Destination; label: string; hint: string }[] = [
-  { id: "social", label: "Social feed", hint: "Post a clip with your perspective" },
+  { id: "social", label: "Discover", hint: "Share a sourced clip with your perspective" },
   { id: "friend", label: "A friend", hint: "Use your device share sheet or copy" },
   { id: "personal", label: "Personal collection", hint: "Private or unlisted, just yours" },
   { id: "public", label: "Public collection", hint: "A collection people can follow" },
@@ -97,7 +97,7 @@ export function ShareSheet({ article, sourceName, topic, onClose, onDone }: Prop
       };
     }
     updateArchive(() => updated);
-    onDone(destination === "social" ? "Published to your social feed" : `Saved to ${collections.find((collection) => collection.id === (collectionId || collections[0]?.id))?.name ?? "collection"}`);
+    onDone(destination === "social" ? "Shared to Discover" : `Saved to ${collections.find((collection) => collection.id === (collectionId || collections[0]?.id))?.name ?? "collection"}`);
     onClose();
   };
 

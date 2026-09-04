@@ -1,36 +1,42 @@
 import Link from "next/link";
 
-type AppSection = "reader" | "discover" | "archive" | "social" | "product";
+export type AppSection = "reader" | "sources" | "discover" | "archive" | "about";
+
+export const SECTION_LABELS: Record<AppSection, string> = {
+  reader: "Reader",
+  sources: "Sources",
+  discover: "Discover",
+  archive: "Archive",
+  about: "About",
+};
 
 const LINKS: { id: AppSection; href: string; label: string }[] = [
   { id: "reader", href: "/", label: "Read" },
+  { id: "sources", href: "/sources", label: "Sources" },
   { id: "discover", href: "/discover", label: "Discover" },
   { id: "archive", href: "/archive", label: "Archive" },
-  { id: "social", href: "/social", label: "Social" },
-  { id: "product", href: "/product", label: "Product" },
+  { id: "about", href: "/about", label: "About" },
 ];
 
 export function PrimaryNav({
-  current,
+  section,
   archiveCount,
-  readerStyle = false,
 }: {
-  current: AppSection;
+  section: AppSection;
   archiveCount?: number;
-  readerStyle?: boolean;
 }) {
   return (
-    <nav className={readerStyle ? "reader-primary-nav" : undefined} aria-label="Primary navigation">
-      {LINKS.filter((link) => !readerStyle || link.id !== current).map((link) => (
+    <nav className="primary-nav" aria-label="Primary navigation">
+      {LINKS.map((link) => (
         <Link
-          className={readerStyle ? "product-link" : undefined}
+          className="primary-nav-link"
           href={link.href}
           key={link.id}
-          aria-current={link.id === current ? "page" : undefined}
+          aria-current={link.id === section ? "page" : undefined}
         >
           {link.label}
-          {link.id === "archive" && archiveCount !== undefined ? (
-            <> <span className="archive-count">{archiveCount}</span></>
+          {link.id === "archive" && archiveCount ? (
+            <span className="nav-count">{archiveCount}</span>
           ) : null}
         </Link>
       ))}

@@ -1,0 +1,269 @@
+/* —— Shared app shell: header, primary nav, page hero, footer —— */
+.app-shell {
+  width: 100%;
+}
+
+/* —— Site header —— */
+.site-header {
+  margin-bottom: var(--space-sm);
+  padding-bottom: var(--header-py);
+  border-bottom: 1px solid var(--header-rule);
+}
+
+.site-header-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+}
+
+.site-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.site-wordmark {
+  color: var(--fg);
+  font: 700 var(--wordmark)/1 var(--font-display);
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.site-wordmark:visited {
+  color: var(--fg);
+}
+
+.site-section {
+  color: var(--muted);
+  font-size: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.site-tools {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+}
+
+.site-subline {
+  margin: 0.55rem 0 0;
+  max-width: 48rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+/* —— Primary navigation —— */
+.primary-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.9rem;
+}
+
+.primary-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.35rem 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+}
+
+.primary-nav-link:visited {
+  color: var(--muted);
+}
+
+.primary-nav-link:hover {
+  color: var(--fg);
+}
+
+.primary-nav-link[aria-current="page"] {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.nav-count {
+  display: inline-block;
+  min-width: 1.15rem;
+  margin-left: 0.3rem;
+  padding: 0.04rem 0.2rem;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  text-align: center;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— Chrome buttons (Settings, slash) —— */
+.chrome-btn {
+  min-height: 44px;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--header-rule);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.chrome-btn:hover,
+.chrome-btn[aria-expanded="true"] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.chrome-btn--slash {
+  min-width: 2.1rem;
+  padding: 0.28rem 0.55rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* —— Shared page hero —— */
+.page-hero {
+  padding: var(--space-lg) 0 var(--space-xl);
+  border-bottom: 1px solid var(--header-rule);
+}
+
+.page-hero-kicker {
+  margin: 0 0 1.2rem;
+  color: var(--accent);
+  font-size: var(--text-kicker);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.page-hero-body {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.3fr) minmax(16rem, 0.7fr);
+  align-items: end;
+  gap: 3rem;
+}
+
+.page-hero-title {
+  margin: 0;
+  max-width: 16ch;
+  font: 700 var(--text-display)/0.86 var(--font-display);
+  letter-spacing: -0.07em;
+  text-transform: uppercase;
+}
+
+.page-hero-aside {
+  display: grid;
+  gap: 1.25rem;
+  justify-items: start;
+}
+
+.page-hero-lede {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--muted);
+  font-size: clamp(0.92rem, 1.5vw, 1.15rem);
+  line-height: 1.55;
+}
+
+/* —— Site footer —— */
+.site-footer {
+  margin-top: var(--space-xl);
+  padding-top: var(--header-py);
+  border-top: 1px solid var(--header-rule);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.site-footer-main {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 2rem;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer-note {
+  margin-top: 0.6rem;
+}
+
+.site-footer-note strong {
+  color: var(--fg);
+}
+
+.site-footer a {
+  color: var(--muted);
+}
+
+/* —— Shared boxed-button idiom —— */
+.btn {
+  min-height: 40px;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.btn:hover,
+.btn[aria-pressed="true"] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--solid {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+@media (max-width: 700px) {
+  .site-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .primary-nav {
+    gap: 0.15rem 0.7rem;
+  }
+
+  .primary-nav-link {
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+  }
+
+  .page-hero-body {
+    grid-template-columns: 1fr;
+    gap: 1.4rem;
+  }
+
+  .site-footer-main {
+    flex-direction: column;
+  }
+}

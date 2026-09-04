@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import Link from "next/link";
 import { TOPICS, type Topic } from "@/lib/sources";
 import { countMatches, filterSources } from "@/lib/search";
 import { visibleSourceIds } from "@/lib/feedQuery";
@@ -16,13 +15,14 @@ import type { Article, UserPrefs } from "@/lib/types";
 import { archiveArticle } from "@/lib/archive";
 import { useFeedQuery } from "@/hooks/useFeedQuery";
 import { useArchive, usePreferences } from "./AppProviders";
-import { PrimaryNav } from "./PrimaryNav";
+import { useChrome } from "./ChromeProvider";
+import { AppShell } from "./AppShell";
 import { SearchBar } from "./SearchBar";
-import { SettingsPanel } from "./SettingsPanel";
-import { SlashMenu } from "./SlashMenu";
 import { SourceGrid } from "./SourceGrid";
 import { StoryFeed } from "./StoryFeed";
 import { ShareSheet } from "./ShareSheet";
+
+const EMPTY_SOURCE_IDS: string[] = [];
 
 function formatUpdated(iso: string | null): string {
   if (!iso) return "—";
@@ -41,10 +41,9 @@ function formatUpdated(iso: string | null): string {
 export function NewsApp() {
   const { prefs, updatePrefs } = usePreferences();
   const { archive, updateArchive } = useArchive();
+  const { slashOpen, closeSlash, setReaderSlash } = useChrome();
   const [topic, setTopic] = useState<Topic>("all");
   const [search, setSearch] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [slashOpen, setSlashOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ article: Article; sourceName: string; topic: string } | null>(null);
@@ -52,33 +51,13 @@ export function NewsApp() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchHydrated = useRef(false);
 
-  const openSlash = useCallback(() => {
-    setSettingsOpen(false);
-    setSlashOpen(true);
-  }, []);
-
-  const closeSlash = useCallback(() => setSlashOpen(false), []);
-
-  const exportPrefs = useCallback(() => {
-    if (!prefs) return;
-    const blob = new Blob([JSON.stringify(prefs, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "bareaga-prefs.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [prefs]);
-
   const focusSearch = useCallback(() => {
-    setSlashOpen(false);
+    closeSlash();
     window.setTimeout(() => {
       searchInputRef.current?.focus();
       searchInputRef.current?.select();
     }, 0);
-  }, []);
+  }, [closeSlash]);
 
   const deferredSearch = useDeferredValue(search);
 
@@ -115,16 +94,24 @@ export function NewsApp() {
     retrySource,
     reorderSources,
   } = useFeedQuery({
-    sourceOrder: prefs?.sourceOrder ?? [],
-    hiddenSources: prefs?.hiddenSources ?? [],
+    sourceOrder: prefs?.sourceOrder ?? EMPTY_SOURCE_IDS,
+    hiddenSources: prefs?.hiddenSources ?? EMPTY_SOURCE_IDS,
     limit,
     hours,
     topic,
+    customSources: prefs?.customSources,
   });
 
-  // `/` or ⌘K → slash menu; `,` settings; `r` refresh; `?` focus search
+  const onSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    persist({ lastSearch: value });
+  }, [persist]);
+
+  // Reader-only shortcuts: `r` refreshes feeds, `?` focuses search.
+  // The command palette (`/`, `⌘K`) and Settings (`,`) live in SiteHeader.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (slashOpen) return; // SlashMenu owns keys while open
       const el = e.target as HTMLElement | null;
       if (!el) return;
       const tag = el.tagName;
@@ -133,56 +120,63 @@ export function NewsApp() {
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
         el.isContentEditable;
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
 
-      // Command palette: / (when not typing) or Cmd/Ctrl+K always
-      if (
-        (e.key === "k" || e.key === "K") &&
-        (e.metaKey || e.ctrlKey) &&
-        !e.altKey
-      ) {
-        e.preventDefault();
-        setSlashOpen((v) => {
-          if (v) return false;
-          setSettingsOpen(false);
-          return true;
-        });
-        return;
-      }
-
-      if (slashOpen) return; // SlashMenu owns keys while open
-
-      if (typing) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-      if (e.key === "/") {
-        e.preventDefault();
-        openSlash();
-        return;
-      }
       if (e.key === "?") {
         e.preventDefault();
         focusSearch();
-        return;
-      }
-      if (e.key === ",") {
-        e.preventDefault();
-        setSlashOpen(false);
-        setSettingsOpen((v) => !v);
-        return;
-      }
-      if (e.key === "r" || e.key === "R") {
+      } else if (e.key === "r" || e.key === "R") {
         e.preventDefault();
         void refresh();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [slashOpen, openSlash, focusSearch, refresh]);
+  }, [slashOpen, focusSearch, refresh]);
 
-  const onSearchChange = (value: string) => {
-    setSearch(value);
-    persist({ lastSearch: value });
-  };
+  // Register Reader slash commands. Only clear on unmount — clearing on every
+  // dependency change retriggered Chrome state and looped the tree.
+  useEffect(() => {
+    if (!prefs) return;
+    const busy = loading || refreshing;
+    setReaderSlash((previous) => {
+      if (
+        previous &&
+        previous.topic === topic &&
+        previous.search === search &&
+        previous.sources === currentSources &&
+        previous.busy === busy
+      ) {
+        return previous;
+      }
+      return {
+        topic,
+        search,
+        sources: currentSources,
+        busy,
+        onTopic: changeTopic,
+        onSearch: onSearchChange,
+        onRefresh: () => {
+          void refresh();
+        },
+        onFocusSearch: focusSearch,
+      };
+    });
+  }, [
+    prefs,
+    topic,
+    search,
+    currentSources,
+    loading,
+    refreshing,
+    changeTopic,
+    onSearchChange,
+    refresh,
+    focusSearch,
+    setReaderSlash,
+  ]);
+
+  useEffect(() => () => setReaderSlash(null), [setReaderSlash]);
 
   const onReorder = useCallback(
     (orderedIds: string[]) => {
@@ -279,64 +273,20 @@ export function NewsApp() {
           : "Ranked";
 
   return (
-    <>
-      <header className="site-header">
-        <div className="header-main">
-          <div className="header-brand">
-            <h1>
-              <Link href="/">Bareaga</Link>
-            </h1>
-          </div>
-          <div className="header-sub">
-            <p className="tagline">
-              Headlines, bare. Search, arrange &amp; balance. Updated{" "}
-              {formatUpdated(updatedAt)}
-              {loading && currentSources.length === 0
-                ? " · loading…"
-                : refreshing
-                  ? " · updating…"
-                  : null}
-            </p>
-            <div className="header-actions">
-              <PrimaryNav current="reader" archiveCount={savedArticleIds.size} readerStyle />
-              <button
-                type="button"
-                className="slash-toggle"
-                data-slash-toggle
-                aria-expanded={slashOpen}
-                aria-haspopup="dialog"
-                title="Slash menu (/ or ⌘K)"
-                onClick={() => {
-                  if (slashOpen) closeSlash();
-                  else openSlash();
-                }}
-              >
-                /
-              </button>
-              <button
-                type="button"
-                className="settings-toggle"
-                data-settings-toggle
-                aria-controls="settings-popover"
-                aria-expanded={settingsOpen}
-                onClick={() => {
-                  setSlashOpen(false);
-                  setSettingsOpen((v) => !v);
-                }}
-              >
-                Settings
-              </button>
-              <SettingsPanel
-                open={settingsOpen}
-                prefs={prefs}
-                onClose={() => setSettingsOpen(false)}
-                onChange={persist}
-              />
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <AppShell
+      section="reader"
+      subline={
+        <>
+          Headlines, bare. Search, arrange &amp; balance. Updated{" "}
+          {formatUpdated(updatedAt)}
+          {loading && currentSources.length === 0
+            ? " · loading…"
+            : refreshing
+              ? " · updating…"
+              : null}
+        </>
+      }
+    >
       <div className="toolbar">
         <SearchBar
           ref={searchInputRef}
@@ -450,25 +400,6 @@ export function NewsApp() {
         ) : null}
       </p>
 
-      <SlashMenu
-        open={slashOpen}
-        onClose={closeSlash}
-        context={{
-          prefs,
-          topic,
-          search,
-          sources: currentSources,
-          busy: loading || refreshing,
-          onPrefs: persist,
-          onTopic: changeTopic,
-          onSearch: onSearchChange,
-          onRefresh: () => void refresh(),
-          onOpenSettings: () => setSettingsOpen(true),
-          onFocusSearch: focusSearch,
-          onExportPrefs: exportPrefs,
-        }}
-      />
-
       {error ? (
         <p className="banner-error" role="alert">
           {error}{" "}
@@ -549,19 +480,6 @@ export function NewsApp() {
         </div>
       ) : null}
 
-      <footer className="site-footer">
-        <p>
-          Bareaga — standalone RSS reader inspired by{" "}
-          <a
-            href="https://brutalist.report/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            brutalist.report
-          </a>
-          . Not affiliated.
-        </p>
-      </footer>
-    </>
+    </AppShell>
   );
 }
