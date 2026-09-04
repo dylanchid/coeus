@@ -5,6 +5,7 @@ import { createDemoArchive } from "./archiveFixtures.ts";
 import {
   derivePublicationSnapshot,
   isValidSlug,
+  parseFollowRequest,
   parsePublicationSnapshot,
   parsePublishRequest,
   parseUnpublishRequest,
@@ -199,4 +200,22 @@ test("parseUnpublishRequest accepts a bare collectionLocalId", () => {
 test("parseUnpublishRequest rejects a missing collectionLocalId", () => {
   const result = parseUnpublishRequest({});
   assert.equal(result.ok, false);
+});
+
+test("parseFollowRequest accepts a valid publicationId UUID", () => {
+  const result = parseFollowRequest({ publicationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6" });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value, { publicationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6" });
+});
+
+test("parseFollowRequest rejects a non-UUID publicationId", () => {
+  const result = parseFollowRequest({ publicationId: "not-a-uuid" });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /UUID/);
+});
+
+test("parseFollowRequest rejects unknown fields", () => {
+  const result = parseFollowRequest({ publicationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6", extra: true });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /Unknown field/);
 });

@@ -35,6 +35,19 @@ export interface CollectionPublication extends CollectionPublicationSnapshot {
   unpublishedAt: string | null;
 }
 
+/** A lighter row for discovery listings: no item bodies, just enough to link and preview. */
+export interface CollectionPublicationSummary {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  curatorNote: string;
+  attribution: string;
+  publishedAt: string;
+  updatedAt: string;
+  itemCount: number;
+}
+
 const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const MIN_SLUG_LENGTH = 3;
 const MAX_SLUG_LENGTH = 96;
@@ -251,4 +264,26 @@ export function parseUnpublishRequest(raw: unknown): UnpublishRequestParseResult
   if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
   if (!isNonEmptyString(raw.collectionLocalId, 160)) return { ok: false, error: "collectionLocalId must be a non-empty string" };
   return { ok: true, value: { collectionLocalId: raw.collectionLocalId } };
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuid(value: unknown): value is string {
+  return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
+export interface FollowRequest {
+  publicationId: string;
+}
+
+export type FollowRequestParseResult =
+  | { ok: true; value: FollowRequest }
+  | { ok: false; error: string };
+
+export function parseFollowRequest(raw: unknown): FollowRequestParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Request body must be a JSON object" };
+  const unknownField = Object.keys(raw).find((key) => key !== "publicationId");
+  if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
+  if (!isUuid(raw.publicationId)) return { ok: false, error: "publicationId must be a UUID" };
+  return { ok: true, value: { publicationId: raw.publicationId } };
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
+import { FollowButton } from "@/components/FollowButton";
 import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
 
@@ -43,6 +44,7 @@ export default async function PublicCollectionPage({ params }: { params: Promise
           {publication.attribution ? <p className="public-collection-attribution">{publication.attribution}</p> : null}
           {publication.curatorNote ? <blockquote>{publication.curatorNote}</blockquote> : null}
           <a href={`/c/${publication.slug}/rss.xml`}>Subscribe via RSS ↗</a>
+          <FollowButton publicationId={publication.id} />
         </header>
         {publication.items.length ? (
           <ol className="public-collection-list">

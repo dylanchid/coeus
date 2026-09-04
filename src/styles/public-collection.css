@@ -31,3 +31,21 @@
 .public-collection-list blockquote { margin: 0.5rem 0 0; padding-left: 0.8rem; border-left: 2px solid var(--header-rule); color: var(--muted); }
 
 .public-collection-empty { color: var(--muted); padding: var(--space-lg) 0; }
+
+.public-collection-follow { margin-top: 0.9rem; }
+.public-collection-follow button {
+  min-height: 38px;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: 0.66rem var(--font);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.public-collection-follow button:hover { background: var(--fg); color: var(--bg); }
+.public-collection-follow button:disabled { cursor: wait; opacity: 0.55; }
+.public-collection-follow-message { margin: 0.5rem 0 0; color: var(--muted); font-size: var(--text-meta); }
+
+.public-collection-pagination { display: flex; justify-content: space-between; margin-top: var(--space-lg); font-size: var(--text-meta); }
+.public-collection-pagination a { color: var(--link); }

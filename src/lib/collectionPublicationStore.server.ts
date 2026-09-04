@@ -8,11 +8,13 @@ import {
   proposeSlug,
   slugWithSuffix,
   type CollectionPublication,
+  type CollectionPublicationSummary,
   type PublishCollectionRequest,
 } from "./collectionPublication.ts";
 
 const MAX_SLUG_ATTEMPTS = 5;
 const UNIQUE_VIOLATION = "23505";
+const MAX_DISCOVER_PAGE_SIZE = 50;
 
 export interface CollectionPublicationStore {
   list(ownerId: string): Promise<CollectionPublication[]>;
@@ -23,6 +25,17 @@ export interface CollectionPublicationStore {
 /** Unauthenticated read path for public collection pages and RSS output. */
 export interface PublicCollectionReader {
   getBySlug(slug: string): Promise<CollectionPublication | null>;
+  /**
+   * public (not unlisted) collections only, per the design: unlisted stays
+   * reachable by direct link but never appears in a discovery listing.
+   */
+  listPublic(limit: number, offset: number): Promise<{ items: CollectionPublicationSummary[]; hasMore: boolean }>;
+}
+
+export interface CollectionFollowStore {
+  follow(followerId: string, publicationId: string): Promise<void>;
+  unfollow(followerId: string, publicationId: string): Promise<void>;
+  listFollowed(followerId: string): Promise<CollectionPublication[]>;
 }
 
 export class CollectionNotFoundError extends Error {}
@@ -62,7 +75,9 @@ function toPublication(data: Record<string, unknown>, items: Record<string, unkn
   };
 }
 
-export class SupabaseCollectionPublicationStore implements CollectionPublicationStore, PublicCollectionReader {
+export class SupabaseCollectionPublicationStore
+  implements CollectionPublicationStore, PublicCollectionReader, CollectionFollowStore
+{
   constructor(private readonly supabase: SupabaseClient) {}
 
   /**
@@ -87,6 +102,106 @@ export class SupabaseCollectionPublicationStore implements CollectionPublication
       .eq("publication_id", (data as { id: string }).id);
     if (itemsError) throw itemsError;
     return toPublication(data as Record<string, unknown>, (items ?? []) as Record<string, unknown>[]);
+  }
+
+  async listPublic(limit: number, offset: number): Promise<{ items: CollectionPublicationSummary[]; hasMore: boolean }> {
+    const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), MAX_DISCOVER_PAGE_SIZE);
+    const boundedOffset = Math.max(Math.trunc(offset), 0);
+    const { data, error } = await this.supabase
+      .from("collection_publications")
+      .select("id,slug,name,description,curator_note,attribution,published_at,updated_at")
+      .eq("visibility", "public")
+      .is("unpublished_at", null)
+      .order("published_at", { ascending: false })
+      .order("id", { ascending: false })
+      // one extra row beyond the page tells us whether there's a next page
+      .range(boundedOffset, boundedOffset + boundedLimit);
+    if (error) throw error;
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const hasMore = rows.length > boundedLimit;
+    const page = rows.slice(0, boundedLimit);
+    if (!page.length) return { items: [], hasMore: false };
+
+    const { data: items, error: itemsError } = await this.supabase
+      .from("collection_publication_items")
+      .select("publication_id")
+      .in("publication_id", page.map((entry) => entry.id));
+    if (itemsError) throw itemsError;
+    const counts = new Map<string, number>();
+    for (const item of (items ?? []) as { publication_id: string }[]) {
+      counts.set(item.publication_id, (counts.get(item.publication_id) ?? 0) + 1);
+    }
+
+    return {
+      items: page.map((entry) => ({
+        id: String(entry.id),
+        slug: String(entry.slug),
+        name: String(entry.name),
+        description: String(entry.description ?? ""),
+        curatorNote: String(entry.curator_note ?? ""),
+        attribution: String(entry.attribution ?? ""),
+        publishedAt: String(entry.published_at),
+        updatedAt: String(entry.updated_at),
+        itemCount: counts.get(String(entry.id)) ?? 0,
+      })),
+      hasMore,
+    };
+  }
+
+  async follow(followerId: string, publicationId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("collection_follows")
+      .upsert({ follower_id: followerId, publication_id: publicationId }, { onConflict: "publication_id,follower_id" });
+    if (error) throw error;
+  }
+
+  async unfollow(followerId: string, publicationId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from("collection_follows")
+      .delete()
+      .eq("follower_id", followerId)
+      .eq("publication_id", publicationId);
+    if (error) throw error;
+  }
+
+  async listFollowed(followerId: string): Promise<CollectionPublication[]> {
+    const { data: follows, error } = await this.supabase
+      .from("collection_follows")
+      .select("publication_id")
+      .eq("follower_id", followerId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    const publicationIds = (follows ?? []).map((entry) => String((entry as { publication_id: string }).publication_id));
+    if (!publicationIds.length) return [];
+
+    const { data: publications, error: publicationsError } = await this.supabase
+      .from("collection_publications")
+      .select("*")
+      .in("id", publicationIds)
+      .is("unpublished_at", null);
+    if (publicationsError) throw publicationsError;
+    const rows = (publications ?? []) as Record<string, unknown>[];
+    if (!rows.length) return [];
+
+    const { data: items, error: itemsError } = await this.supabase
+      .from("collection_publication_items")
+      .select("*")
+      .in("publication_id", rows.map((entry) => entry.id));
+    if (itemsError) throw itemsError;
+    const itemsByPublication = new Map<string, Record<string, unknown>[]>();
+    for (const item of (items ?? []) as Record<string, unknown>[]) {
+      const key = String(item.publication_id);
+      const grouped = itemsByPublication.get(key) ?? [];
+      grouped.push(item);
+      itemsByPublication.set(key, grouped);
+    }
+
+    // Preserve most-recently-followed-first order rather than the publications query's own ordering.
+    const byId = new Map(rows.map((entry) => [String(entry.id), entry]));
+    return publicationIds
+      .map((id) => byId.get(id))
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry))
+      .map((entry) => toPublication(entry, itemsByPublication.get(String(entry.id)) ?? []));
   }
 
   async list(ownerId: string): Promise<CollectionPublication[]> {

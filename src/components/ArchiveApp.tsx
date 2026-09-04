@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   type ArchiveCollection,
   type ArchiveData,
@@ -83,6 +84,7 @@ function PublishPanel({
         {publication ? (
           <button type="button" className="archive-danger" disabled={busy} onClick={onUnpublish}>Unpublish</button>
         ) : null}
+        <Link href="/c">Browse public collections ↗</Link>
       </div>
     </details>
   );
