@@ -2,7 +2,7 @@ import { createDemoArchive } from "./archiveFixtures.ts";
 import { migrateArchiveData } from "./archiveValidation.ts";
 import type { ArchiveData, ArchiveRepository } from "./archiveTypes";
 
-const STORAGE_KEY = "bareaga.archive.v1";
+export const LOCAL_ARCHIVE_STORAGE_KEY = "bareaga.archive.v1";
 
 interface KeyValueStorage {
   getItem(key: string): string | null;
@@ -19,16 +19,16 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
   async load(): Promise<ArchiveData> {
     const storage = this.storage ?? (typeof window === "undefined" ? undefined : window.localStorage);
     if (!storage) return createDemoArchive();
-    const raw = storage.getItem(STORAGE_KEY);
+    const raw = storage.getItem(LOCAL_ARCHIVE_STORAGE_KEY);
     if (!raw) {
       const seed = createDemoArchive();
-      storage.setItem(STORAGE_KEY, JSON.stringify(seed));
+      storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(seed));
       return seed;
     }
     try {
       const result = migrateArchiveData(JSON.parse(raw));
       if (result.valid && result.migrated) {
-        storage.setItem(STORAGE_KEY, JSON.stringify(result.data));
+        storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(result.data));
       }
       return result.data;
     } catch {
@@ -41,14 +41,14 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
     if (!validated.valid) throw new Error("Refusing to persist invalid archive data");
     const storage = this.storage ?? (typeof window === "undefined" ? undefined : window.localStorage);
     if (!storage) return;
-    storage.setItem(STORAGE_KEY, JSON.stringify(validated.data));
+    storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(validated.data));
   }
 
   subscribe(listener: (data: ArchiveData) => void): () => void {
     if (typeof window === "undefined") return () => undefined;
     const refresh = () => void this.load().then(listener);
     const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) refresh();
+      if (event.key === LOCAL_ARCHIVE_STORAGE_KEY) refresh();
     };
     window.addEventListener("storage", onStorage);
     return () => {

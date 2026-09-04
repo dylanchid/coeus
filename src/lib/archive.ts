@@ -25,3 +25,5 @@ export type {
   ArchiveSyncResult,
   ArchiveSyncSnapshot,
 } from "./archiveSync";
+export { SyncedArchiveRepository } from "./syncedArchiveRepository";
+export type { ArchiveSyncStatus } from "./syncedArchiveRepository";

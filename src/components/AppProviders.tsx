@@ -10,9 +10,11 @@ import {
 } from "react";
 import { getPrefsStore } from "@/lib/prefs";
 import { ChromeProvider } from "./ChromeProvider";
-import { LocalStorageArchiveRepository } from "@/lib/localArchiveRepository";
+import { SyncedArchiveRepository } from "@/lib/syncedArchiveRepository";
 import { configureArchiveRepository } from "@/lib/archiveRepository";
 import type { ArchiveData } from "@/lib/archiveTypes";
+import type { ArchiveSyncState } from "@/lib/syncedArchiveRepository";
+import type { ArchiveSyncSnapshot } from "@/lib/archiveSync";
 import type { UserPrefs } from "@/lib/types";
 
 type PrefsUpdate = Partial<UserPrefs> | ((current: UserPrefs) => UserPrefs);
@@ -26,26 +28,32 @@ interface PreferencesContextValue {
 interface ArchiveContextValue {
   archive: ArchiveData | null;
   updateArchive(update: ArchiveUpdate): void;
+  sync: ArchiveSyncState;
+  replaceArchiveFromServer(archiveId: string, snapshot: ArchiveSyncSnapshot): Promise<void>;
 }
 
 const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 const ArchiveContext = createContext<ArchiveContextValue | null>(null);
 const prefsStore = getPrefsStore();
-const repository = new LocalStorageArchiveRepository();
+const repository = new SyncedArchiveRepository();
 configureArchiveRepository(repository);
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [prefs, setPrefs] = useState<UserPrefs | null>(null);
   const [archive, setArchive] = useState<ArchiveData | null>(null);
+  const [sync, setSync] = useState<ArchiveSyncState>(() => repository.getSyncState());
 
   useEffect(() => {
     let active = true;
     void prefsStore.load().then((loaded) => active && setPrefs(loaded));
     void repository.load().then((loaded) => active && setArchive(loaded));
     const unsubscribe = repository.subscribe((loaded) => active && setArchive(loaded));
+    const syncUpdate = () => active && setSync(repository.getSyncState());
+    window.addEventListener("bareaga:archive-sync", syncUpdate);
     return () => {
       active = false;
       unsubscribe();
+      window.removeEventListener("bareaga:archive-sync", syncUpdate);
     };
   }, []);
 
@@ -80,8 +88,14 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     setArchive((current) => current ? update(current) : current);
   }, []);
 
+  const replaceArchiveFromServer = useCallback(async (archiveId: string, snapshot: ArchiveSyncSnapshot) => {
+    await repository.replaceFromServer(archiveId, snapshot);
+    setArchive(snapshot.archive);
+    setSync(repository.getSyncState());
+  }, []);
+
   const prefsValue = useMemo(() => ({ prefs, updatePrefs }), [prefs, updatePrefs]);
-  const archiveValue = useMemo(() => ({ archive, updateArchive }), [archive, updateArchive]);
+  const archiveValue = useMemo(() => ({ archive, updateArchive, sync, replaceArchiveFromServer }), [archive, updateArchive, sync, replaceArchiveFromServer]);
   return (
     <PreferencesContext.Provider value={prefsValue}>
       <ArchiveContext.Provider value={archiveValue}>

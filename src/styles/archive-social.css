@@ -82,6 +82,12 @@
 }
 
 .archive-sidebar-actions button:hover { background: var(--fg); color: var(--bg); }
+.archive-sidebar-actions button:disabled { cursor: wait; opacity: 0.55; }
+.archive-sync-state { margin: 0; color: var(--muted); font-size: 0.67rem; line-height: 1.45; }
+.archive-snapshot-list { display: grid; gap: 0.35rem; max-height: 9rem; overflow: auto; }
+.archive-snapshot-list a { color: var(--link); font-size: 0.66rem; line-height: 1.35; }
+.archive-sidebar-actions .archive-danger { border-color: #a33232; color: #a33232; }
+.archive-sidebar-actions .archive-danger:hover { background: #a33232; color: white; }
 
 .collection-composer {
   display: grid;

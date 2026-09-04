@@ -12,6 +12,8 @@ import {
 import { archiveToCsv, archiveToMarkdown, itemToMarkdown } from "@/lib/archiveExport";
 import { useArchive } from "./AppProviders";
 import { AppShell } from "./AppShell";
+import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archiveRecovery";
+import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
 type Sort = "newest" | "oldest" | "title";
@@ -41,7 +43,7 @@ function matches(item: ArchiveItem, query: string): boolean {
 }
 
 export function ArchiveApp() {
-  const { archive: data, updateArchive } = useArchive();
+  const { archive: data, updateArchive, sync, replaceArchiveFromServer } = useArchive();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("newest");
@@ -51,6 +53,9 @@ export function ArchiveApp() {
   const [newCollectionVisibility, setNewCollectionVisibility] = useState<CollectionVisibility>("private");
   const [composerOpen, setComposerOpen] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
+  const [revisions, setRevisions] = useState<ArchiveRevisionSummary[]>([]);
+  const [contentSnapshots, setContentSnapshots] = useState<ContentSnapshotSummary[]>([]);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
 
   const update = (recipe: (current: ArchiveData) => ArchiveData) => {
     updateArchive(recipe);
@@ -135,6 +140,76 @@ export function ArchiveApp() {
     if (!data) return;
     download(archiveToCsv(exportItems, data.collections), `bareaga-${selectedCollection?.id ?? "archive"}.csv`, "text/csv;charset=utf-8");
     setShareNotice("CSV exported for Notion");
+  };
+
+  const requestJson = async (url: string, init?: RequestInit) => {
+    const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(body?.error ?? `Request failed (${response.status})`);
+    }
+    return response;
+  };
+
+  const refreshRecovery = async () => {
+    setRecoveryBusy(true);
+    try {
+      const response = await requestJson("/api/archive/revisions");
+      const body = await response.json() as { revisions: ArchiveRevisionSummary[] };
+      setRevisions(body.revisions);
+      const exportResponse = await requestJson("/api/archive/export");
+      const exported = await exportResponse.json() as { contentSnapshots: ContentSnapshotSummary[] };
+      setContentSnapshots(exported.contentSnapshots);
+      setShareNotice("Recovery history refreshed");
+    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Recovery history is unavailable"); }
+    finally { setRecoveryBusy(false); }
+  };
+
+  const exportArchiveJson = async () => {
+    try {
+      const response = await requestJson("/api/archive/export");
+      download(await response.text(), "bareaga-archive.json", "application/json;charset=utf-8");
+      setShareNotice("Lossless archive export downloaded");
+    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Archive export failed"); }
+  };
+
+  const captureContent = async (itemId: string) => {
+    setRecoveryBusy(true);
+    try {
+      const response = await requestJson("/api/archive/snapshots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId }) });
+      const captured = await response.json() as ContentSnapshotSummary;
+      setContentSnapshots((current) => [captured, ...current.filter((snapshot) => snapshot.id !== captured.id)]);
+      setShareNotice("Private reading snapshot captured");
+    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Content capture failed"); }
+    finally { setRecoveryBusy(false); }
+  };
+
+  const restoreRevision = async (revision: number) => {
+    if (!window.confirm(`Restore revision ${revision}? This creates a new recovery revision; existing history remains.`)) return;
+    setRecoveryBusy(true);
+    try {
+      const response = await requestJson("/api/archive/revisions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision }) });
+      const body = await response.json() as { archiveId: string; snapshot: unknown };
+      const parsed = parseArchiveSyncSnapshot(body.snapshot);
+      if (!parsed.ok) throw new Error("The recovered archive is invalid");
+      await replaceArchiveFromServer(body.archiveId, parsed.value);
+      setShareNotice(`Restored revision ${revision}; a new immutable revision was created`);
+      await refreshRecovery();
+    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Archive recovery failed"); }
+    finally { setRecoveryBusy(false); }
+  };
+
+  const signOut = async () => {
+    try { await requestJson("/api/account/signout", { method: "POST" }); setShareNotice("Signed out. This device's labeled local archive remains here."); }
+    catch (error) { setShareNotice(error instanceof Error ? error.message : "Sign out failed"); }
+  };
+
+  const deleteAccount = async () => {
+    if (window.prompt('Type DELETE to permanently delete your cloud archive and account. This does not erase the labeled local copy on this device.') !== "DELETE") return;
+    setRecoveryBusy(true);
+    try { await requestJson("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: "DELETE" }) }); setShareNotice("Cloud account and private snapshots deleted. The local device copy was kept."); }
+    catch (error) { setShareNotice(error instanceof Error ? error.message : "Account deletion failed"); }
+    finally { setRecoveryBusy(false); }
   };
 
   const shareCollection = async () => {
@@ -229,9 +304,21 @@ export function ArchiveApp() {
               <div className="archive-sidebar-actions" aria-label="Archive portability">
                 <button type="button" onClick={exportMarkdown}>Markdown <span aria-hidden="true">↓</span></button>
                 <button type="button" onClick={exportCsv}>Notion CSV <span aria-hidden="true">↓</span></button>
+                <button type="button" onClick={() => void exportArchiveJson()}>Full JSON archive <span aria-hidden="true">↓</span></button>
                 {selectedCollection && selectedCollection.id !== "inbox" ? (
                   <button type="button" onClick={() => void shareCollection()}>Copy collection link <span aria-hidden="true">↗</span></button>
                 ) : null}
+              </div>
+            </details>
+            <details className="archive-portability">
+              <summary>Sync, recovery &amp; account</summary>
+              <div className="archive-sidebar-actions" aria-label="Archive sync and recovery">
+                <p className="archive-sync-state" role="status">Sync: {sync.status}{sync.pending ? ` · ${sync.pending} queued` : ""}{sync.conflicts ? ` · ${sync.conflicts} conflicts retained` : ""}</p>
+                <button type="button" disabled={recoveryBusy} onClick={() => void refreshRecovery()}>Refresh recovery history</button>
+                {revisions.map((revision) => <button key={revision.revision} type="button" disabled={recoveryBusy} onClick={() => void restoreRevision(revision.revision)}>Restore revision {revision.revision}</button>)}
+                {contentSnapshots.length ? <div className="archive-snapshot-list">{contentSnapshots.map((snapshot) => <a key={snapshot.id} href={`/api/archive/snapshots/${snapshot.id}`}>Captured {snapshot.itemId} · {snapshot.status}</a>)}</div> : null}
+                <button type="button" onClick={() => void signOut()}>Sign out — keep local copy</button>
+                <button type="button" className="archive-danger" disabled={recoveryBusy} onClick={() => void deleteAccount()}>Delete cloud account…</button>
               </div>
             </details>
           </aside>
@@ -311,6 +398,7 @@ export function ArchiveApp() {
                               </select>
                             </label>
                             <button type="button" onClick={() => void navigator.clipboard.writeText(itemToMarkdown(item)).then(() => setShareNotice("Markdown clip copied"))}>Copy Markdown</button>
+                            <button type="button" disabled={recoveryBusy} onClick={() => void captureContent(item.id)}>Capture private copy</button>
                           </div>
                         </details>
                       </div>
