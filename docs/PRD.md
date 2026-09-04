@@ -160,9 +160,13 @@ Tracked separately in Beads: `bareaga_web-5bv` — publish/discover shared colle
 - No required account to use any feature described in §6.1–6.3.
 - No hidden telemetry-driven personalization — every ranking input is a setting the user set themselves.
 
-## 9. Open questions
+## 9. Open questions and decisions
 
-- What does account-backed sync change about the "local-first by default" promise — is cloud sync opt-in and reversible, or does it eventually become the default?
+Account-backed sync is optional and reversible. Anonymous local-first use remains
+the default; signing in adds a durable remote archive but does not remove the local
+copy. The accepted storage and conflict model is documented in
+[`synced-archive-architecture.md`](./synced-archive-architecture.md).
+
 - How does `bareaga_web-5bv`'s "community permissions" model interact with the existing private/unlisted/public visibility enum — is a fourth state needed, or do permissions layer on top of `public`?
 - Discover's follow state is currently unpersisted local component state — is that a placeholder pending sync, or does it need a real (even if local) persistence layer before sync lands?
 

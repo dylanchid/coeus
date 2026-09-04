@@ -42,7 +42,22 @@ Archive responsibilities are deliberately separated:
 - `localArchiveRepository.ts`: browser storage adapter
 - `archiveExport.ts`: Markdown and CSV portability
 
-The next synced-archive feature should implement the existing repository interface and swap the provider configuration rather than changing screens.
+The synced-archive foundation is specified in `docs/synced-archive-architecture.md`.
+It selects optional Supabase passwordless auth, Postgres revisions/operations, and
+private Storage snapshots. `src/lib/archiveSync.ts` defines and validates sync v1
+and provides the reference field-level conflict reducer. The executable database
+and RLS schema is in `supabase/migrations/20260904120000_synced_archives.sql`.
+Authenticated `GET /api/archive` and `POST /api/archive/sync` handlers now use a
+Supabase SSR session boundary and a service-role transaction adapter. The database
+RPC locks the archive, performs compare-and-swap revision commits, records
+idempotency results, and retains immutable recovery snapshots atomically. API
+behavior is dependency-injected for tests and enforces ownership, 2 MiB/500-op
+request bounds, no-store responses, and validated stored snapshots.
+
+The next slice is `bareaga_web-6j1.3`: implement the existing repository interface,
+durable local operation queue, background retries/rebase, and non-destructive
+first-account migration before swapping provider configuration. No archive UI
+needs to change for that adapter work.
 
 ## Feed architecture
 

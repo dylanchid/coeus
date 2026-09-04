@@ -31,6 +31,8 @@ npm run build
 | `/about` | Concise guide to the product and its core sections |
 | `/social`, `/product` | Legacy redirects to `/discover` and `/about` |
 | `/api/feeds` | Validated server-side RSS aggregation endpoint |
+| `/api/archive` | Authenticated archive initialization and retrieval |
+| `/api/archive/sync` | Authenticated, transactional archive synchronization |
 
 ## Architecture
 
@@ -54,6 +56,9 @@ src/
     archiveFixtures.ts         Seeded local demo data
     archiveValidation.ts       Runtime validation and migrations
     localArchiveRepository.ts  Browser persistence adapter
+    archiveSync.ts             Versioned operations and conflict reducer
+    archiveApi.ts              Authenticated HTTP boundary
+    archiveSyncStore.server.ts Supabase transaction adapter
   styles/
     base.css                   Tokens, themes, fonts, and document defaults
     reader.css                 Reader, settings, search, and feed views
@@ -73,7 +78,26 @@ The feed endpoint validates and deduplicates inputs, rejects unknown sources and
 - Archive: `bareaga.archive.v1`, runtime-validated and migrated on read.
 - Feed responses: short browser-session cache plus a process-local server cache.
 
-Archive exports remain portable Markdown and CSV. Account-backed sync is not implemented yet.
+Archive exports remain portable Markdown and CSV. The authenticated sync API and
+durable schema are implemented; the browser remains on local storage until the
+queued background-sync and first-account migration work lands.
+
+## Local Supabase
+
+Install the Supabase CLI and Docker Desktop, then run:
+
+```bash
+supabase start
+supabase db reset
+supabase test db
+supabase status -o env
+```
+
+Copy the URL, publishable/anon key, and service-role key into a local `.env.local`
+using [`.env.example`](.env.example). `SUPABASE_SECRET_KEY` is server-only and
+must never use a `NEXT_PUBLIC_` prefix. The database migration creates immutable
+archive revisions, operation idempotency records, owner-only RLS policies, and a
+private `archive-snapshots` bucket.
 
 ## Adding a built-in source
 
