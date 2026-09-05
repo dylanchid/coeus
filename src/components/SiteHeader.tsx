@@ -18,7 +18,7 @@ function downloadPrefs(prefs: UserPrefs) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "bareaga-prefs.json";
+  anchor.download = "coeus-prefs.json";
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -93,7 +93,7 @@ export function SiteHeader({
       <div className="site-header-bar">
         <div className="site-identity">
           <Link className="site-wordmark" href="/">
-            Bareaga
+            Coeus
           </Link>
           {section !== "reader" ? (
             <span className="site-section">/ {SECTION_LABELS[section]}</span>

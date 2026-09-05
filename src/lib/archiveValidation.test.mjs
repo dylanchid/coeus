@@ -6,7 +6,7 @@ import { migrateArchiveData } from "./archiveValidation.ts";
 import { LocalStorageArchiveRepository } from "./localArchiveRepository.ts";
 
 function memoryStorage(initial) {
-  const values = new Map(initial ? [["bareaga.archive.v1", initial]] : []);
+  const values = new Map(initial ? [["coeus.archive.v1", initial]] : []);
   return {
     getItem(key) { return values.get(key) ?? null; },
     setItem(key, value) { values.set(key, value); },
@@ -41,7 +41,7 @@ test("local repository persists migrated data and refuses invalid writes", async
   const repository = new LocalStorageArchiveRepository(storage);
   const loaded = await repository.load();
   assert.deepEqual(loaded.socialPosts, []);
-  assert.deepEqual(JSON.parse(storage.value("bareaga.archive.v1")).socialPosts, []);
+  assert.deepEqual(JSON.parse(storage.value("coeus.archive.v1")).socialPosts, []);
 
   const invalid = { ...loaded, items: [{ nope: true }] };
   await assert.rejects(repository.save(invalid), /invalid archive data/);

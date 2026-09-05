@@ -29,10 +29,10 @@ test("single item Markdown is copyable", () => {
   assert.match(itemToMarkdown(item), /^\[Open, durable web\]/);
 });
 
-test("Obsidian note carries bareaga_id frontmatter and the shared Markdown body", () => {
+test("Obsidian note carries coeus_id frontmatter and the shared Markdown body", () => {
   const note = itemToObsidianNote(item);
   assert.match(note, /^---\n/);
-  assert.match(note, /bareaga_id: "1"/);
+  assert.match(note, /coeus_id: "1"/);
   assert.match(note, /tags: \[open-web\]/);
   assert.match(note, /\[Open, durable web\]\(https:\/\/example.com\)/);
 });

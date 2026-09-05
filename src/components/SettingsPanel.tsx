@@ -261,7 +261,7 @@ export function SettingsPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "bareaga-prefs.json";
+    a.download = "coeus-prefs.json";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -284,7 +284,7 @@ export function SettingsPanel({
     } catch (error) {
       setImportStatus(
         error instanceof SyntaxError
-          ? "Import failed: choose a valid Bareaga JSON file."
+          ? "Import failed: choose a valid Coeus JSON file."
           : `Import failed: ${error instanceof Error ? error.message : "the file could not be read."}`
       );
     }

@@ -18,7 +18,7 @@ import {
 const parser = new Parser({
   timeout: 6_000,
   headers: {
-    "User-Agent": "bareaga/1.0 (+local news reader)",
+    "User-Agent": "coeus/1.0 (+local news reader)",
     Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
   },
   customFields: {

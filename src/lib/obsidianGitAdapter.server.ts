@@ -93,7 +93,7 @@ export class GitHubGitAdapter {
       method: "POST",
       headers: githubHeaders(this.token),
       body: JSON.stringify({
-        message: `Bareaga sync: ${actions.length} item${actions.length === 1 ? "" : "s"}`,
+        message: `Coeus sync: ${actions.length} item${actions.length === 1 ? "" : "s"}`,
         tree: treeBody.sha,
         parents: [parentCommitSha],
       }),

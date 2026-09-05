@@ -1,6 +1,6 @@
-# Bareaga
+# Coeus
 
-Bareaga is a standalone, local-first RSS reader for building a deliberate reading stack. It combines source discovery, configurable feed views, transparent personal ranking, a portable archive, and sourced social sharing in a sparse editorial interface.
+Coeus is a standalone, local-first RSS reader for building a deliberate reading stack. It combines source discovery, configurable feed views, transparent personal ranking, a portable archive, and sourced social sharing in a sparse editorial interface.
 
 It is inspired by [brutalist.report](https://brutalist.report/) and is not affiliated with it.
 
@@ -74,8 +74,8 @@ The feed endpoint validates and deduplicates inputs, rejects unknown sources and
 
 ## Local data
 
-- Preferences: `bareaga.prefs.v1`, with migration from `brp.prefs.v1`.
-- Archive: `bareaga.archive.v1`, runtime-validated and migrated on read.
+- Preferences: `coeus.prefs.v1`, with migration from `bareaga.prefs.v1` and, before that, `brp.prefs.v1`.
+- Archive: `coeus.archive.v1`, with migration from `bareaga.archive.v1`; runtime-validated and migrated on read.
 - Feed responses: short browser-session cache plus a process-local server cache.
 
 Archive exports remain portable Markdown and CSV. The authenticated sync API and

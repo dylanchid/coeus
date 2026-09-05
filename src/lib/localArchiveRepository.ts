@@ -2,7 +2,8 @@ import { createDemoArchive } from "./archiveFixtures.ts";
 import { migrateArchiveData } from "./archiveValidation.ts";
 import type { ArchiveData, ArchiveRepository } from "./archiveTypes";
 
-export const LOCAL_ARCHIVE_STORAGE_KEY = "bareaga.archive.v1";
+export const LOCAL_ARCHIVE_STORAGE_KEY = "coeus.archive.v1";
+const LEGACY_LOCAL_ARCHIVE_STORAGE_KEY = "bareaga.archive.v1";
 
 interface KeyValueStorage {
   getItem(key: string): string | null;
@@ -19,7 +20,12 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
   async load(): Promise<ArchiveData> {
     const storage = this.storage ?? (typeof window === "undefined" ? undefined : window.localStorage);
     if (!storage) return createDemoArchive();
-    const raw = storage.getItem(LOCAL_ARCHIVE_STORAGE_KEY);
+    const fromLegacyKey =
+      !storage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) &&
+      !!storage.getItem(LEGACY_LOCAL_ARCHIVE_STORAGE_KEY);
+    const raw =
+      storage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) ??
+      storage.getItem(LEGACY_LOCAL_ARCHIVE_STORAGE_KEY);
     if (!raw) {
       const seed = createDemoArchive();
       storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(seed));
@@ -27,7 +33,7 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
     }
     try {
       const result = migrateArchiveData(JSON.parse(raw));
-      if (result.valid && result.migrated) {
+      if (result.valid && (result.migrated || fromLegacyKey)) {
         storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(result.data));
       }
       return result.data;
@@ -48,7 +54,11 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
     if (typeof window === "undefined") return () => undefined;
     const refresh = () => void this.load().then(listener);
     const onStorage = (event: StorageEvent) => {
-      if (event.key === LOCAL_ARCHIVE_STORAGE_KEY) refresh();
+      if (
+        event.key === LOCAL_ARCHIVE_STORAGE_KEY ||
+        event.key === LEGACY_LOCAL_ARCHIVE_STORAGE_KEY
+      )
+        refresh();
     };
     window.addEventListener("storage", onStorage);
     return () => {

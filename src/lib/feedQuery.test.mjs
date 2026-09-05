@@ -91,7 +91,7 @@ test("a rejected batch does not prevent unrelated batches from loading", async (
       signal: new AbortController().signal,
       batchSize: 2,
       fetcher: async (url) => {
-        const requested = new URL(String(url), "https://bareaga.test").searchParams.get("ids").split(",");
+        const requested = new URL(String(url), "https://coeus.test").searchParams.get("ids").split(",");
         return requested.includes("a")
           ? { ok: false, status: 503, async json() { return {}; } }
           : response(requested);
@@ -121,7 +121,7 @@ test("batch concurrency is bounded", async () => {
         active += 1;
         maximum = Math.max(maximum, active);
         const gate = deferred();
-        const requested = new URL(String(url), "https://bareaga.test").searchParams.get("ids").split(",");
+        const requested = new URL(String(url), "https://coeus.test").searchParams.get("ids").split(",");
         pending.push(() => {
           active -= 1;
           gate.resolve(response(requested));
@@ -184,7 +184,7 @@ test("single-source retry and force refresh use the protected refresh request sh
       },
     }
   );
-  const url = new URL(captured.url, "https://bareaga.test");
+  const url = new URL(captured.url, "https://coeus.test");
   assert.equal(url.searchParams.get("ids"), "hn");
   assert.equal(url.searchParams.get("refresh"), "1");
   assert.equal(captured.init.cache, "no-store");
@@ -243,7 +243,7 @@ test("a batch of only catalog ids still uses the cacheable GET even when customS
       },
     }
   );
-  const url = new URL(captured.url, "https://bareaga.test");
+  const url = new URL(captured.url, "https://coeus.test");
   assert.equal(url.searchParams.get("ids"), "hn");
   assert.equal(captured.init.method, undefined);
 });

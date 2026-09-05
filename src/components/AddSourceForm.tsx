@@ -53,7 +53,7 @@ export function AddSourceForm({
       setPreview(data.preview);
       setName(data.preview.name);
     } catch {
-      setError("Bareaga couldn't reach the feed service. Check your connection and try again.");
+      setError("Coeus couldn't reach the feed service. Check your connection and try again.");
     } finally {
       setLoading(false);
     }

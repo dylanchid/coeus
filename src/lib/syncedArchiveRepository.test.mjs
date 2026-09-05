@@ -7,7 +7,7 @@ import { LocalStorageArchiveRepository } from "./localArchiveRepository.ts";
 import { SyncedArchiveRepository } from "./syncedArchiveRepository.ts";
 
 function memoryStorage(seed) {
-  const values = new Map(seed ? [["bareaga.archive.v1", JSON.stringify(seed)]] : []);
+  const values = new Map(seed ? [["coeus.archive.v1", JSON.stringify(seed)]] : []);
   return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
 }
 

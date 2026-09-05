@@ -12,18 +12,18 @@ export function archiveToMarkdown(
   items: ArchiveItem[],
   collection?: ArchiveCollection
 ): string {
-  const title = collection?.name ?? "Bareaga Archive";
+  const title = collection?.name ?? "Coeus Archive";
   const header = [
     "---",
     `title: ${yaml(title)}`,
-    `source: ${yaml("Bareaga")}`,
+    `source: ${yaml("Coeus")}`,
     `exported: ${yaml(new Date().toISOString())}`,
-    `tags: [bareaga, archive]`,
+    `tags: [coeus, archive]`,
     "---",
     "",
     `# ${title}`,
     "",
-    collection?.description ?? "An open, portable archive exported from Bareaga.",
+    collection?.description ?? "An open, portable archive exported from Coeus.",
     "",
   ];
   const entries = items.flatMap((item) => [
@@ -72,11 +72,11 @@ export function itemToMarkdown(item: ArchiveItem): string {
   return `[${item.title}](${item.url})${quote}${note}`;
 }
 
-/** One archive item as an Obsidian note: frontmatter carries bareaga_id so the Git bridge can upsert by it. */
+/** One archive item as an Obsidian note: frontmatter carries coeus_id so the Git bridge can upsert by it. */
 export function itemToObsidianNote(item: ArchiveItem): string {
   const frontmatter = [
     "---",
-    `bareaga_id: ${yaml(item.id)}`,
+    `coeus_id: ${yaml(item.id)}`,
     `title: ${yaml(item.title)}`,
     `url: ${yaml(item.url)}`,
     `source: ${yaml(item.sourceName)}`,

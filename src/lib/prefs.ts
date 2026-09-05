@@ -18,7 +18,8 @@ import {
   storedSourceOrder,
 } from "./sources";
 
-const STORAGE_KEY = "bareaga.prefs.v1";
+const STORAGE_KEY = "coeus.prefs.v1";
+const LEGACY_BAREAGA_STORAGE_KEY = "bareaga.prefs.v1";
 const LEGACY_STORAGE_KEY = "brp.prefs.v1";
 
 const THEMES: ThemeMode[] = ["system", "light", "dark"];
@@ -200,14 +201,16 @@ export class LocalPrefsStore implements PrefsStore {
     try {
       const raw =
         window.localStorage.getItem(STORAGE_KEY) ??
+        window.localStorage.getItem(LEGACY_BAREAGA_STORAGE_KEY) ??
         window.localStorage.getItem(LEGACY_STORAGE_KEY);
       const prefs = mergeWithDefaults(
         raw ? (JSON.parse(raw) as Partial<UserPrefs>) : null
       );
-      // Migrate legacy key once
+      // Migrate legacy key(s) once
       if (
         !window.localStorage.getItem(STORAGE_KEY) &&
-        window.localStorage.getItem(LEGACY_STORAGE_KEY)
+        (window.localStorage.getItem(LEGACY_BAREAGA_STORAGE_KEY) ??
+          window.localStorage.getItem(LEGACY_STORAGE_KEY))
       ) {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
       }

@@ -76,11 +76,11 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       setArchive(loaded);
     });
     const syncUpdate = () => active && setSync(repository.getSyncState());
-    window.addEventListener("bareaga:archive-sync", syncUpdate);
+    window.addEventListener("coeus:archive-sync", syncUpdate);
     return () => {
       active = false;
       unsubscribe();
-      window.removeEventListener("bareaga:archive-sync", syncUpdate);
+      window.removeEventListener("coeus:archive-sync", syncUpdate);
     };
   }, []);
 

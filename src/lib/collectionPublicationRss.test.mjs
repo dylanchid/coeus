@@ -43,7 +43,7 @@ function publication(overrides = {}) {
   };
 }
 
-const options = { feedUrl: "https://bareaga.example/c/a-humane-internet/rss.xml", collectionUrl: "https://bareaga.example/c/a-humane-internet" };
+const options = { feedUrl: "https://coeus.example/c/a-humane-internet/rss.xml", collectionUrl: "https://coeus.example/c/a-humane-internet" };
 
 test("renderCollectionRss produces a well-formed RSS 2.0 document", () => {
   const xml = renderCollectionRss(publication(), options);
@@ -98,5 +98,5 @@ test("renderCollectionRss omits an empty item description rather than emitting a
 
 test("renderCollectionRss includes a self-referencing atom:link using the provided feed URL", () => {
   const xml = renderCollectionRss(publication(), options);
-  assert.match(xml, /<atom:link href="https:\/\/bareaga\.example\/c\/a-humane-internet\/rss\.xml" rel="self" type="application\/rss\+xml"\/>/);
+  assert.match(xml, /<atom:link href="https:\/\/coeus\.example\/c\/a-humane-internet\/rss\.xml" rel="self" type="application\/rss\+xml"\/>/);
 });

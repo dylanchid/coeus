@@ -85,7 +85,7 @@ function SourceGridInner({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={itemIds} strategy={rectSortingStrategy}>
-        <div className="bareaga-grid">
+        <div className="coeus-grid">
           {sources.map((s) => (
             <SourceColumn
               key={s.id}

@@ -3,9 +3,9 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
-  title: "About — Bareaga",
+  title: "About — Coeus",
   description:
-    "How Bareaga helps you find sources, read the open web, discover what people share, and keep what matters.",
+    "How Coeus helps you find sources, read the open web, discover what people share, and keep what matters.",
 };
 
 const sections = [
@@ -43,7 +43,7 @@ const sections = [
     label: "Discover",
     href: "/discover",
     title: "Follow paths made by people.",
-    body: "Discover is for public collections, shared articles, and links with human context attached. It is the people-powered layer of Bareaga—not another engagement-ranked feed.",
+    body: "Discover is for public collections, shared articles, and links with human context attached. It is the people-powered layer of Coeus—not another engagement-ranked feed.",
     details: [
       "Browse shared articles and sourced passages",
       "Follow public and community collections",
@@ -57,7 +57,7 @@ const sections = [
     label: "Archive",
     href: "/archive",
     title: "Keep what is worth returning to.",
-    body: "The Archive keeps saved reading with its source, notes, tags, state, and collections. Your library lives locally today and remains portable instead of being locked inside Bareaga.",
+    body: "The Archive keeps saved reading with its source, notes, tags, state, and collections. Your library lives locally today and remains portable instead of being locked inside Coeus.",
     details: [
       "Search titles, notes, tags, sources, and authors",
       "Organize reading into personal collections",
@@ -72,7 +72,7 @@ export default function AboutPage() {
     <AppShell section="about">
       <div className="about-page">
         <section className="about-hero" aria-labelledby="about-title">
-          <p className="about-kicker">About Bareaga</p>
+          <p className="about-kicker">About Coeus</p>
           <h1 id="about-title">A personal front page for the open web.</h1>
           <p>
             Choose where your reading comes from, see why it is ordered the way
@@ -84,7 +84,7 @@ export default function AboutPage() {
           </Link>
         </section>
 
-        <nav className="about-jump-nav" aria-label="About Bareaga sections">
+        <nav className="about-jump-nav" aria-label="About Coeus sections">
           {sections.map((section) => (
             <a key={section.id} href={`#${section.id}`}>
               {section.label}
@@ -117,7 +117,7 @@ export default function AboutPage() {
         </div>
 
         <section className="about-principles" aria-labelledby="principles-title">
-          <p>How Bareaga is built</p>
+          <p>How Coeus is built</p>
           <h2 id="principles-title">A tool you control.</h2>
           <ul>
             <li>Sources over opaque algorithms</li>

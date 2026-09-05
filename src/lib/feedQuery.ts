@@ -40,12 +40,12 @@ export function friendlyFeedError(error: unknown): string {
   if (error instanceof DOMException && error.name === "AbortError") return "";
   const message = error instanceof Error ? error.message : "";
   if (/network|fetch/i.test(message)) {
-    return "Bareaga couldn’t reach the feed service. Check your connection and try again.";
+    return "Coeus couldn’t reach the feed service. Check your connection and try again.";
   }
   if (/Feed API (5\d\d)/i.test(message)) {
     return "The feed service is temporarily unavailable. Try again in a moment.";
   }
-  return "Bareaga couldn’t load these stories. Try again; your preferences are safe.";
+  return "Coeus couldn’t load these stories. Try again; your preferences are safe.";
 }
 
 export function visibleSourceIds(

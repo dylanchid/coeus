@@ -20,9 +20,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // boundary rather than swallowed into "not found" — only a genuinely
   // missing/unpublished/private slug should read as 404.
   const publication = await loadPublication(slug);
-  if (!publication) return { title: "Collection not found — Bareaga" };
+  if (!publication) return { title: "Collection not found — Coeus" };
   return {
-    title: `${publication.name} — Bareaga`,
+    title: `${publication.name} — Coeus`,
     description: publication.description || publication.curatorNote || undefined,
   };
 }
@@ -35,7 +35,7 @@ export default async function PublicCollectionPage({ params }: { params: Promise
   return (
     <AppShell
       section="archive"
-      footerNote={<>Published with Bareaga. <a href={`/c/${publication.slug}/rss.xml`}>Subscribe via RSS</a></>}
+      footerNote={<>Published with Coeus. <a href={`/c/${publication.slug}/rss.xml`}>Subscribe via RSS</a></>}
     >
       <div className="public-collection-page">
         <header>

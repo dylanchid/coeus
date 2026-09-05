@@ -24,7 +24,7 @@ function source(input: SourceInput): SourceDef {
 }
 
 /**
- * The full built-in directory. Presence here means Bareaga knows how to read a
+ * The full built-in directory. Presence here means Coeus knows how to read a
  * source; it does not mean that source is enabled for a user.
  */
 export const SOURCE_CATALOG: SourceDef[] = [

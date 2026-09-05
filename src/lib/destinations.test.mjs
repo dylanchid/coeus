@@ -10,9 +10,9 @@ test("parseObsidianGitConfig accepts a repo with defaults for branch and pathPre
 });
 
 test("parseObsidianGitConfig accepts an explicit branch and pathPrefix", () => {
-  const result = parseObsidianGitConfig({ repo: "acme/vault", branch: "sync", pathPrefix: "bareaga" });
+  const result = parseObsidianGitConfig({ repo: "acme/vault", branch: "sync", pathPrefix: "coeus" });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.value, { repo: "acme/vault", branch: "sync", pathPrefix: "bareaga" });
+  assert.deepEqual(result.value, { repo: "acme/vault", branch: "sync", pathPrefix: "coeus" });
 });
 
 test("parseObsidianGitConfig rejects a malformed repo", () => {

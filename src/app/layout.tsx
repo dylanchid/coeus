@@ -21,7 +21,7 @@ const fontVariables = [
 ].join(" ");
 
 export const metadata: Metadata = {
-  title: "Bareaga",
+  title: "Coeus",
   description:
     "Headlines, bare — transparent story ordering, keyword search, and a configurable reading surface.",
 };

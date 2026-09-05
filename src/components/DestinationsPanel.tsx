@@ -227,7 +227,7 @@ export function DestinationsPanel({ onNotice }: { onNotice?: (message: string) =
                   <label htmlFor="obsidian-branch">Branch</label>
                   <input id="obsidian-branch" type="text" value={obsidianBranch} onChange={(event) => setObsidianBranch(event.target.value)} placeholder="main" />
                   <label htmlFor="obsidian-path">Folder (optional)</label>
-                  <input id="obsidian-path" type="text" value={obsidianPathPrefix} onChange={(event) => setObsidianPathPrefix(event.target.value)} placeholder="bareaga" />
+                  <input id="obsidian-path" type="text" value={obsidianPathPrefix} onChange={(event) => setObsidianPathPrefix(event.target.value)} placeholder="coeus" />
                   <label htmlFor="obsidian-token">GitHub personal access token</label>
                   <input id="obsidian-token" type="password" required autoComplete="off" value={obsidianToken} onChange={(event) => setObsidianToken(event.target.value)} placeholder="ghp_…" />
                   <div>

@@ -7,7 +7,7 @@ import { signOAuthState } from "./oauthState.server.ts";
 const SECRET = "test-oauth-state-secret";
 const CLIENT_ID = "client-1";
 const CLIENT_SECRET = "client-secret-1";
-const REDIRECT_URI = "https://bareaga.test/api/archive/destinations/notion/oauth/callback";
+const REDIRECT_URI = "https://coeus.test/api/archive/destinations/notion/oauth/callback";
 
 class MemoryDestinationsStore {
   connectCalls = [];
@@ -53,7 +53,7 @@ test("handleNotionOAuthStart requires auth and redirects to Notion's authorize e
 
 test("handleNotionOAuthCallback redirects with an error when Notion denies consent", async () => {
   const store = new MemoryDestinationsStore();
-  const request = new Request("https://bareaga.test/api/archive/destinations/notion/oauth/callback?error=access_denied");
+  const request = new Request("https://coeus.test/api/archive/destinations/notion/oauth/callback?error=access_denied");
   const response = await handleNotionOAuthCallback(request, { stateSecret: SECRET, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, redirectUri: REDIRECT_URI, store });
   assert.equal(response.status, 302);
   const location = locationOf(response);
@@ -65,13 +65,13 @@ test("handleNotionOAuthCallback rejects a missing or tampered state", async () =
   const store = new MemoryDestinationsStore();
 
   const missingState = await handleNotionOAuthCallback(
-    new Request("https://bareaga.test/callback?code=abc"),
+    new Request("https://coeus.test/callback?code=abc"),
     { stateSecret: SECRET, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, redirectUri: REDIRECT_URI, store }
   );
   assert.equal(locationOf(missingState).searchParams.get("status"), "error");
 
   const badState = await handleNotionOAuthCallback(
-    new Request("https://bareaga.test/callback?code=abc&state=not-a-real-token"),
+    new Request("https://coeus.test/callback?code=abc&state=not-a-real-token"),
     { stateSecret: SECRET, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, redirectUri: REDIRECT_URI, store }
   );
   assert.equal(locationOf(badState).searchParams.get("status"), "error");
@@ -80,7 +80,7 @@ test("handleNotionOAuthCallback rejects a missing or tampered state", async () =
 
 function validCallbackRequest(ownerId = "user-1") {
   const state = signOAuthState({ archiveId: ownerId, nonce: "n", issuedAt: Date.now() }, SECRET);
-  return new Request(`https://bareaga.test/callback?code=abc&state=${encodeURIComponent(state)}`);
+  return new Request(`https://coeus.test/callback?code=abc&state=${encodeURIComponent(state)}`);
 }
 
 test("handleNotionOAuthCallback exchanges the code, picks the first shared database, and connects the destination", async () => {

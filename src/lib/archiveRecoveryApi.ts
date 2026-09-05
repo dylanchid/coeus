@@ -22,8 +22,8 @@ export async function handleArchiveExport(dependencies: ArchiveRecoveryApiDepend
   const userId = await owner(dependencies); if (userId instanceof Response) return userId;
   try {
     const archive = await dependencies.store.export(userId);
-    const body: ArchiveExport = { format: "bareaga.archive.export.v1", exportedAt: new Date().toISOString(), ...archive };
-    return Response.json(body, { headers: { ...headers(), "Content-Disposition": 'attachment; filename="bareaga-archive.json"' } });
+    const body: ArchiveExport = { format: "coeus.archive.export.v1", exportedAt: new Date().toISOString(), ...archive };
+    return Response.json(body, { headers: { ...headers(), "Content-Disposition": 'attachment; filename="coeus-archive.json"' } });
   } catch { return error("Archive export is unavailable", 503); }
 }
 

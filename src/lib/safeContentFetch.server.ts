@@ -37,7 +37,7 @@ export async function fetchSafeContent(
     const response = await fetcher(url, {
       redirect: "manual",
       signal: AbortSignal.timeout(10_000),
-      headers: { "User-Agent": "bareaga/1.0 (+private archive capture)", Accept: "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8" },
+      headers: { "User-Agent": "coeus/1.0 (+private archive capture)", Accept: "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8" },
     });
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");

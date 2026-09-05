@@ -19,7 +19,7 @@ export interface ContentSnapshotSummary {
 }
 
 export interface ArchiveExport {
-  format: "bareaga.archive.export.v1";
+  format: "coeus.archive.export.v1";
   exportedAt: string;
   archiveId: string;
   current: ArchiveSyncSnapshot;

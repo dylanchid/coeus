@@ -1,8 +1,8 @@
-# Bareaga handoff
+# Coeus handoff
 
 ## Workspace
 
-- Path: `/Users/dylanchidambaram/bareaga_web`
+- Path: `/Users/dylanchidambaram/coeus_web`
 - Stack: Next.js 16.2 App Router, React 19, TypeScript, `rss-parser`, and `@dnd-kit`
 - Product: standalone RSS reader inspired by brutalist.report; do not scrape it or claim affiliation
 - Work tracking: Beads (`bd ready`, `bd show <id>`, `bd update <id> --claim`)
@@ -54,7 +54,7 @@ idempotency results, and retains immutable recovery snapshots atomically. API
 behavior is dependency-injected for tests and enforces ownership, 2 MiB/500-op
 request bounds, no-store responses, and validated stored snapshots.
 
-The next slice is `bareaga_web-6j1.3`: implement the existing repository interface,
+The next slice is `coeus_web-6j1.3`: implement the existing repository interface,
 durable local operation queue, background retries/rebase, and non-destructive
 first-account migration before swapping provider configuration. No archive UI
 needs to change for that adapter work.

@@ -29,7 +29,7 @@ test("lossless export includes the canonical sync snapshot and history metadata"
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "private, no-store, max-age=0");
   const body = await response.json();
-  assert.equal(body.format, "bareaga.archive.export.v1");
+  assert.equal(body.format, "coeus.archive.export.v1");
   assert.deepEqual(body.current, initial);
   assert.equal(body.revisions[0].revision, 0);
 });

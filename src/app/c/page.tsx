@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 20;
 
 export const metadata: Metadata = {
-  title: "Public collections — Bareaga",
+  title: "Public collections — Coeus",
   description: "Browse collections people have published and made discoverable.",
 };
 

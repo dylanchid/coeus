@@ -1,14 +1,14 @@
-# Bareaga — Product Requirements Document
+# Coeus — Product Requirements Document
 
 **Status:** Living document, reflects the codebase as of 2026-09-04
 **Owner:** Dylan Chidambaram
-**Related:** [`HANDOFF.md`](../HANDOFF.md) (engineering entry point), `/about` route (public-facing explanation), `bareaga_web-5bv` (shared-collections roadmap issue)
+**Related:** [`HANDOFF.md`](../HANDOFF.md) (engineering entry point), `/about` route (public-facing explanation), `coeus_web-5bv` (shared-collections roadmap issue)
 
 ---
 
 ## 1. One-line pitch
 
-Bareaga is a personal front page for the open web: you choose RSS/Atom sources, Bareaga merges them into one deliberate reading surface, and every "smart" feature — ranking, filtering, organizing — is a transparent tool you control rather than a black box that controls you.
+Coeus is a personal front page for the open web: you choose RSS/Atom sources, Coeus merges them into one deliberate reading surface, and every "smart" feature — ranking, filtering, organizing — is a transparent tool you control rather than a black box that controls you.
 
 ## 2. Problem statement
 
@@ -17,7 +17,7 @@ Reading the open web today means either:
 - opening a dozen individual sites/apps and reassembling them yourself, or
 - ceding the assembly to a platform algorithm that optimizes for engagement, not for what you actually asked for.
 
-Bareaga's bet is that there's a third option: let the user do the curating (which sources, in what order, with what weight) and let the software do the mechanical work (fetching, normalizing, deduplicating failure, remembering preferences) — with any ranking logic fully inspectable.
+Coeus's bet is that there's a third option: let the user do the curating (which sources, in what order, with what weight) and let the software do the mechanical work (fetching, normalizing, deduplicating failure, remembering preferences) — with any ranking logic fully inspectable.
 
 ## 3. Product principles
 
@@ -98,7 +98,7 @@ A directory of all **51 catalog sources**, independent from "sources you've adde
 
 The most functionally complete surface today. Per saved item: reading `state` (`unread / read / kept`), `starred`, a private `note`, `tags[]`, and `collectionIds[]`.
 
-- Sidebar: "Everything" plus user-created collections, each with a `kind` (`personal / community`) and `visibility` (`private / unlisted / public`) — the data model already supports shared/public collections; only *serving* them publicly is unbuilt (tracked in `bareaga_web-5bv`).
+- Sidebar: "Everything" plus user-created collections, each with a `kind` (`personal / community`) and `visibility` (`private / unlisted / public`) — the data model already supports shared/public collections; only *serving* them publicly is unbuilt (tracked in `coeus_web-5bv`).
 - Full-text search across title/summary/source/author/topic/note, with filter tabs (All/Unread/Starred/Annotated).
 - Per-item actions: change state, star, copy as Markdown, reassign collection, inline note editor.
 - **Export as a first-class feature**: whole-archive or per-collection export to Markdown (YAML frontmatter, aimed at Obsidian) or CSV (aimed at Notion/spreadsheets) — the concrete expression of "open formats over locked platforms."
@@ -113,7 +113,7 @@ What exists today:
 - A composer publishing a **"sourced clip"**: URL + title + excerpt + user commentary. Publishing simultaneously creates an `ArchiveItem` (state `kept`) and a `SocialPost` — the excerpt is a hard product rule, never detached from its canonical source link.
 - A feed of the user's own posts (`data.socialPosts` is local; there is no real multi-user network yet).
 - "Community collections" browsing with a follow/unfollow toggle — currently **component-local state only, not persisted** (resets on reload; this is a known gap, not a hidden feature).
-- Native share integration (`navigator.share()`, falling back to clipboard) so a post can leave Bareaga entirely.
+- Native share integration (`navigator.share()`, falling back to clipboard) so a post can leave Coeus entirely.
 
 ### 6.5 ShareSheet — the connective tissue
 
@@ -134,7 +134,7 @@ Tabs: **Reading / Appearance / Sources / Advanced** (`SETTINGS_TABS`). Ranking (
 - **Reading**: density (`comfortable / compact`), which fields show (summaries, authors, ages, engagement counts).
 - **Appearance**: theme (`system / light / dark`) × 5 palettes (**ink, paper, terminal, copper, rose**) × 4 fonts (**mono, sans, serif, slab**).
 - **Sources**: per-source visibility (`hiddenSources`) and ordering, independent of the Sources directory's add/remove.
-- **Advanced**: feed window — result limit (`5/10/15/25/50`, default 10) and lookback (`1/3/6/12/24/48/72` hours, default 24) — plus the ranking rules editor and preferences export/import as portable JSON (`bareaga-prefs.json`, versioned, full-replace on import).
+- **Advanced**: feed window — result limit (`5/10/15/25/50`, default 10) and lookback (`1/3/6/12/24/48/72` hours, default 24) — plus the ranking rules editor and preferences export/import as portable JSON (`coeus-prefs.json`, versioned, full-replace on import).
 
 ## 7. Current state vs. roadmap
 
@@ -151,7 +151,7 @@ Stated near-term roadmap (from `/about` and project planning):
 | Next | Reading state refinements — mark read, collapse a source, return to a quieter view — without becoming an inbox. |
 | Later | Saved keyword watches / lightweight alerts, kept transparent and controllable rather than push-notification noise. |
 
-Tracked separately in Beads: `bareaga_web-5bv` — publish/discover shared collection paths (stable public URLs, curator notes, attribution, RSS output, privacy controls; eventually feeding a human-curated Discover layer).
+Tracked separately in Beads: `coeus_web-5bv` — publish/discover shared collection paths (stable public URLs, curator notes, attribution, RSS output, privacy controls; eventually feeding a human-curated Discover layer).
 
 ## 8. Explicit non-goals (current)
 
@@ -167,7 +167,7 @@ the default; signing in adds a durable remote archive but does not remove the lo
 copy. The accepted storage and conflict model is documented in
 [`synced-archive-architecture.md`](./synced-archive-architecture.md).
 
-- How does `bareaga_web-5bv`'s "community permissions" model interact with the existing private/unlisted/public visibility enum — is a fourth state needed, or do permissions layer on top of `public`?
+- How does `coeus_web-5bv`'s "community permissions" model interact with the existing private/unlisted/public visibility enum — is a fourth state needed, or do permissions layer on top of `public`?
 - Discover's follow state is currently unpersisted local component state — is that a placeholder pending sync, or does it need a real (even if local) persistence layer before sync lands?
 
 ---

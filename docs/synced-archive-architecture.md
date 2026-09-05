@@ -1,11 +1,11 @@
 # Synced archive architecture
 
 Status: accepted foundation (2026-09-04). This document defines the first slice of
-`bareaga_web-6j1`; it does not enable accounts or network sync in the UI yet.
+`coeus_web-6j1`; it does not enable accounts or network sync in the UI yet.
 
 ## Decision
 
-Use **Supabase Auth, Postgres, and private Storage**, accessed through Bareaga's
+Use **Supabase Auth, Postgres, and private Storage**, accessed through Coeus's
 Next.js route handlers:
 
 - Accounts remain optional. Anonymous users continue using the existing local
@@ -96,7 +96,7 @@ to the same array conflict instead of attempting a surprising set merge.
   fetch path must apply the same SSRF controls as feed preview.
 
 The first two endpoints and their transactional Supabase store are implemented.
-The export and captured-content endpoints remain part of `bareaga_web-6j1.4`.
+The export and captured-content endpoints remain part of `coeus_web-6j1.4`.
 
 The sync POST is non-cacheable and bounded by body size, operation count, and rate
 limits. Authentication, authorization, validation, and transaction boundaries are
@@ -104,7 +104,7 @@ server responsibilities even though Postgres RLS also protects reads.
 
 ## Migration and recovery
 
-On first sign-in, the client converts valid `bareaga.archive.v1` data to revision
+On first sign-in, the client converts valid `coeus.archive.v1` data to revision
 0 locally and offers to upload it. It does not delete the local copy. If a remote
 archive already exists, local entities are expressed as operations against the
 downloaded base so conflicts follow the same rules as ordinary offline work.

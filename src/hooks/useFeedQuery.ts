@@ -117,7 +117,7 @@ export function useFeedQuery(options: UseFeedQueryOptions) {
       if (generation !== generationRef.current) return;
 
       const error = result.successfulBatches === 0 && result.failedIds.length
-        ? "Bareaga couldn’t load these stories. Try again; your preferences are safe."
+        ? "Coeus couldn’t load these stories. Try again; your preferences are safe."
         : null;
       setState({
         status: result.successfulBatches === 0 ? "error" : "success",

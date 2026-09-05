@@ -49,7 +49,7 @@ export async function fetchFeedText(initialUrl: string, fetcher: typeof fetch = 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
     const response = await fetcher(url, {
       redirect: "manual", signal: AbortSignal.timeout(6_000),
-      headers: { "User-Agent": "bareaga/1.0 (+local news reader)", Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" },
+      headers: { "User-Agent": "coeus/1.0 (+local news reader)", Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" },
     });
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");

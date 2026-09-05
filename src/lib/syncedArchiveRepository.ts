@@ -2,8 +2,8 @@ import { parseArchiveSyncSnapshot, type ArchiveEntityKind, type ArchiveSyncConfl
 import type { ArchiveData, ArchiveRepository } from "./archiveTypes.ts";
 import { LOCAL_ARCHIVE_STORAGE_KEY, LocalStorageArchiveRepository } from "./localArchiveRepository.ts";
 
-const QUEUE_KEY = "bareaga.archive.sync-queue.v1";
-const STATE_KEY = "bareaga.archive.sync-state.v1";
+const QUEUE_KEY = "coeus.archive.sync-queue.v1";
+const STATE_KEY = "coeus.archive.sync-state.v1";
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 interface QueueState { clientId: string; archiveId?: string; base?: ArchiveSyncSnapshot; operations: ArchiveSyncOperation[]; conflicts: ArchiveSyncConflict[]; }
@@ -112,7 +112,7 @@ export class SyncedArchiveRepository implements ArchiveRepository {
   private publishState(): void {
     const state = this.getSyncState();
     this.store?.setItem(STATE_KEY, JSON.stringify(state));
-    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("bareaga:archive-sync", { detail: state }));
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("coeus:archive-sync", { detail: state }));
   }
 
   private async synchronize(): Promise<void> {

@@ -38,7 +38,7 @@ export function FollowButton({ publicationId }: { publicationId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ publicationId }),
       });
-      if (response.status === 401) { setMessage("Sign in to your Bareaga account to follow collections."); return; }
+      if (response.status === 401) { setMessage("Sign in to your Coeus account to follow collections."); return; }
       if (!response.ok) throw new Error("Request failed");
       setFollowing((current) => !current);
     } catch {

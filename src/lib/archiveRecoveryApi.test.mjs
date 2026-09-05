@@ -80,9 +80,9 @@ test("handleArchiveExport requires auth, returns an attachment, and maps failure
 
   const response = await handleArchiveExport(dependencies(store));
   assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-disposition"), /attachment; filename="bareaga-archive\.json"/);
+  assert.match(response.headers.get("content-disposition"), /attachment; filename="coeus-archive\.json"/);
   const body = await response.json();
-  assert.equal(body.format, "bareaga.archive.export.v1");
+  assert.equal(body.format, "coeus.archive.export.v1");
   assert.equal(body.archiveId, "archive-1");
 
   store.failNext.export = new Error("db down");

@@ -6,7 +6,7 @@ import { findFeedLink } from "./feedDiscovery.ts";
 const parser = new Parser({
   timeout: 6_000,
   headers: {
-    "User-Agent": "bareaga/1.0 (+local news reader)",
+    "User-Agent": "coeus/1.0 (+local news reader)",
     Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
   },
 });
@@ -18,7 +18,7 @@ export type ResolveFeedResult =
   | { ok: false; error: string };
 
 const NOT_FOUND_ERROR =
-  "Bareaga couldn't find a feed at that URL. Try pasting the feed link directly.";
+  "Coeus couldn't find a feed at that URL. Try pasting the feed link directly.";
 
 function isSubstackHomepage(url: URL): boolean {
   return url.hostname.toLowerCase().endsWith(".substack.com") &&

@@ -203,13 +203,13 @@ export function ArchiveApp() {
     : data?.items ?? [];
 
   const exportMarkdown = () => {
-    download(archiveToMarkdown(exportItems, selectedCollection), `bareaga-${selectedCollection?.id ?? "archive"}.md`, "text/markdown;charset=utf-8");
+    download(archiveToMarkdown(exportItems, selectedCollection), `coeus-${selectedCollection?.id ?? "archive"}.md`, "text/markdown;charset=utf-8");
     setShareNotice("Markdown exported for Obsidian or Notion");
   };
 
   const exportCsv = () => {
     if (!data) return;
-    download(archiveToCsv(exportItems, data.collections), `bareaga-${selectedCollection?.id ?? "archive"}.csv`, "text/csv;charset=utf-8");
+    download(archiveToCsv(exportItems, data.collections), `coeus-${selectedCollection?.id ?? "archive"}.csv`, "text/csv;charset=utf-8");
     setShareNotice("CSV exported for Notion");
   };
 
@@ -239,7 +239,7 @@ export function ArchiveApp() {
   const exportArchiveJson = async () => {
     try {
       const response = await requestJson("/api/archive/export");
-      download(await response.text(), "bareaga-archive.json", "application/json;charset=utf-8");
+      download(await response.text(), "coeus-archive.json", "application/json;charset=utf-8");
       setShareNotice("Lossless archive export downloaded");
     } catch (error) { setShareNotice(error instanceof Error ? error.message : "Archive export failed"); }
   };
