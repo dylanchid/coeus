@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
-function requiredEnvironment(name: string, fallback?: string): string {
+export function requiredEnvironment(name: string, fallback?: string): string {
   const value = process.env[name] ?? (fallback ? process.env[fallback] : undefined);
   if (!value) throw new Error(`Missing required server configuration: ${name}`);
   return value;

@@ -147,6 +147,26 @@
 .archive-empty p { margin: 0; font: 600 1.35rem var(--font-display); }
 .archive-empty span { color: var(--muted); font-size: 0.78rem; }
 
+/* —— Destinations panel (Obsidian/GitHub, Notion sync) —— */
+.destinations-panel { gap: 1.1rem; }
+.destination-card { display: grid; gap: 0.5rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--line); }
+.destination-card:last-child { padding-bottom: 0; border-bottom: 0; }
+.destination-card-head { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; font-weight: 600; }
+.destination-status { padding: 0.15rem 0.5rem; border: 1px solid var(--line); color: var(--muted); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.destination-status.is-active { border-color: var(--accent); color: var(--accent); }
+.destination-status.is-auth_error { border-color: #a33232; color: #a33232; }
+.destination-card > a { color: var(--link); font-size: 0.7rem; }
+.destination-failures summary { color: var(--link); font-size: 0.66rem; cursor: pointer; }
+.destination-failures ul { display: grid; gap: 0.35rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.destination-failure { display: grid; gap: 0.15rem; font-size: 0.68rem; }
+.destination-failure > span { font-family: var(--font-mono, monospace); color: var(--fg); }
+.destination-failure > small { color: var(--muted); }
+.destination-failure.is-failed_auth > small { color: #a33232; }
+.destination-connect-form { display: grid; gap: 0.45rem; }
+.destination-connect-form label { color: var(--muted); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.destination-connect-form input { width: 100%; border: 1px solid var(--line); border-radius: 0; padding: 0.45rem; background: transparent; color: var(--fg); font: 0.74rem var(--font); }
+.destination-connect-form div { display: flex; gap: 0.8rem; }
+
 /* —— Archive library redesign —— */
 .archive-page {
   --archive-soft: color-mix(in srgb, var(--fg) 4%, transparent);

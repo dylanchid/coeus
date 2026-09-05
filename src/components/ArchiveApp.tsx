@@ -17,6 +17,7 @@ import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archi
 import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
 import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
 import { ExternalLinkHint } from "./ExternalLinkHint";
+import { DestinationsPanel } from "./DestinationsPanel";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
 type Sort = "newest" | "oldest" | "title";
@@ -421,6 +422,7 @@ export function ArchiveApp() {
                 <button type="button" className="archive-danger" disabled={recoveryBusy} onClick={() => void deleteAccount()}>Delete cloud account…</button>
               </div>
             </details>
+            <DestinationsPanel onNotice={setShareNotice} />
           </aside>
 
           <section className="archive-main" aria-label="Saved pieces">
