@@ -34,7 +34,14 @@ function summary(row: Record<string, unknown>): ContentSnapshotSummary {
 }
 
 export class SupabaseArchiveRecoveryStore implements ArchiveRecoveryStore {
-  constructor(private readonly supabase: SupabaseClient) {}
+  // Not a TS parameter-property shorthand: that construct breaks any test file
+  // that imports this module under node --experimental-strip-types. See
+  // archiveSyncStore.server.ts, which follows the same explicit-field pattern.
+  private readonly supabase: SupabaseClient;
+
+  constructor(supabase: SupabaseClient) {
+    this.supabase = supabase;
+  }
 
   async export(ownerId: string) {
     const archive = await this.archive(ownerId);
