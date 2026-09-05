@@ -15,12 +15,22 @@ import {
 test("catalog ids are unique and every source has discovery metadata", () => {
   const ids = catalogSourceIds();
   assert.equal(new Set(ids).size, ids.length);
-  assert.ok(SOURCE_CATALOG.length >= 50);
+  assert.ok(SOURCE_CATALOG.length >= 100);
   for (const source of SOURCE_CATALOG) {
     assert.ok(source.name && source.homeUrl && source.feedUrl && source.description);
     assert.ok(source.topics.length > 0);
     assert.ok(source.tags.length > 0);
   }
+});
+
+test("culture, arts, and history are substantial first-class collections", () => {
+  const counts = Object.groupBy(SOURCE_CATALOG, (source) => source.topic);
+  assert.ok(counts.culture.length >= 20);
+  assert.ok(counts.arts.length >= 25);
+  assert.ok(counts.history.length >= 12);
+  assert.ok(counts.arts.some((source) => source.sourceType === "primary-source"));
+  assert.ok(counts.history.some((source) => source.sourceType === "primary-source"));
+  assert.ok(counts.history.some((source) => source.sourceType === "research"));
 });
 
 test("catalog expansion does not silently enable new sources", () => {
