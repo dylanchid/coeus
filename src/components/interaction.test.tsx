@@ -45,8 +45,13 @@ const { DestinationsPanel } = await import("./DestinationsPanel");
 const { AuthProvider } = await import("./AuthProvider");
 const { SignInPanel } = await import("./SignInPanel");
 const { WelcomeForm } = await import("./WelcomeForm");
+const { AccountMenu } = await import("./AccountMenu");
+const { ChromeProvider, useChrome } = await import("./ChromeProvider");
 const { AppRouterContext } = await import(
   "next/dist/shared/lib/app-router-context.shared-runtime"
+);
+const { PathnameContext } = await import(
+  "next/dist/shared/lib/hooks-client-context.shared-runtime"
 );
 const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
 
@@ -270,9 +275,10 @@ test("Sources category hub reports category selection and exposes its selected s
 // —— Auth: sign-in + onboarding ——————————————————————————————————————————
 
 type OAuthCall = { provider: string; options?: { redirectTo?: string } };
+type FakeSession = { user: { id: string; email: string | null; user_metadata?: Record<string, unknown> } } | null;
 
 /** In-memory stand-in for the slice of the Supabase client AuthProvider touches. */
-function fakeAuthClient(session: { user: { id: string; email: string | null } } | null, oauthCalls: OAuthCall[] = []) {
+function fakeAuthClient(session: FakeSession, oauthCalls: OAuthCall[] = [], signOutCalls: number[] = []) {
   return {
     auth: {
       getSession: async () => ({ data: { session } }),
@@ -281,12 +287,15 @@ function fakeAuthClient(session: { user: { id: string; email: string | null } } 
         oauthCalls.push(options);
         return { error: null };
       },
-      signOut: async () => ({ error: null }),
+      signOut: async () => {
+        signOutCalls.push(1);
+        return { error: null };
+      },
     },
   };
 }
 
-function renderWithRouter(ui: React.ReactElement) {
+function renderWithRouter(ui: React.ReactElement, pathname = "/archive") {
   const router = {
     push: test.mock.fn(),
     replace: test.mock.fn(),
@@ -295,7 +304,11 @@ function renderWithRouter(ui: React.ReactElement) {
     forward: test.mock.fn(),
     prefetch: test.mock.fn(),
   };
-  const view = render(<AppRouterContext.Provider value={router as never}>{ui}</AppRouterContext.Provider>);
+  const view = render(
+    <AppRouterContext.Provider value={router as never}>
+      <PathnameContext.Provider value={pathname}>{ui}</PathnameContext.Provider>
+    </AppRouterContext.Provider>,
+  );
   return { router, ...view };
 }
 
@@ -398,4 +411,63 @@ test("Welcome form applies the saved profile and routes onward", async () => {
   fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Ada" } });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   await waitFor(() => assert.equal(router.replace.mock.calls.at(-1)?.arguments[0], "/archive"));
+});
+
+// —— Header account menu ————————————————————————————————————————————————
+
+function ChromeProbe() {
+  const { settingsOpen } = useChrome();
+  return <span data-testid="settings-open">{String(settingsOpen)}</span>;
+}
+
+function renderAccountMenu(session: FakeSession, profile: unknown, signOutCalls: number[] = []) {
+  stubFetch((url) =>
+    url.endsWith("/api/account/profile")
+      ? new Response(JSON.stringify({ profile }), { status: 200 })
+      : new Response(null, { status: 204 }),
+  );
+  return renderWithRouter(
+    <AuthProvider client={fakeAuthClient(session, [], signOutCalls) as never}>
+      <ChromeProvider>
+        <ChromeProbe />
+        <AccountMenu />
+      </ChromeProvider>
+    </AuthProvider>,
+  );
+}
+
+test("Account menu shows a Log in link with the return path when signed out", async () => {
+  renderAccountMenu(null, null);
+  const link = await screen.findByRole("link", { name: "Log in" });
+  assert.equal(link.getAttribute("href"), "/signin?next=%2Farchive");
+});
+
+test("Account menu shows the handle and opens Settings / Edit profile / Sign out", async () => {
+  const profile = { id: "u1", handle: "theman", displayName: "bareaga", bio: "Traveller", createdAt: "t", updatedAt: "t" };
+  const signOutCalls: number[] = [];
+  renderAccountMenu({ user: { id: "u1", email: "u1@example.com" } }, profile, signOutCalls);
+
+  const trigger = await screen.findByRole("button", { name: /@theman/ });
+  assert.equal(screen.queryByRole("menu"), null);
+
+  fireEvent.click(trigger);
+  const menu = await screen.findByRole("menu", { name: "Account" });
+  assert.ok(menu);
+  assert.ok(screen.getByRole("menuitem", { name: "Edit profile" }));
+  assert.ok(screen.getByRole("menuitem", { name: "Settings" }));
+
+  fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+  assert.equal(screen.getByTestId("settings-open").textContent, "true");
+  assert.equal(screen.queryByRole("menu"), null); // menu closes on selection
+
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
+  await waitFor(() => assert.equal(signOutCalls.length, 1));
+});
+
+test("Account menu prompts an onboarding-incomplete account to finish its profile", async () => {
+  renderAccountMenu({ user: { id: "u1", email: "u1@example.com", user_metadata: { user_name: "octocat" } } }, null);
+  const trigger = await screen.findByRole("button", { name: /octocat/ });
+  fireEvent.click(trigger);
+  assert.ok(await screen.findByRole("menuitem", { name: "Finish your profile" }));
 });

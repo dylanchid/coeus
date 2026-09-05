@@ -139,6 +139,110 @@
 
 .chrome-btn-mobile-label { display: none; }
 
+/* —— Account control (header) —— */
+.account-slot {
+  display: inline-block;
+  min-height: 44px;
+  min-width: 3.5rem;
+}
+
+.account-signin {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--header-rule);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.account-trigger:hover,
+.account-trigger[aria-expanded="true"] {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.account-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  background-color: var(--settings-bg);
+  background-size: cover;
+  background-position: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.account-name {
+  max-width: 10rem;
+  overflow: hidden;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-caret {
+  font-size: 0.65rem;
+}
+
+.account-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  z-index: 40;
+  display: grid;
+  min-width: 12rem;
+  border: 1px solid var(--settings-border);
+  background: var(--settings-bg);
+}
+
+.account-dropdown button {
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-dropdown button:last-child {
+  border-bottom: 0;
+}
+
+.account-dropdown button:hover,
+.account-dropdown button:focus-visible {
+  background: var(--fg);
+  color: var(--bg);
+  outline: none;
+}
+
+.account-dropdown .account-signout {
+  color: var(--error);
+}
+
 .persistence-status {
   margin: 0.45rem 0 0;
   color: var(--muted);

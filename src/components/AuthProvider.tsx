@@ -17,6 +17,10 @@ export type AuthStatus = "loading" | "signed-out" | "needs-profile" | "ready";
 export interface AuthUser {
   id: string;
   email: string | null;
+  /** Provider display name (GitHub `user_name`, Google `full_name`, …); shown until the profile handle loads. */
+  name: string | null;
+  /** Provider avatar URL, or null when the provider gave none / it wasn't https. */
+  avatarUrl: string | null;
 }
 
 interface AuthContextValue {
@@ -48,7 +52,7 @@ export interface AuthClientLike {
 }
 
 interface SessionLike {
-  user: { id: string; email?: string | null } | null;
+  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> | null } | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -60,6 +64,18 @@ function resolveClient(injected?: AuthClientLike): AuthClientLike | null {
   } catch {
     return null;
   }
+}
+
+function toAuthUser(user: NonNullable<SessionLike["user"]>): AuthUser {
+  const meta = user.user_metadata ?? {};
+  const str = (key: string): string | null => (typeof meta[key] === "string" ? (meta[key] as string) : null);
+  const avatar = str("avatar_url") ?? str("picture");
+  return {
+    id: user.id,
+    email: user.email ?? null,
+    name: str("user_name") ?? str("preferred_username") ?? str("full_name") ?? str("name"),
+    avatarUrl: avatar && avatar.startsWith("https://") ? avatar : null,
+  };
 }
 
 export function AuthProvider({
@@ -77,8 +93,8 @@ export function AuthProvider({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  const loadProfile = useCallback(async (nextUser: AuthUser | null) => {
-    if (!nextUser) {
+  const loadProfile = useCallback(async (signedIn: boolean) => {
+    if (!signedIn) {
       setProfile(null);
       setStatus("signed-out");
       return;
@@ -106,11 +122,8 @@ export function AuthProvider({
 
     const applySession = (session: SessionLike | null) => {
       if (!active) return;
-      const nextUser: AuthUser | null = session?.user
-        ? { id: session.user.id, email: session.user.email ?? null }
-        : null;
-      setUser(nextUser);
-      void loadProfile(nextUser);
+      setUser(session?.user ? toAuthUser(session.user) : null);
+      void loadProfile(Boolean(session?.user));
     };
 
     void supabase.auth.getSession().then(({ data }) => applySession(data.session));
@@ -151,7 +164,7 @@ export function AuthProvider({
   }, [supabase]);
 
   const refreshProfile = useCallback(async () => {
-    await loadProfile(user);
+    await loadProfile(Boolean(user));
   }, [loadProfile, user]);
 
   const applyProfile = useCallback((next: Profile) => {
