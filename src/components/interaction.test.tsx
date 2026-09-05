@@ -42,6 +42,12 @@ const { ShareSheet } = await import("./ShareSheet");
 const { AlreadyArchivedButton, PreviewFollowButton } = await import("./DiscoverPreviewControls");
 const { SourcesCategoryHub } = await import("./DiscoverSourcesApp");
 const { DestinationsPanel } = await import("./DestinationsPanel");
+const { AuthProvider } = await import("./AuthProvider");
+const { SignInPanel } = await import("./SignInPanel");
+const { WelcomeForm } = await import("./WelcomeForm");
+const { AppRouterContext } = await import(
+  "next/dist/shared/lib/app-router-context.shared-runtime"
+);
 const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
 
 const defaultFetch = globalThis.fetch;
@@ -259,4 +265,137 @@ test("Sources category hub reports category selection and exposes its selected s
   assert.equal(activeAiCategory.getAttribute("aria-pressed"), "true");
   fireEvent.click(activeAiCategory);
   assert.deepEqual(select.mock.calls[1].arguments, ["all"]);
+});
+
+// —— Auth: sign-in + onboarding ——————————————————————————————————————————
+
+type OAuthCall = { provider: string; options?: { redirectTo?: string } };
+
+/** In-memory stand-in for the slice of the Supabase client AuthProvider touches. */
+function fakeAuthClient(session: { user: { id: string; email: string | null } } | null, oauthCalls: OAuthCall[] = []) {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+      signInWithOAuth: async (options: OAuthCall) => {
+        oauthCalls.push(options);
+        return { error: null };
+      },
+      signOut: async () => ({ error: null }),
+    },
+  };
+}
+
+function renderWithRouter(ui: React.ReactElement) {
+  const router = {
+    push: test.mock.fn(),
+    replace: test.mock.fn(),
+    refresh: test.mock.fn(),
+    back: test.mock.fn(),
+    forward: test.mock.fn(),
+    prefetch: test.mock.fn(),
+  };
+  const view = render(<AppRouterContext.Provider value={router as never}>{ui}</AppRouterContext.Provider>);
+  return { router, ...view };
+}
+
+/** Routes every fetch call to `handler(url, method)`. */
+function stubFetch(handler: (url: string, method: string) => Response | Promise<Response>) {
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    return handler(url, (init?.method ?? "GET").toUpperCase());
+  }) as typeof fetch;
+}
+
+test("Sign-in panel hands each provider button off to Supabase OAuth with a callback redirect", async () => {
+  const calls: OAuthCall[] = [];
+  render(
+    <AuthProvider client={fakeAuthClient(null, calls) as never}>
+      <SignInPanel next="/archive" />
+    </AuthProvider>,
+  );
+
+  fireEvent.click(await screen.findByRole("button", { name: "Continue with GitHub" }));
+  await waitFor(() => assert.equal(calls.length, 1));
+  assert.equal(calls[0].provider, "github");
+  assert.match(calls[0].options?.redirectTo ?? "", /\/auth\/callback\?next=%2Farchive$/);
+});
+
+test("Sign-in panel is inert when no auth client can be constructed", async () => {
+  render(
+    <AuthProvider>
+      <SignInPanel />
+    </AuthProvider>,
+  );
+  const github = await screen.findByRole("button", { name: "Continue with GitHub" });
+  assert.equal(github.hasAttribute("disabled"), true);
+  assert.ok(screen.getByText(/isn’t configured in this environment/));
+});
+
+test("Welcome form shows the onboarding form for a signed-in account with no profile", async () => {
+  stubFetch((url, method) =>
+    url.endsWith("/api/account/profile") && method === "GET"
+      ? new Response(JSON.stringify({ profile: null }), { status: 200 })
+      : new Response(null, { status: 404 }),
+  );
+  renderWithRouter(
+    <AuthProvider client={fakeAuthClient({ user: { id: "u1", email: "ada@example.com" } }) as never}>
+      <WelcomeForm next="/archive" />
+    </AuthProvider>,
+  );
+  assert.ok(await screen.findByRole("heading", { name: "Choose your handle" }));
+});
+
+test("Welcome form blocks an invalid handle before it reaches the API", async () => {
+  let puts = 0;
+  stubFetch((url, method) => {
+    if (url.endsWith("/api/account/profile") && method === "PUT") puts += 1;
+    return new Response(JSON.stringify({ profile: null }), { status: 200 });
+  });
+  renderWithRouter(
+    <AuthProvider client={fakeAuthClient({ user: { id: "u1", email: null } }) as never}>
+      <WelcomeForm />
+    </AuthProvider>,
+  );
+  fireEvent.change(await screen.findByLabelText("Handle"), { target: { value: "no" } });
+  fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Ada" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  assert.ok(await screen.findByText(/and underscores only/));
+  assert.equal(puts, 0);
+});
+
+test("Welcome form surfaces a taken handle returned by the API as a field error", async () => {
+  stubFetch((url, method) => {
+    if (method === "PUT") {
+      return new Response(JSON.stringify({ error: "That handle is already taken.", field: "handle" }), { status: 409 });
+    }
+    return new Response(JSON.stringify({ profile: null }), { status: 200 });
+  });
+  renderWithRouter(
+    <AuthProvider client={fakeAuthClient({ user: { id: "u1", email: null } }) as never}>
+      <WelcomeForm />
+    </AuthProvider>,
+  );
+  fireEvent.change(await screen.findByLabelText("Handle"), { target: { value: "taken" } });
+  fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Ada Impostor" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  assert.ok(await screen.findByText("That handle is already taken."));
+});
+
+test("Welcome form applies the saved profile and routes onward", async () => {
+  const saved = { id: "u1", handle: "ada", displayName: "Ada", bio: null, createdAt: "t", updatedAt: "t" };
+  stubFetch((_url, method) =>
+    method === "PUT"
+      ? new Response(JSON.stringify({ profile: saved }), { status: 200 })
+      : new Response(JSON.stringify({ profile: null }), { status: 200 }),
+  );
+  const { router } = renderWithRouter(
+    <AuthProvider client={fakeAuthClient({ user: { id: "u1", email: null } }) as never}>
+      <WelcomeForm next="/archive" />
+    </AuthProvider>,
+  );
+  fireEvent.change(await screen.findByLabelText("Handle"), { target: { value: "ada" } });
+  fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Ada" } });
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await waitFor(() => assert.equal(router.replace.mock.calls.at(-1)?.arguments[0], "/archive"));
 });

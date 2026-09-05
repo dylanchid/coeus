@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export type AppSection = "reader" | "sources" | "discover" | "archive" | "about";
+export type AppSection = "reader" | "sources" | "discover" | "archive" | "about" | "account";
 
 export const SECTION_LABELS: Record<AppSection, string> = {
   reader: "Reader",
@@ -8,6 +8,7 @@ export const SECTION_LABELS: Record<AppSection, string> = {
   discover: "Discover",
   archive: "Archive",
   about: "About",
+  account: "Account",
 };
 
 const LINKS: { id: AppSection; href: string; label: string }[] = [

@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { getPrefsStore } from "@/lib/prefs";
+import { AuthProvider } from "./AuthProvider";
 import { ChromeProvider } from "./ChromeProvider";
 import { SyncedArchiveRepository } from "@/lib/syncedArchiveRepository";
 import { configureArchiveRepository } from "@/lib/archiveRepository";
@@ -147,11 +148,13 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   const prefsValue = useMemo(() => ({ prefs, updatePrefs, persistence: prefsPersistence, retryPersistence: retryPrefsPersistence }), [prefs, updatePrefs, prefsPersistence, retryPrefsPersistence]);
   const archiveValue = useMemo(() => ({ archive, updateArchive, sync, persistence: archivePersistence, retryPersistence: retryArchivePersistence, replaceArchiveFromServer }), [archive, updateArchive, sync, archivePersistence, retryArchivePersistence, replaceArchiveFromServer]);
   return (
-    <PreferencesContext.Provider value={prefsValue}>
-      <ArchiveContext.Provider value={archiveValue}>
-        <ChromeProvider>{children}</ChromeProvider>
-      </ArchiveContext.Provider>
-    </PreferencesContext.Provider>
+    <AuthProvider>
+      <PreferencesContext.Provider value={prefsValue}>
+        <ArchiveContext.Provider value={archiveValue}>
+          <ChromeProvider>{children}</ChromeProvider>
+        </ArchiveContext.Provider>
+      </PreferencesContext.Provider>
+    </AuthProvider>
   );
 }
 
