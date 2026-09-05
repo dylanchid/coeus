@@ -31,8 +31,8 @@ export function SiteHeader({
   /** Optional muted line under the header bar (Reader's "Updated…" status). */
   subline?: ReactNode;
 }) {
-  const { prefs, updatePrefs } = usePreferences();
-  const { archive } = useArchive();
+  const { prefs, updatePrefs, persistence: prefsPersistence, retryPersistence: retryPrefs } = usePreferences();
+  const { archive, persistence: archivePersistence, retryPersistence: retryArchive } = useArchive();
   const chrome = useChrome();
   const router = useRouter();
 
@@ -76,6 +76,17 @@ export function SiteHeader({
   }, [prefs, slashOpen, toggleSlash, openSlash, toggleSettings]);
 
   const archiveCount = archive?.items.length ?? undefined;
+  const persistenceError = prefsPersistence.status === "error"
+    ? prefsPersistence.message
+    : archivePersistence.status === "error"
+      ? archivePersistence.message
+      : null;
+  const saving = prefsPersistence.status === "saving" || archivePersistence.status === "saving";
+
+  const retryPersistence = () => {
+    if (prefsPersistence.status === "error") retryPrefs();
+    if (archivePersistence.status === "error") void retryArchive();
+  };
 
   return (
     <header className="site-header">
@@ -102,7 +113,8 @@ export function SiteHeader({
                 title="Slash menu (/ or ⌘K)"
                 onClick={toggleSlash}
               >
-                /
+                <span aria-hidden="true">/</span>
+                <span className="chrome-btn-mobile-label">Commands</span>
               </button>
               <button
                 type="button"
@@ -140,6 +152,13 @@ export function SiteHeader({
       </div>
 
       {subline ? <p className="site-subline">{subline}</p> : null}
+      {persistenceError ? (
+        <p className="persistence-status is-error" role="alert">
+          {persistenceError} <button type="button" onClick={retryPersistence}>Retry</button>
+        </p>
+      ) : saving ? (
+        <p className="persistence-status" role="status">Saving changes…</p>
+      ) : null}
     </header>
   );
 }

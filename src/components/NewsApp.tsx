@@ -271,6 +271,13 @@ export function NewsApp() {
         : prefs.homeView === "focus"
           ? "Focus"
           : "Ranked";
+  const viewExplanation = prefs.homeView === "grid"
+    ? "Grid groups stories by source in your chosen source order."
+    : prefs.homeView === "top"
+      ? "Top rotates recent stories across categories and sources without a popularity score."
+      : prefs.homeView === "focus"
+        ? "Focus orders every story by published time, newest first."
+        : "Ranked uses only your explicit keyword and source preferences, with score details available per story.";
 
   return (
     <AppShell
@@ -388,6 +395,10 @@ export function NewsApp() {
           </button>
         </nav>
         </div>
+        <details className="reader-view-guide">
+          <summary>What does {viewLabel} do?</summary>
+          <p>{viewExplanation}</p>
+        </details>
       </div>
 
       <p className="feed-status" role="status" aria-live="polite" aria-atomic="true">

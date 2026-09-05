@@ -42,7 +42,7 @@ export type SlashItem = {
   hint?: string;
   /** Shown when the query is empty */
   primary?: boolean;
-  run: () => void;
+  run: () => void | Promise<void>;
 };
 
 /** Feed-specific slash commands, present only while the Reader is mounted. */

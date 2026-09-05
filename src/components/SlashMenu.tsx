@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import {
   buildSlashItems,
   filterSlashItems,
@@ -28,9 +29,13 @@ type Props = {
 export function SlashMenu({ open, onClose, context }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [error, setError] = useState("");
+
+  useModalDialog({ active: open, containerRef: dialogRef, initialFocusRef: inputRef, onClose });
 
   // Build every open render so command handlers always see latest prefs/actions
   const items = useMemo(
@@ -50,6 +55,7 @@ export function SlashMenu({ open, onClose, context }: Props) {
     const t = window.setTimeout(() => {
       setQuery("");
       setActiveIndex(0);
+      setError("");
       inputRef.current?.focus();
       inputRef.current?.select();
     }, 0);
@@ -83,17 +89,15 @@ export function SlashMenu({ open, onClose, context }: Props) {
   }, [activeIndex, open, flat.length]);
 
   const runItem = useCallback(
-    (item: RankedSlashItem | undefined) => {
+    async (item: RankedSlashItem | undefined) => {
       if (!item) return;
-      onClose();
-      // Defer so close + focus transitions settle
-      window.setTimeout(() => {
-        try {
-          item.run();
-        } catch {
-          // ignore command failures
-        }
-      }, 0);
+      setError("");
+      try {
+        await item.run();
+        onClose();
+      } catch {
+        setError(`“${item.label}” failed. Try again or use the corresponding page control.`);
+      }
     },
     [onClose]
   );
@@ -101,12 +105,10 @@ export function SlashMenu({ open, onClose, context }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        onClose();
-        return;
-      }
+      if (!dialogRef.current?.contains(e.target as Node)) return;
+      const target = e.target as HTMLElement;
+      const handlesCommandKeys = target === inputRef.current || Boolean(target.closest("[role='option']"));
+      if (!handlesCommandKeys) return;
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setActiveIndex((i) =>
@@ -133,22 +135,12 @@ export function SlashMenu({ open, onClose, context }: Props) {
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        runItem(flat[activeIndex]);
+        void runItem(flat[activeIndex]);
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, flat, activeIndex, onClose, runItem]);
-
-  // Body scroll lock
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
 
   if (!open) return null;
 
@@ -163,16 +155,20 @@ export function SlashMenu({ open, onClose, context }: Props) {
       }}
     >
       <div
+        ref={dialogRef}
         className="slash-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={error ? `${titleId}-error` : undefined}
+        tabIndex={-1}
       >
         <header className="slash-head">
           <h2 id={titleId}>Slash menu</h2>
-          <span className="slash-head-meta">
-            <kbd>↑↓</kbd> move · <kbd>↵</kbd> run · <kbd>esc</kbd>
-          </span>
+          <div className="slash-head-actions">
+            <span className="slash-head-meta"><kbd>↑↓</kbd> move · <kbd>↵</kbd> run</span>
+            <button type="button" className="slash-close" onClick={onClose} aria-label="Close commands">×</button>
+          </div>
         </header>
 
         <div className="slash-input-row">
@@ -183,6 +179,7 @@ export function SlashMenu({ open, onClose, context }: Props) {
             ref={inputRef}
             className="slash-input"
             type="text"
+            role="combobox"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -192,6 +189,7 @@ export function SlashMenu({ open, onClose, context }: Props) {
             autoComplete="off"
             spellCheck={false}
             aria-autocomplete="list"
+            aria-expanded="true"
             aria-controls="slash-results"
             aria-activedescendant={
               flat[activeIndex]
@@ -224,15 +222,17 @@ export function SlashMenu({ open, onClose, context }: Props) {
           {groups.length === 0 ? (
             <p className="slash-empty">No matches for “{query.trim()}”.</p>
           ) : (
-            groups.map(({ group, items: groupItems }) => (
-              <section key={group} className="slash-group">
-                <h3 className="slash-group-label">{group}</h3>
-                <ul className="slash-list">
+            groups.map(({ group, items: groupItems }) => {
+              const groupId = `${titleId}-${group.toLowerCase()}`;
+              return (
+              <section key={group} className="slash-group" role="group" aria-labelledby={groupId}>
+                <h3 id={groupId} className="slash-group-label">{group}</h3>
+                <ul className="slash-list" role="presentation">
                   {groupItems.map((item) => {
                     const index = runningIndex++;
                     const active = index === activeIndex;
                     return (
-                      <li key={item.id}>
+                      <li key={item.id} role="presentation">
                         <button
                           type="button"
                           id={`slash-item-${item.id}`}
@@ -241,7 +241,7 @@ export function SlashMenu({ open, onClose, context }: Props) {
                           data-slash-index={index}
                           className={`slash-item${active ? " is-active" : ""}`}
                           onMouseEnter={() => setActiveIndex(index)}
-                          onClick={() => runItem(item)}
+                          onClick={() => void runItem(item)}
                         >
                           <span className="slash-item-label">{item.label}</span>
                           {item.hint ? (
@@ -253,9 +253,11 @@ export function SlashMenu({ open, onClose, context }: Props) {
                   })}
                 </ul>
               </section>
-            ))
+            );})
           )}
         </div>
+
+        {error ? <p id={`${titleId}-error`} className="slash-error" role="alert">{error}</p> : null}
 
         <footer className="slash-foot">
           <span>

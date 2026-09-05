@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { formatEngagement } from "@/lib/engagement";
 import type { Article, SourceFeed } from "@/lib/types";
+import { ExternalLinkHint } from "./ExternalLinkHint";
 
 type Props = {
   source: SourceFeed;
@@ -37,7 +38,7 @@ function EngagementChip({
         title="Discussion"
       >
         {" "}
-        {label}
+        {label}<ExternalLinkHint />
       </a>
     );
   }
@@ -133,7 +134,7 @@ function SourceColumnInner({
         <h3>
           {source.homeUrl ? (
             <a href={source.homeUrl} target="_blank" rel="noreferrer">
-              {source.name}
+              {source.name}<ExternalLinkHint />
             </a>
           ) : (
             source.name
@@ -174,7 +175,7 @@ function SourceColumnInner({
         {source.articles.map((a) => (
           <li key={a.id}>
             <a href={a.url} target="_blank" rel="noreferrer">
-              {q ? highlight(a.title, q) : a.title}
+              {q ? highlight(a.title, q) : a.title}<ExternalLinkHint />
             </a>
             {showAges && a.ageLabel ? (
               <span className="age"> [{a.ageLabel}]</span>
@@ -185,16 +186,21 @@ function SourceColumnInner({
             {showEngagement && a.engagement ? (
               <EngagementChip engagement={a.engagement} />
             ) : null}
-            <button
-              type="button"
-              className="story-save"
-              aria-pressed={savedArticleIds.has(a.id)}
-              onClick={() => onSave(a, source.name, source.topic)}
-              disabled={savedArticleIds.has(a.id)}
-            >
-              {savedArticleIds.has(a.id) ? "saved" : "+ save"}
-            </button>
-            <button type="button" className="story-save" onClick={() => onShare(a, source.name, source.topic)}>share ↗</button>
+            <details className="story-actions">
+              <summary>Actions</summary>
+              <span>
+                <button
+                  type="button"
+                  className="story-save"
+                  aria-pressed={savedArticleIds.has(a.id)}
+                  onClick={() => onSave(a, source.name, source.topic)}
+                  disabled={savedArticleIds.has(a.id)}
+                >
+                  {savedArticleIds.has(a.id) ? "saved" : "+ save"}
+                </button>
+                <button type="button" className="story-save" onClick={() => onShare(a, source.name, source.topic)}>share ↗</button>
+              </span>
+            </details>
             {showSummaries && a.summary ? (
               <p className="summary">
                 {q ? highlight(a.summary, q) : a.summary}

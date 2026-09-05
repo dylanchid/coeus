@@ -10,6 +10,7 @@ import type {
   SourceFeed,
   StoryRepresentationId,
 } from "@/lib/types";
+import { ExternalLinkHint } from "./ExternalLinkHint";
 
 type Story = {
   key: string;
@@ -188,7 +189,7 @@ function StoryFeedInner({
               <div className="story-meta">
                 {story.sourceHomeUrl ? (
                   <a href={story.sourceHomeUrl} target="_blank" rel="noreferrer">
-                    {story.sourceName}
+                    {story.sourceName}<ExternalLinkHint />
                   </a>
                 ) : (
                   <span>{story.sourceName}</span>
@@ -208,18 +209,21 @@ function StoryFeedInner({
                   <>
                     <span aria-hidden="true"> · </span>
                     <strong className="story-score">Score {story.score ?? 0}</strong>
-                    {(story.reasons ?? []).map((reason, index) => (
-                      <span key={`${reason.label}:${index}`}>
-                        <span aria-hidden="true"> · </span>
-                        {reason.label} {reason.points > 0 ? "+" : ""}{reason.points}
-                      </span>
-                    ))}
+                    <details className="story-rank-details">
+                      <summary>Why this score</summary>
+                      <span>{(story.reasons ?? []).map((reason, index) => (
+                        <span key={`${reason.label}:${index}`}>
+                          {index ? <span aria-hidden="true"> · </span> : null}
+                          {reason.label} {reason.points > 0 ? "+" : ""}{reason.points}
+                        </span>
+                      ))}</span>
+                    </details>
                   </>
                 ) : null}
               </div>
               <h2 className="story-title">
                 <a href={story.article.url} target="_blank" rel="noreferrer">
-                  {highlight(story.article.title, highlightTerms)}
+                  {highlight(story.article.title, highlightTerms)}<ExternalLinkHint />
                 </a>
               </h2>
               {detailed && story.article.summary ? (
@@ -227,16 +231,21 @@ function StoryFeedInner({
                   {highlight(story.article.summary, highlightTerms)}
                 </p>
               ) : null}
-              <button
-                type="button"
-                className="story-save"
-                aria-pressed={savedArticleIds.has(story.article.id)}
-                onClick={() => onSave(story.article, story.sourceName, story.sourceTopic)}
-                disabled={savedArticleIds.has(story.article.id)}
-              >
-                {savedArticleIds.has(story.article.id) ? "saved to archive" : "+ save to archive"}
-              </button>
-              <button type="button" className="story-save" onClick={() => onShare(story.article, story.sourceName, story.sourceTopic)}>share ↗</button>
+              <details className="story-actions">
+                <summary>Actions</summary>
+                <span>
+                  <button
+                    type="button"
+                    className="story-save"
+                    aria-pressed={savedArticleIds.has(story.article.id)}
+                    onClick={() => onSave(story.article, story.sourceName, story.sourceTopic)}
+                    disabled={savedArticleIds.has(story.article.id)}
+                  >
+                    {savedArticleIds.has(story.article.id) ? "saved to archive" : "+ save to archive"}
+                  </button>
+                  <button type="button" className="story-save" onClick={() => onShare(story.article, story.sourceName, story.sourceTopic)}>share ↗</button>
+                </span>
+              </details>
             </li>
           );
         })}

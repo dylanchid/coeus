@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ExternalLinkHint } from "./ExternalLinkHint";
 
 export function SiteFooter({ note }: { note?: ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export function SiteFooter({ note }: { note?: ReactNode }) {
           Standalone RSS reader, inspired by{" "}
           <a href="https://brutalist.report/" target="_blank" rel="noreferrer">
             brutalist.report
+            <ExternalLinkHint />
           </a>
           . Not affiliated.
         </p>

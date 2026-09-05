@@ -137,6 +137,26 @@
   text-transform: none;
 }
 
+.chrome-btn-mobile-label { display: none; }
+
+.persistence-status {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+
+.persistence-status.is-error { color: var(--error); }
+.persistence-status button {
+  min-height: 44px;
+  padding: 0 0.35rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 /* —— Shared page hero —— */
 .page-hero {
   padding: var(--space-lg) 0 var(--space-xl);
@@ -215,7 +235,7 @@
 
 /* —— Shared boxed-button idiom —— */
 .btn {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0.4rem 0.7rem;
   border: 1px solid var(--fg);
   background: transparent;

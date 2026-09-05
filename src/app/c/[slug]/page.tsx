@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { FollowButton } from "@/components/FollowButton";
 import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
+import { ExternalLinkHint } from "@/components/ExternalLinkHint";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function PublicCollectionPage({ params }: { params: Promise
           <ol className="public-collection-list">
             {publication.items.map((item) => (
               <li key={item.itemLocalId}>
-                <h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a></h2>
+                <h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}<ExternalLinkHint /></a></h2>
                 {item.sourceName || item.author ? (
                   <p className="public-collection-meta">
                     {item.sourceName}

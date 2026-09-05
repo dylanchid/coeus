@@ -34,7 +34,8 @@ export default function RootLayout({
   return (
     <html className={fontVariables} lang="en" data-theme="system" data-palette="ink" data-font="mono">
       <body>
-        <AppProviders><main>{children}</main></AppProviders>
+        <a className="skip-link" href="#main-content">Skip to content</a>
+        <AppProviders><main id="main-content" tabIndex={-1}>{children}</main></AppProviders>
       </body>
     </html>
   );

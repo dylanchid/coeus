@@ -6,49 +6,56 @@ import type { SourceDef, UserPrefs } from "@/lib/types";
 import { AddSourceForm } from "./AddSourceForm";
 import { usePreferences } from "./AppProviders";
 import { AppShell } from "./AppShell";
+import { ExternalLinkHint } from "./ExternalLinkHint";
 
-const FEATURED_CATEGORIES = [
-  "all",
-  "AI",
-  "security",
-  "open source",
-  "hardware",
-  "startups",
-  "programming",
-  "world",
-  "US",
-  "politics",
-  "policy",
-  "conflict",
-  "local",
-  "markets",
-  "labor",
-  "energy",
-  "climate",
-  "space",
-  "medicine",
-  "biology",
-  "physics",
-  "culture",
-  "history",
-  "books",
-  "literature",
-  "art",
-  "music",
-  "film",
-  "photography",
-  "architecture",
-  "design",
-  "theater",
-  "dance",
-  "museums",
-  "archives",
-  "archaeology",
-  "ideas",
-  "philosophy",
-  "education",
-  "primary sources",
+const CATEGORY_GROUPS = [
+  { id: "tech", label: "Technology", items: ["AI", "security", "open source", "hardware", "programming"] },
+  { id: "news", label: "News & politics", items: ["world", "US", "politics", "policy", "conflict", "local"] },
+  { id: "business", label: "Business & economy", items: ["markets", "labor", "energy", "startups"] },
+  { id: "science", label: "Science & health", items: ["climate", "space", "medicine", "biology", "physics"] },
+  { id: "culture", label: "Culture", items: ["books", "literature", "music", "film", "ideas"] },
+  { id: "arts", label: "Arts & design", items: ["art", "photography", "architecture", "design", "theater", "dance"] },
+  { id: "history", label: "History", items: ["archaeology", "archives", "museums", "heritage"] },
+  { id: "research", label: "Research", items: ["primary sources", "education", "philosophy", "ideas"] },
 ] as const;
+
+export function SourcesCategoryHub({
+  category,
+  onSelect,
+}: {
+  category: string;
+  onSelect: (category: string) => void;
+}) {
+  return (
+    <nav className="sources-topic-grid" aria-label="Browse sources by category">
+      {CATEGORY_GROUPS.map((group) => (
+        <section className="sources-topic-group" key={group.id} aria-labelledby={`source-topic-${group.id}`}>
+          <h2 id={`source-topic-${group.id}`}>
+            <button
+              type="button"
+              aria-pressed={category === group.id}
+              onClick={() => onSelect(category === group.id ? "all" : group.id)}
+            >
+              {group.label}<span aria-hidden="true">↘</span>
+            </button>
+          </h2>
+          <div>
+            {group.items.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={category === item}
+                onClick={() => onSelect(category === item ? "all" : item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </section>
+      ))}
+    </nav>
+  );
+}
 
 type SortMode = "featured" | "fresh" | "deep" | "undiscovered" | "rated" | "az";
 
@@ -61,6 +68,15 @@ const SORT_OPTIONS: { id: SortMode; label: string }[] = [
   { id: "az", label: "A–Z" },
 ];
 
+const SORT_EXPLANATIONS: Record<SortMode, string> = {
+  featured: "Editorial directory order.",
+  rated: "Your highest-rated sources first.",
+  fresh: "Frequently updated sources first.",
+  deep: "Long-form and analytical sources first.",
+  undiscovered: "Sources not yet in your Reader first.",
+  az: "Source names in alphabetical order.",
+};
+
 function unique(field: (source: SourceDef) => string): string[] {
   return [...new Set(SOURCE_CATALOG.map(field))].sort((a, b) => a.localeCompare(b));
 }
@@ -72,7 +88,9 @@ const SOURCE_TYPES = unique((source) => source.sourceType);
 function matchesCategory(source: SourceDef, category: string): boolean {
   if (category === "all") return true;
   if (category === "primary sources") return source.sourceType === "primary-source";
-  return source.topics.some((topic) => topic.toLowerCase() === category.toLowerCase());
+  const normalizedCategory = category.toLowerCase();
+  return source.topic.toLowerCase() === normalizedCategory
+    || source.topics.some((topic) => topic.toLowerCase() === normalizedCategory);
 }
 
 function compareSources(a: SourceDef, b: SourceDef, sort: SortMode, prefs: UserPrefs) {
@@ -105,6 +123,7 @@ export function SourcesApp() {
   const [region, setRegion] = useState("all");
   const [sourceType, setSourceType] = useState("all");
   const [cadence, setCadence] = useState("all");
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
 
   const updatePrefs = (update: (current: UserPrefs) => UserPrefs) => {
     setSharedPrefs(update);
@@ -172,17 +191,10 @@ export function SourcesApp() {
   return (
     <AppShell section="sources">
       <div className="discover-page">
-      <section className="sources-intro" aria-labelledby="sources-title">
-        <p>Sources for your Reader</p>
-        <h1 id="sources-title">Find publications worth following.</h1>
-        <span>Browse the directory or bring any RSS or Atom feed.</span>
-      </section>
-      <section className="discover-section discover-add" aria-label="Add your own feed">
-        <AddSourceForm prefs={prefs} onChange={setSharedPrefs} />
-      </section>
-      <section className="discover-controls" aria-label="Source filters">
+      <SourcesCategoryHub category={category} onSelect={setCategory} />
+      <section className="discover-toolbar" aria-label="Search and add sources">
         <label className="discover-search">
-          <span>Search the directory</span>
+          <span>Search</span>
           <input
             type="search"
             value={query}
@@ -190,29 +202,31 @@ export function SourcesApp() {
             placeholder="Source, topic, tag, or region"
           />
         </label>
-        <label>
+        <label className="discover-sort">
           <span>Sort</span>
-          <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)}>
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as SortMode)}
+            title={SORT_EXPLANATIONS[sort]}
+          >
             {SORT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
         </label>
+        <AddSourceForm prefs={prefs} onChange={setSharedPrefs} />
       </section>
 
-      <nav className="discover-categories" aria-label="Source categories">
-        {FEATURED_CATEGORIES.map((item) => (
-          <button
-            key={item}
-            type="button"
-            aria-pressed={category === item}
-            onClick={() => setCategory(item)}
-          >
-            {item === "all" ? "All sources" : item}
-          </button>
-        ))}
-      </nav>
+      <button
+        type="button"
+        className="discover-filters-toggle"
+        aria-expanded={advancedFiltersOpen}
+        aria-controls="advanced-source-filters"
+        onClick={() => setAdvancedFiltersOpen((open) => !open)}
+      >
+        Advanced filters{activeFilterCount ? ` · ${activeFilterCount} active` : ""}
+      </button>
 
       <div className="discover-workspace">
-        <aside className="discover-filters">
+        <aside id="advanced-source-filters" className={`discover-filters${advancedFiltersOpen ? " is-open" : ""}`}>
           <div>
             <strong>Filters</strong>
             <span>{activeFilterCount || "—"}</span>
@@ -254,7 +268,7 @@ export function SourcesApp() {
                       </div>
                     </div>
                     <div className="source-directory-meta">
-                      <span className="feed-ready"><i aria-hidden="true" /> RSS configured</span>
+                      <span className="feed-ready"><i aria-hidden="true" /> Feed available</span>
                       <span>{source.cadence} · {source.depth}</span>
                       <label>
                         <span>Your rating</span>
@@ -266,7 +280,7 @@ export function SourcesApp() {
                     </div>
                     <div className="source-directory-actions">
                       <button type="button" className={isEnabled ? "is-added" : undefined} onClick={() => toggleSource(source.id)}>{isEnabled ? "Added ✓" : "+ Add"}</button>
-                      <a href={source.homeUrl} target="_blank" rel="noreferrer">Preview ↗</a>
+                      <a href={source.homeUrl} target="_blank" rel="noreferrer">Preview ↗<ExternalLinkHint /></a>
                     </div>
                   </li>
                 );

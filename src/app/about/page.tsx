@@ -70,7 +70,7 @@ const sections = [
 export default function AboutPage() {
   return (
     <AppShell section="about">
-      <main className="about-page">
+      <div className="about-page">
         <section className="about-hero" aria-labelledby="about-title">
           <p className="about-kicker">About Bareaga</p>
           <h1 id="about-title">A personal front page for the open web.</h1>
@@ -126,7 +126,7 @@ export default function AboutPage() {
             <li>Open formats over locked platforms</li>
           </ul>
         </section>
-      </main>
+      </div>
     </AppShell>
   );
 }

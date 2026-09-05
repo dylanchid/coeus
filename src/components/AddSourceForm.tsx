@@ -99,7 +99,7 @@ export function AddSourceForm({
   return (
     <div className="add-source-form">
       <label>
-        <span>Add your own feed</span>
+        <span>Add your own</span>
         <div className="add-source-row">
           <input
             type="url"
@@ -127,8 +127,7 @@ export function AddSourceForm({
         </div>
       </label>
       <p className="add-source-hint">
-        Paste a Substack, blog, or any RSS/Atom feed URL. Fetches run through
-        the same SSRF-hardened path as built-in sources.
+        Substack, blog, or any RSS/Atom URL — runs through the same SSRF-hardened fetch path as built-in sources.
       </p>
       {error ? (
         <p className="add-source-error" role="alert">

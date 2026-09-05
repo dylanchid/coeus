@@ -12,6 +12,7 @@ import { allSources, orderByIds } from "@/lib/sources";
 import type { SourceDef } from "@/lib/types";
 import { formatKeywordRules, parseKeywordRules } from "@/lib/ranking";
 import { AddSourceForm } from "./AddSourceForm";
+import { useFocusReturn, useMediaQuery, useModalDialog } from "@/hooks/useModalDialog";
 import type {
   ColumnCount,
   DensityId,
@@ -194,7 +195,9 @@ export function SettingsPanel({
   initialTab = "reading",
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const mobileSheet = useMediaQuery("(max-width: 700px)");
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [sourceQuery, setSourceQuery] = useState("");
@@ -208,8 +211,16 @@ export function SettingsPanel({
     `${source.name} ${source.topic}`.toLowerCase().includes(normalizedSourceQuery)
   );
 
+  useModalDialog({
+    active: open && mobileSheet,
+    containerRef: panelRef,
+    initialFocusRef: closeRef,
+    onClose,
+  });
+  useFocusReturn(open && !mobileSheet);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open || mobileSheet) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -232,7 +243,7 @@ export function SettingsPanel({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onPointer);
     };
-  }, [open, onClose]);
+  }, [open, mobileSheet, onClose]);
 
   if (!open) return null;
 
@@ -279,17 +290,19 @@ export function SettingsPanel({
     }
   };
 
-  return (
+  const panel = (
     <div
       id="settings-popover"
       ref={panelRef}
       className="settings-panel"
-      role="region"
+      role={mobileSheet ? "dialog" : "region"}
+      aria-modal={mobileSheet ? "true" : undefined}
       aria-labelledby={titleId}
+      tabIndex={mobileSheet ? -1 : undefined}
     >
       <header className="settings-head">
         <h2 id={titleId}>Settings</h2>
-        <button type="button" className="settings-close" onClick={onClose}>
+        <button ref={closeRef} type="button" className="settings-close" onClick={onClose}>
           Done
         </button>
       </header>
@@ -354,6 +367,7 @@ export function SettingsPanel({
           <div><dt>Grid</dt><dd>Grouped by source</dd></div>
           <div><dt>Top</dt><dd>Balanced across sources</dd></div>
           <div><dt>Focus</dt><dd>Newest stories first</dd></div>
+          <div><dt>Ranked</dt><dd>Your explicit rules, explained</dd></div>
         </dl>
       </section>
 
@@ -540,4 +554,16 @@ export function SettingsPanel({
       </div>
     </div>
   );
+
+  return mobileSheet ? (
+    <div
+      className="settings-overlay"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      {panel}
+    </div>
+  ) : panel;
 }

@@ -16,6 +16,7 @@ import { AppShell } from "./AppShell";
 import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archiveRecovery";
 import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
 import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
+import { ExternalLinkHint } from "./ExternalLinkHint";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
 type Sort = "newest" | "oldest" | "title";
@@ -462,7 +463,7 @@ export function ArchiveApp() {
                         </div>
                         <button className="archive-star" type="button" aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`} aria-pressed={item.starred} onClick={() => patchItem(item.id, { starred: !item.starred })}><span aria-hidden="true">{item.starred ? "★" : "☆"}</span></button>
                       </header>
-                      <h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}<span className="archive-external" aria-hidden="true">↗</span></a></h2>
+                      <h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}<span className="archive-external" aria-hidden="true">↗</span><ExternalLinkHint /></a></h2>
                       {item.summary ? <p className="archive-summary">{item.summary}</p> : null}
                       {item.note ? <blockquote><span>Your note</span>{item.note}</blockquote> : null}
                       {item.tags.length ? <div className="archive-tags" aria-label="Tags">{item.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div> : null}

@@ -1,14 +1,60 @@
 /* —— Reader: story-card save affordance —— */
 .story-save {
-  margin-left: 0.45rem;
-  padding: 0.12rem 0.25rem;
+  min-height: 44px;
+  margin-left: 0;
+  padding: 0.35rem 0.45rem;
   border: 0;
   background: transparent;
   color: var(--muted);
-  font: 0.68rem/1.2 var(--font);
+  font: 0.7rem/1.2 var(--font);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
+}
+
+.story-actions,
+.story-rank-details { display: inline-block; margin-left: 0.4rem; }
+.story-actions > summary,
+.story-rank-details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--link);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.story-actions > span {
+  display: inline-flex;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--line);
+}
+.story-rank-details > span {
+  display: block;
+  margin: 0.2rem 0 0;
+  padding: 0.4rem 0.5rem;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.reader-view-guide { margin-left: auto; }
+.reader-view-guide summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--link);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.reader-view-guide p {
+  max-width: 34rem;
+  margin: 0 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 
 .story-save:hover:not(:disabled) {
@@ -69,6 +115,18 @@
   font-size: 0.72rem;
   white-space: nowrap;
 }
+
+.slash-head-actions { display: flex; align-items: center; gap: 0.65rem; }
+.slash-close {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: 1.25rem var(--font);
+  cursor: pointer;
+}
+.slash-error { margin: 0; padding: 0.55rem 0.85rem; border-top: 1px solid var(--error); color: var(--error); font-size: 0.76rem; }
 
 .slash-input-row {
   display: flex;
@@ -136,7 +194,7 @@
 .slash-group-label {
   margin: 0;
   padding: 0.35rem 0.85rem 0.2rem;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--muted);
@@ -466,7 +524,7 @@
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   cursor: pointer;
 }
 
@@ -1000,4 +1058,3 @@ mark {
   cursor: pointer;
   text-decoration: underline;
 }
-

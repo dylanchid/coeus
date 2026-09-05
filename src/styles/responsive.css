@@ -24,7 +24,18 @@
 
   .site-header { margin-bottom: 0.35rem; padding-bottom: 0.4rem; }
   .site-subline { display: none; }
-  .chrome-btn--slash { display: none; }
+  .chrome-btn--slash { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 44px; }
+  .chrome-btn-mobile-label { display: inline; font-size: 0.7rem; text-transform: uppercase; }
+
+  .settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: flex-end;
+    background: color-mix(in srgb, #000 55%, transparent);
+    backdrop-filter: blur(2px);
+  }
 
   .settings-panel {
     position: fixed;
@@ -37,6 +48,8 @@
     border-left: none;
     border-right: none;
     border-bottom: none;
+    z-index: 91;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 
   .search-label {
@@ -118,10 +131,12 @@
 
   .reader-return-bar {
     right: 0.6rem;
-    bottom: 0.6rem;
+    bottom: calc(0.6rem + env(safe-area-inset-bottom));
     left: 0.6rem;
     justify-content: space-between;
   }
+
+  .reader-view-guide { width: 100%; margin-left: 0; }
 
   .reader-return-bar > span {
     overflow: hidden;

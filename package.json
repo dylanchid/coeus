@@ -2,13 +2,16 @@
   "name": "bareaga",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "hotdev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
+    "test": "npm run test:unit && npm run test:ui",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
+    "test:ui": "node --import tsx --test src/components/*.test.tsx",
     "test:db": "supabase test db"
   },
   "dependencies": {
@@ -24,11 +27,15 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.3.4",
+    "jsdom": "^30.0.1",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }
