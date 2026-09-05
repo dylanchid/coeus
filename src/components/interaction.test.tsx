@@ -41,13 +41,31 @@ const { AppProviders, useArchive } = await import("./AppProviders");
 const { ShareSheet } = await import("./ShareSheet");
 const { AlreadyArchivedButton, PreviewFollowButton } = await import("./DiscoverPreviewControls");
 const { SourcesCategoryHub } = await import("./DiscoverSourcesApp");
+const { DestinationsPanel } = await import("./DestinationsPanel");
 const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
 
+const defaultFetch = globalThis.fetch;
 afterEach(() => {
   cleanup();
   localStorage.clear();
   document.body.style.overflow = "";
+  globalThis.fetch = defaultFetch;
 });
+
+/** Stubs the two endpoints DestinationsPanel reads: the destinations list and per-kind deliveries. */
+function stubDestinations(destinations: unknown[], deliveries: Record<string, unknown[]> = {}) {
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.endsWith("/api/archive/destinations")) {
+      return new Response(JSON.stringify({ destinations }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    const match = url.match(/\/api\/archive\/destinations\/([a-z_]+)\/deliveries$/);
+    if (match) {
+      return new Response(JSON.stringify({ deliveries: deliveries[match[1]] ?? [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(null, { status: 404 });
+  }) as typeof fetch;
+}
 
 function slashContext(overrides: Record<string, unknown> = {}) {
   return {
@@ -200,6 +218,33 @@ test("Discover preview controls describe their actual state", () => {
   view.unmount();
   render(<PreviewFollowButton />);
   assert.ok(screen.getByRole("button", { name: "Preview follow" }));
+});
+
+test("Destinations panel surfaces a Notion auth_error as a distinct Reconnect action", async () => {
+  stubDestinations(
+    [{ id: "d1", kind: "notion", displayName: "Notion — Smoke", status: "auth_error", config: { databaseId: "db1", workspaceName: "Smoke" }, createdAt: "2026-09-05T00:00:00.000Z" }],
+    { notion: [{ destinationId: "d1", itemId: "item-7", externalRef: null, lastDeliveredRevision: 0, status: "failed_auth", lastAttemptedAt: "2026-09-05T00:01:00.000Z", lastError: "token expired", lastHttpStatus: 401 }] },
+  );
+  render(<DestinationsPanel />);
+
+  const reconnect = await screen.findByRole("link", { name: "Reconnect Notion ↗" });
+  assert.equal(reconnect.getAttribute("href"), "/api/archive/destinations/notion/oauth/start");
+  assert.ok(screen.getByText("Needs reconnect"));
+  // failed_auth items read as an auth problem, not a transient "will retry" one.
+  fireEvent.click(screen.getByText(/need attention/));
+  assert.match(screen.getByText(/Auth expired/).textContent ?? "", /reconnect Notion to retry/);
+  assert.equal(screen.queryByText("Will retry automatically"), null);
+});
+
+test("Destinations panel shows an active Notion destination without a Reconnect prompt", async () => {
+  stubDestinations([
+    { id: "d2", kind: "notion", displayName: "Notion — Smoke", status: "active", config: { databaseId: "db1", workspaceName: "Smoke" }, createdAt: "2026-09-05T00:00:00.000Z" },
+  ]);
+  render(<DestinationsPanel />);
+
+  assert.ok(await screen.findByText("Connected"));
+  assert.equal(screen.queryByRole("link", { name: "Reconnect Notion ↗" }), null);
+  assert.ok(screen.getByRole("button", { name: "Sync now" }));
 });
 
 test("Sources category hub reports category selection and exposes its selected state", () => {

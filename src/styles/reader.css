@@ -737,7 +737,7 @@ kbd {
 }
 
 /* —— Grid: columns via CSS var, no heavy cards —— */
-.bareaga-grid {
+.coeus-grid {
   display: grid;
   grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   gap: var(--gap);
