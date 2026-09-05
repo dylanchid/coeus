@@ -51,7 +51,7 @@ export function AccountMenu() {
   if (status === "signed-out") {
     const back = pathname.startsWith("/signin") || pathname === "/welcome" ? "/archive" : pathname;
     return (
-      <Link className="chrome-btn account-signin" href={`/signin?next=${encodeURIComponent(back)}`}>
+      <Link className="account-signin" href={`/signin?next=${encodeURIComponent(back)}`}>
         Log in
       </Link>
     );

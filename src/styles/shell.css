@@ -149,7 +149,18 @@
 .account-signin {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
+  padding: 0.35rem 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   text-decoration: none;
+}
+
+.account-signin:hover {
+  color: var(--fg);
 }
 
 .account-menu {
@@ -161,10 +172,10 @@
   align-items: center;
   gap: 0.45rem;
   min-height: 44px;
-  padding: 0.25rem 0.55rem;
-  border: 1px solid var(--header-rule);
+  padding: 0.25rem 0;
+  border: 0;
   background: transparent;
-  color: var(--fg);
+  color: var(--muted);
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;
@@ -172,9 +183,7 @@
 
 .account-trigger:hover,
 .account-trigger[aria-expanded="true"] {
-  background: var(--fg);
-  color: var(--bg);
-  border-color: var(--fg);
+  color: var(--fg);
 }
 
 .account-avatar {
@@ -183,10 +192,11 @@
   flex: none;
   display: grid;
   place-items: center;
-  border: 1px solid currentColor;
+  border: 1px solid var(--header-rule);
   background-color: var(--settings-bg);
   background-size: cover;
   background-position: center;
+  color: var(--muted);
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -195,10 +205,16 @@
 .account-name {
   max-width: 10rem;
   overflow: hidden;
+  color: var(--fg);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.account-trigger[aria-expanded="true"] .account-name {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .account-caret {
