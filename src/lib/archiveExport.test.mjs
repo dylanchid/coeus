@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { archiveToCsv, archiveToMarkdown, itemToMarkdown } from "./archiveExport.ts";
+import { archiveToCsv, archiveToMarkdown, itemToMarkdown, itemToObsidianNote } from "./archiveExport.ts";
 
 const item = {
   id: "1", articleId: "a", title: "Open, durable web", url: "https://example.com",
@@ -27,5 +27,13 @@ test("CSV export retains Notion-friendly columns and quotes commas", () => {
 
 test("single item Markdown is copyable", () => {
   assert.match(itemToMarkdown(item), /^\[Open, durable web\]/);
+});
+
+test("Obsidian note carries bareaga_id frontmatter and the shared Markdown body", () => {
+  const note = itemToObsidianNote(item);
+  assert.match(note, /^---\n/);
+  assert.match(note, /bareaga_id: "1"/);
+  assert.match(note, /tags: \[open-web\]/);
+  assert.match(note, /\[Open, durable web\]\(https:\/\/example.com\)/);
 });
 

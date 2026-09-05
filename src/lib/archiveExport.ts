@@ -72,3 +72,19 @@ export function itemToMarkdown(item: ArchiveItem): string {
   return `[${item.title}](${item.url})${quote}${note}`;
 }
 
+/** One archive item as an Obsidian note: frontmatter carries bareaga_id so the Git bridge can upsert by it. */
+export function itemToObsidianNote(item: ArchiveItem): string {
+  const frontmatter = [
+    "---",
+    `bareaga_id: ${yaml(item.id)}`,
+    `title: ${yaml(item.title)}`,
+    `url: ${yaml(item.url)}`,
+    `source: ${yaml(item.sourceName)}`,
+    `saved: ${yaml(item.savedAt)}`,
+    `tags: [${item.tags.map((tag) => tag.replace(/\s+/g, "-")).join(", ")}]`,
+    "---",
+    "",
+  ];
+  return [...frontmatter, itemToMarkdown(item)].join("\n");
+}
+
