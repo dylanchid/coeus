@@ -11,6 +11,9 @@ import {
   type CollectionPublicationSummary,
   type PublishCollectionRequest,
 } from "./collectionPublication.ts";
+import { CollectionNotFoundError, SlugExhaustedError } from "./collectionPublicationErrors.ts";
+
+export { CollectionNotFoundError, SlugExhaustedError };
 
 const MAX_SLUG_ATTEMPTS = 5;
 const UNIQUE_VIOLATION = "23505";
@@ -37,9 +40,6 @@ export interface CollectionFollowStore {
   unfollow(followerId: string, publicationId: string): Promise<void>;
   listFollowed(followerId: string): Promise<CollectionPublication[]>;
 }
-
-export class CollectionNotFoundError extends Error {}
-export class SlugExhaustedError extends Error {}
 
 function randomToken(): string {
   return globalThis.crypto?.randomUUID?.().replace(/-/g, "").slice(0, 8) ?? Math.random().toString(36).slice(2, 10);
@@ -78,7 +78,14 @@ function toPublication(data: Record<string, unknown>, items: Record<string, unkn
 export class SupabaseCollectionPublicationStore
   implements CollectionPublicationStore, PublicCollectionReader, CollectionFollowStore
 {
-  constructor(private readonly supabase: SupabaseClient) {}
+  // A TS parameter-property constructor here breaks any test file that imports this
+  // module under node --experimental-strip-types (strip-only, no transform) — see
+  // archiveSyncStore.server.ts, which avoids the same shorthand for that reason.
+  private readonly supabase: SupabaseClient;
+
+  constructor(supabase: SupabaseClient) {
+    this.supabase = supabase;
+  }
 
   /**
    * Unauthenticated read by stable slug. The admin client bypasses RLS, so

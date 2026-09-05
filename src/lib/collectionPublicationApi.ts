@@ -1,9 +1,9 @@
 import { parseFollowRequest, parsePublishRequest, parseUnpublishRequest } from "./collectionPublication.ts";
-import {
-  CollectionNotFoundError,
-  type CollectionFollowStore,
-  type CollectionPublicationStore,
-  type PublicCollectionReader,
+import { CollectionNotFoundError } from "./collectionPublicationErrors.ts";
+import type {
+  CollectionFollowStore,
+  CollectionPublicationStore,
+  PublicCollectionReader,
 } from "./collectionPublicationStore.server.ts";
 
 interface Authenticated {
