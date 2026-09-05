@@ -2,15 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Next 16 "proxy" (formerly middleware). Two jobs, both cheap:
+ * Next 16 "proxy" (formerly middleware). Two jobs:
  *
  *  1. Refresh the Supabase auth token on every navigation so Server Components
  *     and Route Handlers see a current session (the `@supabase/ssr` client can
  *     only re-issue the cookie from a context that can also write it).
  *  2. Optimistic redirects between /signin and /welcome based purely on whether
- *     a session cookie resolves — never a database read. The real
- *     profile-completeness gate lives client-side (ProfileGate) and in the
- *     authenticated API routes.
+ *     the JWT resolves — never a database read. The real profile-completeness
+ *     gate lives client-side (ProfileGate) and in the authenticated API routes.
  */
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request });
@@ -31,13 +30,15 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims (not getUser): verifies the JWT locally where possible, and still
+  // re-issues the cookie through the setAll adapter above when it refreshed —
+  // the same call authenticateArchiveRequest uses for the API routes.
+  const { data } = await supabase.auth.getClaims();
+  const signedIn = typeof data?.claims?.sub === "string";
 
   const path = request.nextUrl.pathname;
 
-  if (!user && path === "/welcome") {
+  if (!signedIn && path === "/welcome") {
     const to = request.nextUrl.clone();
     to.pathname = "/signin";
     to.search = "";
@@ -45,7 +46,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(to);
   }
 
-  if (user && path === "/signin") {
+  if (signedIn && path === "/signin") {
     const to = request.nextUrl.clone();
     to.pathname = "/welcome";
     to.search = "";
