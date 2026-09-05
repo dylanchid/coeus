@@ -12,6 +12,8 @@ import {
 } from "@/lib/archive";
 import { archiveToCsv, archiveToMarkdown, itemToMarkdown } from "@/lib/archiveExport";
 import { useArchive } from "./AppProviders";
+import { useAuth } from "./AuthProvider";
+import { ProfileGate } from "./ProfileGate";
 import { AppShell } from "./AppShell";
 import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archiveRecovery";
 import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
@@ -94,6 +96,7 @@ function PublishPanel({
 
 export function ArchiveApp() {
   const { archive: data, updateArchive, sync, replaceArchiveFromServer } = useArchive();
+  const auth = useAuth();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("newest");
@@ -271,7 +274,7 @@ export function ArchiveApp() {
   };
 
   const signOut = async () => {
-    try { await requestJson("/api/account/signout", { method: "POST" }); setShareNotice("Signed out. This device's labeled local archive remains here."); }
+    try { await auth.signOut(); setShareNotice("Signed out. This device's labeled local archive remains here."); }
     catch (error) { setShareNotice(error instanceof Error ? error.message : "Sign out failed"); }
   };
 
@@ -335,6 +338,7 @@ export function ArchiveApp() {
       }
     >
       <div className="archive-page">
+        <ProfileGate />
         <section className="archive-overview" aria-labelledby="archive-title">
           <div className="archive-overview-copy">
             <p className="archive-eyebrow">
@@ -418,8 +422,24 @@ export function ArchiveApp() {
                 <button type="button" disabled={recoveryBusy} onClick={() => void refreshRecovery()}>Refresh recovery history</button>
                 {revisions.map((revision) => <button key={revision.revision} type="button" disabled={recoveryBusy} onClick={() => void restoreRevision(revision.revision)}>Restore revision {revision.revision}</button>)}
                 {contentSnapshots.length ? <div className="archive-snapshot-list">{contentSnapshots.map((snapshot) => <a key={snapshot.id} href={`/api/archive/snapshots/${snapshot.id}`}>Captured {snapshot.itemId} · {snapshot.status}</a>)}</div> : null}
-                <button type="button" onClick={() => void signOut()}>Sign out — keep local copy</button>
-                <button type="button" className="archive-danger" disabled={recoveryBusy} onClick={() => void deleteAccount()}>Delete cloud account…</button>
+                {auth.status === "signed-out" ? (
+                  <>
+                    <p className="archive-account-state" role="status">Not signed in — this archive stays on this device.</p>
+                    <Link href="/signin?next=/archive">Sign in to sync ↗</Link>
+                  </>
+                ) : auth.status === "loading" ? (
+                  <p className="archive-account-state" role="status">Checking sign-in…</p>
+                ) : (
+                  <>
+                    <p className="archive-account-state" role="status">
+                      {auth.profile ? <>Signed in as <strong>@{auth.profile.handle}</strong></> : "Signed in"}
+                      {auth.user?.email ? ` · ${auth.user.email}` : ""}
+                    </p>
+                    {auth.profile ? <Link href="/welcome?next=/archive">Edit profile</Link> : <Link href="/welcome?next=/archive">Finish setting up your profile ↗</Link>}
+                    <button type="button" onClick={() => void signOut()}>Sign out — keep local copy</button>
+                    <button type="button" className="archive-danger" disabled={recoveryBusy} onClick={() => void deleteAccount()}>Delete cloud account…</button>
+                  </>
+                )}
               </div>
             </details>
             <DestinationsPanel onNotice={setShareNotice} />

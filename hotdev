@@ -17,11 +17,11 @@ registry_file=${HOTDEV_REGISTRY:-"$HOME/.config/hotdev/products"}
 
 # Built-in product registry. User-added products are stored in:
 #   ~/.config/hotdev/products
-product_names="bareaga"
+product_names="coeus"
 
 product_builtin_path() {
   case "$1" in
-    bareaga) printf '%s\n' "$hotdev_home" ;;
+    coeus) printf '%s\n' "$hotdev_home" ;;
     *) return 1 ;;
   esac
 }

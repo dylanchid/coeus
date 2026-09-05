@@ -12,7 +12,8 @@
     "test": "npm run test:unit && npm run test:ui",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
     "test:ui": "node --import tsx --test src/components/*.test.tsx",
-    "test:db": "supabase test db"
+    "test:db": "supabase test db",
+    "smoke:destinations": "node --import tsx scripts/destination-smoke.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

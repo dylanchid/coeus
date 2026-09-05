@@ -1,0 +1,130 @@
+/* —— Account: sign-in + onboarding —————————————————————————————— */
+
+.signin-page,
+.welcome-page {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--pad-inline) var(--space-2xl);
+}
+
+.signin-panel h1,
+.welcome-form h1 {
+  margin: 0 0 var(--space-xs);
+  font-size: clamp(1.6rem, 3.6vw, 2.3rem);
+  line-height: 1.1;
+}
+
+.signin-lede,
+.welcome-lede {
+  margin: 0 0 var(--space-lg);
+  color: var(--muted);
+  font-size: var(--text-body);
+  line-height: 1.55;
+}
+
+.signin-providers {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.signin-providers button,
+.welcome-form button[type="submit"] {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--text-body);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.signin-providers button:hover:not(:disabled),
+.welcome-form button[type="submit"]:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.signin-providers button:disabled,
+.welcome-form button[type="submit"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.signin-error,
+.welcome-error {
+  margin: 0 0 var(--space-md);
+  padding: 0.6rem 0.8rem;
+  border-left: 2px solid var(--error);
+  color: var(--error);
+  font-size: var(--text-meta);
+  line-height: 1.5;
+}
+
+.welcome-form form {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.welcome-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.welcome-field label {
+  color: var(--muted);
+  font-size: var(--text-kicker);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.welcome-optional {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.welcome-field input,
+.welcome-field textarea {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  background: var(--settings-bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--text-body);
+}
+
+.welcome-field input:focus,
+.welcome-field textarea:focus {
+  outline: 2px solid var(--link);
+  outline-offset: 1px;
+}
+
+.welcome-field input[aria-invalid="true"],
+.welcome-field textarea[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.welcome-field-hint {
+  margin: 0;
+  color: var(--handle);
+  font-size: var(--text-meta);
+}
+
+.welcome-field-error {
+  margin: 0;
+  color: var(--error);
+  font-size: var(--text-meta);
+}
+
+.welcome-loading {
+  margin: var(--space-xl) 0;
+  color: var(--muted);
+}
+
+.archive-account-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}

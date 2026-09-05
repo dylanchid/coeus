@@ -35,7 +35,7 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["http://127.0.0.1:3000/**"]
+additional_redirect_urls = ["http://127.0.0.1:3000/**", "http://localhost:3000/**"]
 enable_signup = true
 enable_anonymous_sign_ins = false
 
@@ -44,3 +44,18 @@ enable_signup = true
 enable_confirmations = false
 otp_length = 6
 otp_expiry = 3600
+
+# OAuth sign-in. Register a GitHub OAuth App and a Google OAuth client whose
+# callback URL is <supabase-url>/auth/v1/callback (locally:
+# http://127.0.0.1:54321/auth/v1/callback), then put the credentials in
+# .env.local. The hosted project configures the same providers in its
+# dashboard; these blocks only drive `supabase start`.
+[auth.external.github]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GITHUB_SECRET)"
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"

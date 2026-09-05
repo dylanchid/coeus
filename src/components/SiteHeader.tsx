@@ -10,6 +10,7 @@ import { useChrome } from "./ChromeProvider";
 import { PrimaryNav, SECTION_LABELS, type AppSection } from "./PrimaryNav";
 import { SettingsPanel } from "./SettingsPanel";
 import { SlashMenu } from "./SlashMenu";
+import { AccountMenu } from "./AccountMenu";
 
 function downloadPrefs(prefs: UserPrefs) {
   const blob = new Blob([JSON.stringify(prefs, null, 2)], {
@@ -116,16 +117,6 @@ export function SiteHeader({
                 <span aria-hidden="true">/</span>
                 <span className="chrome-btn-mobile-label">Commands</span>
               </button>
-              <button
-                type="button"
-                className="chrome-btn"
-                data-settings-toggle
-                aria-controls="settings-popover"
-                aria-expanded={chrome.settingsOpen}
-                onClick={toggleSettings}
-              >
-                Settings
-              </button>
               <SettingsPanel
                 open={chrome.settingsOpen}
                 prefs={prefs}
@@ -148,6 +139,7 @@ export function SiteHeader({
               />
             </>
           ) : null}
+          <AccountMenu />
         </div>
       </div>
 
