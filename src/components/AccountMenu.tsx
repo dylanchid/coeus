@@ -59,7 +59,12 @@ export function AccountMenu() {
 
   const label = profile ? `@${profile.handle}` : user?.name ?? user?.email ?? "Account";
   const initial = (profile?.handle ?? user?.name ?? user?.email ?? "?").charAt(0).toUpperCase();
-  const editHref = `/welcome?next=${encodeURIComponent(pathname)}`;
+  // With a profile, "Edit profile" goes to /@handle — the owner sees their own
+  // profile page with the inline editor. Without one, onboarding still owns the
+  // flow. This is the change that makes the profile page discoverable to its
+  // owner.
+  const profileHref = profile ? `/@${profile.handle}` : null;
+  const editHref = profileHref ? `${profileHref}?edit=1` : `/welcome?next=${encodeURIComponent(pathname)}`;
 
   const navigate = (href: string) => {
     setOpen(false);
@@ -90,6 +95,11 @@ export function AccountMenu() {
 
       {open ? (
         <div className="account-dropdown" id={menuId} role="menu" aria-label="Account">
+          {profileHref ? (
+            <button type="button" role="menuitem" onClick={() => navigate(profileHref)}>
+              View profile
+            </button>
+          ) : null}
           <button type="button" role="menuitem" onClick={() => navigate(editHref)}>
             {profile ? "Edit profile" : "Finish your profile"}
           </button>

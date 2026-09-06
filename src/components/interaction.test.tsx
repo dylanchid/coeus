@@ -445,7 +445,7 @@ test("Account menu shows a Log in link with the return path when signed out", as
 test("Account menu shows the handle and opens Settings / Edit profile / Sign out", async () => {
   const profile = { id: "u1", handle: "theman", displayName: "bareaga", bio: "Traveller", createdAt: "t", updatedAt: "t" };
   const signOutCalls: number[] = [];
-  renderAccountMenu({ user: { id: "u1", email: "u1@example.com" } }, profile, signOutCalls);
+  const { router } = renderAccountMenu({ user: { id: "u1", email: "u1@example.com" } }, profile, signOutCalls);
 
   const trigger = await screen.findByRole("button", { name: /@theman/ });
   assert.equal(screen.queryByRole("menu"), null);
@@ -454,7 +454,18 @@ test("Account menu shows the handle and opens Settings / Edit profile / Sign out
   const menu = await screen.findByRole("menu", { name: "Account" });
   assert.ok(menu);
   assert.ok(screen.getByRole("menuitem", { name: "Edit profile" }));
+  assert.ok(screen.getByRole("menuitem", { name: "View profile" }));
   assert.ok(screen.getByRole("menuitem", { name: "Settings" }));
+
+  // Both profile items route to /@handle (Edit just opens the inline editor).
+  fireEvent.click(screen.getByRole("menuitem", { name: "View profile" }));
+  assert.equal(router.push.mock.calls.at(-1)?.arguments[0], "/@theman");
+  fireEvent.click(trigger);
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Edit profile" }));
+  assert.equal(router.push.mock.calls.at(-1)?.arguments[0], "/@theman?edit=1");
+
+  fireEvent.click(trigger);
+  await screen.findByRole("menu", { name: "Account" });
 
   fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
   assert.equal(screen.getByTestId("settings-open").textContent, "true");
