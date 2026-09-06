@@ -25,6 +25,19 @@
   min-width: 0;
 }
 
+/* Woodcut mark sits snug to the right of the wordmark (transparent PNG,
+   intrinsic 1536×1024 → 3:2). Both dimensions are pinned explicitly and the
+   item is locked out of flex sizing: Safari otherwise lays a height-only
+   replaced flex child out at its natural width, which blows up the header. */
+.site-logo {
+  flex: none;
+  align-self: center;
+  height: calc(var(--wordmark) * 1.5);
+  width: calc(var(--wordmark) * 2.25);
+  margin-left: 0.1rem;
+  object-fit: contain;
+}
+
 .site-wordmark {
   color: var(--fg);
   font: 700 var(--wordmark)/1 var(--font-display);

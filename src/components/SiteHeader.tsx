@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { UserPrefs } from "@/lib/types";
@@ -96,6 +97,16 @@ export function SiteHeader({
           <Link className="site-wordmark" href="/">
             Coeus
           </Link>
+          <Image
+            className="site-logo"
+            src="/coeus_logo.png"
+            alt=""
+            aria-hidden="true"
+            width={1536}
+            height={1024}
+            priority
+            unoptimized
+          />
           {section !== "reader" ? (
             <span className="site-section">/ {SECTION_LABELS[section]}</span>
           ) : null}

@@ -39,7 +39,7 @@
   --text-kicker: 0.7rem;
   --text-meta: 0.72rem;
   --text-body: 0.9rem;
-  --wordmark: clamp(1.5rem, 2.6vw, 2rem);
+  --wordmark: clamp(1.65rem, 2.85vw, 2.25rem);
   --text-h2: clamp(1.9rem, 4.2vw, 3.6rem);
   --text-display: clamp(3rem, 8vw, 7.2rem);
   --font: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
