@@ -1,0 +1,246 @@
+/* —— Profile at /@handle —— cover, overlapping avatar, tab bar, feed + sidebar.
+   Every colour is a base.css token: the page must follow data-theme and
+   data-palette like everything else in the shell. --radius is 0 project-wide. */
+
+.profile-page {
+  width: min(var(--content-max), 100%);
+  margin: 0 auto;
+  padding: 0 0 var(--space-2xl);
+}
+
+/* —— Cover —————————————————————————————————————————————— */
+.profile-cover {
+  position: relative;
+  height: 232px;
+  border: 1px solid var(--border);
+  border-top: none;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.profile-cover-media,
+.profile-cover-generative {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.profile-cover-media { object-fit: cover; }
+.profile-cover-generative {
+  color: var(--handle);
+  background: var(--bg);
+  font: 400 9px/1 var(--font);
+  white-space: pre;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Scrim: keeps the name legible over either cover mode. */
+.profile-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--bg) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+.profile-cover-name {
+  position: absolute;
+  z-index: 1;
+  left: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(0.6rem, 2vw, 1rem);
+  right: clamp(1rem, 3vw, 2rem);
+  margin: 0;
+  color: var(--fg);
+  font: 700 clamp(1.7rem, 4.5vw, 3rem)/1.02 var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+/* —— Identity row: avatar overlaps the cover's lower-left —————— */
+.profile-identity {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  padding: 0 clamp(1rem, 3vw, 2rem);
+  margin-top: -40px;
+}
+
+.profile-avatar,
+.profile-avatar-fallback {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  border: 1px solid var(--fg);
+  background: var(--bg);
+  object-fit: cover;
+}
+.profile-avatar-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  font: 700 2rem/1 var(--font-display);
+}
+
+.profile-identity-meta { min-width: 0; padding-bottom: 0.4rem; }
+.profile-handle { margin: 0; color: var(--handle); font-size: var(--text-meta); letter-spacing: 0.02em; }
+.profile-location { margin: 0.15rem 0 0; color: var(--muted); font-size: var(--text-meta); }
+
+/* —— Tab + actions row ——————————————————————————————————— */
+.profile-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0 1.1rem;
+  margin: var(--space-md) 0 0;
+  padding: 0 clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--header-rule);
+}
+.profile-tab {
+  padding: 0.6rem 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.profile-tab:hover { color: var(--fg); }
+.profile-tab[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
+
+.profile-actions { margin-left: auto; }
+.profile-action {
+  display: inline-block;
+  min-height: 32px;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: 0.64rem var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  cursor: pointer;
+}
+.profile-action:hover { background: var(--fg); color: var(--bg); }
+
+/* —— Body: feed + sidebar ——————————————————————————————— */
+.profile-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: var(--space-lg);
+  padding: var(--space-lg) clamp(1rem, 3vw, 2rem) 0;
+}
+
+.profile-feed { min-width: 0; display: grid; gap: var(--space-md); }
+.profile-feed-empty { color: var(--muted); padding: var(--space-md) 0; }
+.profile-feed-heading {
+  margin: 0;
+  font-size: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--handle);
+}
+
+.profile-collection { padding-bottom: var(--space-md); border-bottom: 1px solid var(--line); }
+.profile-collection:last-child { border-bottom: none; }
+.profile-collection h3 { margin: 0 0 0.3rem; font-size: 1.05rem; }
+.profile-collection h3 a { color: var(--fg); text-decoration: none; }
+.profile-collection h3 a:hover { text-decoration: underline; }
+.profile-collection p { margin: 0 0 0.35rem; color: var(--fg); line-height: 1.55; }
+.profile-collection-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-meta);
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.profile-collection-flag { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; }
+.profile-collection.is-unpublished { opacity: 0.55; }
+
+/* —— Sidebar ——————————————————————————————————————————— */
+.profile-sidebar {
+  align-self: start;
+  display: grid;
+  gap: var(--space-md);
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-md);
+}
+.profile-figures { display: grid; gap: 0.5rem; margin: 0; }
+.profile-figure { display: flex; justify-content: space-between; gap: 0.5rem; font-size: var(--text-meta); }
+.profile-figure dt { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.profile-figure dd { margin: 0; color: var(--fg); font-variant-numeric: tabular-nums; }
+.profile-sidebar-bio { margin: 0; color: var(--fg); line-height: 1.6; font-size: var(--text-body); }
+.profile-sidebar-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.profile-sidebar-links a { color: var(--link); font-size: var(--text-meta); word-break: break-word; }
+.profile-sidebar-note { margin: 0; color: var(--handle); font-size: var(--text-meta); line-height: 1.5; }
+
+/* —— Owner's inline editor ——————————————————————————————— */
+.profile-editor-slot { padding: var(--space-md) clamp(1rem, 3vw, 2rem) 0; }
+.profile-editor {
+  border: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  max-width: 46rem;
+}
+.profile-editor > summary {
+  cursor: pointer;
+  font-size: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.profile-editor[open] > summary { color: var(--fg); margin-bottom: var(--space-sm); }
+.profile-editor-form { display: grid; gap: var(--space-sm); }
+.profile-editor-field { display: grid; gap: 0.35rem; border: none; padding: 0; margin: 0; }
+.profile-editor-field > span,
+.profile-editor-field > legend {
+  font-size: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0;
+}
+.profile-editor input[type="text"],
+.profile-editor input[type="url"],
+.profile-editor textarea {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--text-body) var(--font);
+}
+.profile-editor-link-row { display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 0.4rem; margin-bottom: 0.4rem; }
+.profile-editor-link-row button,
+.profile-editor-add-link,
+.profile-editor-actions button {
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: 0.64rem var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.profile-editor-actions button:disabled { opacity: 0.55; cursor: wait; }
+.profile-editor-actions { display: flex; align-items: center; gap: 0.75rem; }
+.profile-editor-error { color: var(--error); font-size: var(--text-meta); font-style: normal; }
+.profile-editor-ok { color: var(--muted); font-size: var(--text-meta); }
+.profile-editor-hint { margin: 0; color: var(--handle); font-size: var(--text-meta); }
+
+@media (max-width: 780px) {
+  .profile-cover { height: 200px; }
+  .profile-avatar, .profile-avatar-fallback { width: 78px; height: 78px; }
+  .profile-avatar-fallback { font-size: 1.5rem; }
+  .profile-identity { margin-top: -30px; }
+  .profile-body { grid-template-columns: minmax(0, 1fr); }
+  .profile-sidebar {
+    order: -1;
+    border-left: none;
+    border-bottom: 1px solid var(--line);
+    padding-left: 0;
+    padding-bottom: var(--space-md);
+  }
+}
