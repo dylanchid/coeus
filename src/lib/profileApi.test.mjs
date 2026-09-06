@@ -21,7 +21,19 @@ class MemoryProfileStore {
       throw new HandleTakenError("taken");
     }
     const now = "2026-09-05T00:00:00.000Z";
-    const profile = { id: userId, handle: input.handle, displayName: input.displayName, bio: input.bio, createdAt: existing?.createdAt ?? now, updatedAt: now };
+    const profile = {
+      id: userId,
+      handle: input.handle,
+      displayName: input.displayName,
+      bio: input.bio,
+      location: input.location ?? null,
+      links: input.links ?? [],
+      avatarUrl: input.avatarUrl ?? null,
+      coverUrl: input.coverUrl ?? null,
+      pinnedCollectionSlugs: input.pinnedCollectionSlugs ?? [],
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
     this.profiles.set(userId, profile);
     return profile;
   }
@@ -70,6 +82,43 @@ test("PUT rejects invalid input with 422 and per-field messages", async () => {
   const body = await response.json();
   assert.ok(body.fields.handle);
   assert.ok(body.fields.displayName);
+});
+
+test("PUT persists the new surface fields and normalises links", async () => {
+  const store = new MemoryProfileStore();
+  const response = await handleSaveProfile(
+    put({
+      handle: "ada",
+      displayName: "Ada",
+      location: "  London  ",
+      links: [{ label: "  Site  ", url: "  https://ada.example  " }],
+      pinnedCollectionSlugs: ["notes", "Bad Slug", "notes"],
+    }),
+    deps(store)
+  );
+  assert.equal(response.status, 200);
+  const { profile } = await response.json();
+  assert.equal(profile.location, "London");
+  assert.deepEqual(profile.links, [{ label: "Site", url: "https://ada.example" }]);
+  assert.deepEqual(profile.pinnedCollectionSlugs, ["notes"]);
+});
+
+test("PUT rejects a malformed links array with 422 tagged to links", async () => {
+  const response = await handleSaveProfile(
+    put({ handle: "ada", displayName: "Ada", links: [{ label: "no url" }] }),
+    deps(new MemoryProfileStore())
+  );
+  assert.equal(response.status, 422);
+  assert.ok((await response.json()).fields.links);
+});
+
+test("PUT rejects an over-length location with 422 tagged to location", async () => {
+  const response = await handleSaveProfile(
+    put({ handle: "ada", displayName: "Ada", location: "x".repeat(81) }),
+    deps(new MemoryProfileStore())
+  );
+  assert.equal(response.status, 422);
+  assert.ok((await response.json()).fields.location);
 });
 
 test("PUT surfaces a taken handle as 409 tagged to the handle field", async () => {

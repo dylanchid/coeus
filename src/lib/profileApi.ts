@@ -43,7 +43,16 @@ export async function handleSaveProfile(request: Request, dependencies: ProfileA
     return error("Request body must be valid JSON", 400);
   }
   const raw = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-  const validated = validateProfileInput({ handle: raw.handle, displayName: raw.displayName, bio: raw.bio });
+  const validated = validateProfileInput({
+    handle: raw.handle,
+    displayName: raw.displayName,
+    bio: raw.bio,
+    location: raw.location,
+    links: raw.links,
+    avatarUrl: raw.avatarUrl,
+    coverUrl: raw.coverUrl,
+    pinnedCollectionSlugs: raw.pinnedCollectionSlugs,
+  });
   if (!validated.ok) return error("Some fields need attention", 422, { fields: validated.errors });
 
   try {
