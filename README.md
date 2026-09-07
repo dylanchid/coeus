@@ -6,6 +6,8 @@ It is inspired by [brutalist.report](https://brutalist.report/) and is not affil
 
 ## Run locally
 
+Use the Node version in [`.nvmrc`](.nvmrc) (Node 24; `nvm use`). Then:
+
 ```bash
 npm install
 npm run dev
@@ -18,7 +20,25 @@ npm test
 ./node_modules/.bin/tsc --noEmit
 npm run lint
 npm run build
+npm run audit:ci
 ```
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request
+and every push to `main`. Two jobs must pass before merge (mark them required in
+branch protection):
+
+- **quality** — `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm test`
+  (unit + jsdom UI), `npm run build`, and `npm run audit:ci` (fails on `high`+
+  advisories). The build receives only public, non-secret placeholder
+  `NEXT_PUBLIC_*` values; no production secret is present in CI.
+- **database** — pins the Supabase CLI (`2.75.0`), runs `supabase start` (Docker
+  is preinstalled on GitHub-hosted `ubuntu-latest`; migrations apply on start),
+  then `supabase test db` for the pgTAP suite.
+
+Node is pinned via `.nvmrc` and consumed by `actions/setup-node`
+(`node-version-file`). To reproduce CI locally you need Docker Desktop running.
 
 ## Routes
 

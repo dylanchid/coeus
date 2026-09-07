@@ -28,7 +28,7 @@ const React = await import("react");
 const { cleanup, render, screen } = await import("@testing-library/react");
 const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime");
 const { PathnameContext } = await import("next/dist/shared/lib/hooks-client-context.shared-runtime");
-const { fireEvent } = await import("@testing-library/react");
+const { fireEvent, waitFor } = await import("@testing-library/react");
 const { ProfileTabs } = await import("./ProfileTabs");
 const { ProfileSidebar } = await import("./ProfileSidebar");
 const { ProfilePosts } = await import("./ProfilePosts");
@@ -563,7 +563,7 @@ test("ReplyComposer shows the inherited tier read-only and posts to /api/replies
 
   fireEvent.change(screen.getByRole("textbox", { name: "Reply" }), { target: { value: "  a considered reply  " } });
   fireEvent.click(screen.getByRole("button", { name: "Reply" }));
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await waitFor(() => assert.equal(log.length, 1));
 
   assert.equal(log[0].url, "/api/replies");
   assert.deepEqual(log[0].body, {

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "next dev",
     "hotdev": "next dev -p 3000",
@@ -13,7 +16,9 @@
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test src/lib/*.test.mjs",
     "test:ui": "node --import tsx --test src/components/*.test.tsx",
     "test:db": "supabase test db",
-    "smoke:destinations": "node --import tsx scripts/destination-smoke.mts"
+    "audit:ci": "npm audit --audit-level=high",
+    "smoke:destinations": "node --import tsx scripts/destination-smoke.mts",
+    "smoke:security-headers": "node --import tsx scripts/security-headers-smoke.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

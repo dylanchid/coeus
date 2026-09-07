@@ -1,0 +1,76 @@
+name: CI
+
+# Quality gates for every pull request and every push to main. A failure in any
+# job blocks merging once the checks are marked required in branch protection.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Node quality gates: tests (unit + jsdom UI), TypeScript, ESLint, production
+  # build, and the dependency-audit policy. No production secrets are used or
+  # required here — the build only needs public, non-sensitive placeholders.
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Public, non-secret placeholders. The BFF reads real Supabase config at
+      # request time; the production build only needs these to be present and
+      # well-formed. Never put SUPABASE_SECRET_KEY (or any secret) in CI.
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+      NEXT_PUBLIC_SITE_URL: https://example.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests (unit + UI)
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Dependency audit policy
+        run: npm run audit:ci
+
+  # Supabase pgTAP migrations and database tests. GitHub-hosted ubuntu runners
+  # ship Docker, which the local Supabase stack requires. The CLI version is
+  # pinned so migration/test behaviour matches local development.
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
+
+      - name: Start local Supabase stack (applies migrations)
+        run: supabase start -x studio,imgproxy,mailpit,realtime,storage-api,edge-runtime,logflare,vector,supavisor
+
+      - name: Run pgTAP tests
+        run: supabase test db
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup
