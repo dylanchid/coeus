@@ -1,7 +1,12 @@
 import "server-only";
 
 import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { previewFeedUrl } from "@/lib/sourcePreview.server";
+
+function safeHost(value: string): string {
+  try { return new URL(value).host; } catch { return "invalid"; }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +39,12 @@ export async function POST(request: Request): Promise<Response> {
     return json({ ok: false, error: "Provide a feed URL." }, 400);
   }
 
-  const result = await previewFeedUrl(url.trim());
-  return json(result, result.ok ? 200 : 422);
+  const result = await instrument(
+    { route: "sources.preview", operation: "previewFeedUrl", correlationId: requestCorrelationId(request), fields: { host: safeHost(url.trim()) } },
+    async () => {
+      const preview = await previewFeedUrl(url.trim());
+      return { status: preview.ok ? 200 : 422, preview };
+    }
+  );
+  return json(result.preview, result.status);
 }

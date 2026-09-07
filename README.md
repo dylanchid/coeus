@@ -53,6 +53,7 @@ Node is pinned via `.nvmrc` and consumed by `actions/setup-node`
 | `/api/feeds` | Validated server-side RSS aggregation endpoint |
 | `/api/archive` | Authenticated archive initialization and retrieval |
 | `/api/archive/sync` | Authenticated, transactional archive synchronization |
+| `/api/health` | Unauthenticated readiness (`GET`) and liveness (`HEAD`) probe |
 
 ## Architecture
 
@@ -130,6 +131,36 @@ and are meant as generous pre-launch ceilings, not usage shaping:
 
 `archive_storage_stats()` reports per-archive revision counts, byte totals, and
 operation counts for monitoring storage growth.
+
+## Observability
+
+[`src/lib/serverLog.ts`](src/lib/serverLog.ts) is the structured-logging
+boundary. `instrument({ route, operation, correlationId }, fn)` wraps a critical
+server operation and emits one JSON line with `route`, `operation`,
+`durationMs`, `statusClass` (`2xx`/`4xx`/`5xx`/`error`), and a `correlationId`
+(taken from `x-request-id` / `x-vercel-id` when present). A `redact()` pass and
+`scrubMessage()` keep secrets, tokens, JWTs, private notes, captured content,
+and raw personal data out of the logs; client responses are unchanged.
+Instrumented so far: archive GET/sync, account deletion, the Notion OAuth
+callback, feed fetch, source preview, and destination delivery.
+
+`GET /api/health` is the readiness probe (`HEAD` is liveness, always 200). It
+checks required configuration and Supabase reachability and returns
+`{ status: "ok" | "degraded", checks, durationMs }` with `200` when every check
+passes and `503` otherwise. The body is only names, booleans, and durations —
+no identifiers or error messages. Verify a running server with
+`npm run smoke:health` (honors `SMOKE_BASE_URL`).
+
+**Alert thresholds** (wire into your uptime/log platform):
+
+| Signal | Warning | Page |
+|---|---|---|
+| `GET /api/health` non-200 | any, 1 sample | sustained > 2 min |
+| `*.error` log rate (any route) | > 1% of that route's requests over 15 min | > 5% over 5 min |
+| `archive.sync` `5xx` rate | > 2% over 15 min | > 10% over 5 min |
+| `archive.sync` p95 `durationMs` | > 2000 | > 5000 |
+| `destination_delivery.*.error` | > 5 in 1 h | > 50 in 1 h |
+| `archive_storage_stats` total `snapshot_bytes` growth | > 25%/week | > 100%/week |
 
 ## Local Supabase
 
