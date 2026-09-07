@@ -9,6 +9,7 @@ import {
   type ArchiveSyncSnapshot,
 } from "./archiveSync.ts";
 import type { ArchiveData } from "./archiveTypes.ts";
+import { ARCHIVE_BUDGET, checkArchiveBudget, type ArchiveBudgetViolation } from "./archiveBudget.ts";
 
 const EMPTY_ARCHIVE: ArchiveData = {
   version: 1,
@@ -36,12 +37,33 @@ interface CommitResult {
   snapshot: unknown;
 }
 
+export interface SyncBudgetDecision {
+  allowed: boolean;
+  retryAfterSeconds: number;
+}
+
 export interface ArchiveSyncStore {
   getOrCreate(ownerId: string): Promise<StoredArchive>;
   sync(ownerId: string, batch: ArchiveSyncBatch): Promise<StoredArchive & ArchiveSyncResult>;
+  /** Durable, cross-instance per-account sync rate limit. Consumes one unit; returns whether the request may proceed. */
+  consumeSyncBudget(ownerId: string): Promise<SyncBudgetDecision>;
 }
 
 export class ArchiveNotFoundError extends Error {}
+export class ArchiveRateLimitError extends Error {
+  readonly retryAfterSeconds: number;
+  constructor(retryAfterSeconds: number) {
+    super("Sync rate limit exceeded");
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+export class ArchiveBudgetError extends Error {
+  readonly violation: ArchiveBudgetViolation;
+  constructor(violation: ArchiveBudgetViolation) {
+    super(violation.message);
+    this.violation = violation;
+  }
+}
 export class ArchiveRevisionAheadError extends Error {
   readonly current: StoredArchive;
 
@@ -133,6 +155,8 @@ export class SupabaseArchiveSyncStore implements ArchiveSyncStore {
       const pendingOperations = batch.operations.filter((operation) => !storedById.has(operation.operationId));
       const pendingBatch = { ...batch, operations: pendingOperations };
       const reduced = applyArchiveSyncBatch(current.snapshot, pendingBatch);
+      const violation = checkArchiveBudget(reduced.snapshot);
+      if (violation) throw new ArchiveBudgetError(violation);
       const pendingLogs = pendingOperations.map((operation) => ({
         operationId: operation.operationId,
         clientId: batch.clientId,
@@ -176,6 +200,19 @@ export class SupabaseArchiveSyncStore implements ArchiveSyncStore {
       };
     }
     throw new ArchiveCommitContentionError("Archive changed too frequently; retry the batch");
+  }
+
+  async consumeSyncBudget(ownerId: string): Promise<SyncBudgetDecision> {
+    const { data, error } = await this.supabase
+      .rpc("consume_archive_sync_budget", {
+        p_owner_id: ownerId,
+        p_max: ARCHIVE_BUDGET.syncRate.max,
+        p_window_seconds: ARCHIVE_BUDGET.syncRate.windowSeconds,
+      })
+      .single();
+    if (error) throw error;
+    const row = data as unknown as { allowed: boolean; retry_after_seconds: number };
+    return { allowed: row.allowed, retryAfterSeconds: row.retry_after_seconds ?? 0 };
   }
 
   private async storedOperations(archiveId: string, operationIds: string[]): Promise<StoredOperation[]> {

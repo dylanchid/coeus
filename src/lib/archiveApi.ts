@@ -1,6 +1,8 @@
 import {
+  ArchiveBudgetError,
   ArchiveCommitContentionError,
   ArchiveNotFoundError,
+  ArchiveRateLimitError,
   ArchiveRevisionAheadError,
   type ArchiveSyncStore,
 } from "./archiveSyncStore.server.ts";
@@ -44,6 +46,20 @@ export async function handleArchiveSync(
 ): Promise<Response> {
   const ownerId = await dependencies.authenticate();
   if (!ownerId) return errorResponse("Authentication required", 401);
+
+  let budget;
+  try {
+    budget = await dependencies.store.consumeSyncBudget(ownerId);
+  } catch {
+    return errorResponse("Archive storage is unavailable", 503);
+  }
+  if (!budget.allowed) {
+    return Response.json({ error: "Sync rate limit exceeded", retryAfterSeconds: budget.retryAfterSeconds }, {
+      status: 429,
+      headers: { ...responseHeaders(), "Retry-After": String(budget.retryAfterSeconds) },
+    });
+  }
+
   const declaredLength = Number(request.headers.get("content-length") ?? 0);
   if (declaredLength > MAX_SYNC_BODY_BYTES) return errorResponse("Sync batch is too large", 413);
 
@@ -70,6 +86,15 @@ export async function handleArchiveSync(
     }
     if (error instanceof ArchiveCommitContentionError) {
       return errorResponse("Archive changed; retry the batch", 409);
+    }
+    if (error instanceof ArchiveRateLimitError) {
+      return Response.json({ error: "Sync rate limit exceeded", retryAfterSeconds: error.retryAfterSeconds }, {
+        status: 429,
+        headers: { ...responseHeaders(), "Retry-After": String(error.retryAfterSeconds) },
+      });
+    }
+    if (error instanceof ArchiveBudgetError) {
+      return Response.json({ error: error.message, budget: error.violation }, { status: 413, headers: responseHeaders() });
     }
     return errorResponse("Archive synchronization failed", 503);
   }

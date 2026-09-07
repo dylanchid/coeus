@@ -15,6 +15,13 @@ class MemoryArchiveStore {
   snapshot = createInitialSyncSnapshot(EMPTY_ARCHIVE, "2026-09-04T00:00:00.000Z");
   operations = new Map();
   syncCalls = 0;
+  budgetCalls = 0;
+  budgetDecision = { allowed: true, retryAfterSeconds: 0 };
+
+  async consumeSyncBudget() {
+    this.budgetCalls += 1;
+    return this.budgetDecision;
+  }
 
   async getOrCreate() {
     return { archiveId: this.archiveId, snapshot: this.snapshot };
@@ -142,4 +149,28 @@ test("failed reductions do not mutate the confirmed archive", async () => {
   assert.equal(response.status, 503);
   assert.deepEqual(store.snapshot, before);
   assert.equal(store.operations.size, 0);
+});
+
+test("archive sync is rejected with 429 and Retry-After when the account budget is spent", async () => {
+  const store = new MemoryArchiveStore();
+  store.budgetDecision = { allowed: false, retryAfterSeconds: 42 };
+  const response = await handleArchiveSync(syncRequest(batch()), dependencies(store));
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "42");
+  assert.equal((await response.json()).retryAfterSeconds, 42);
+  assert.equal(store.syncCalls, 0, "a rate-limited request never reaches storage");
+  assert.equal(store.budgetCalls, 1);
+});
+
+test("a store ArchiveBudgetError surfaces as 413 with the violation", async () => {
+  const store = new MemoryArchiveStore();
+  const { ArchiveBudgetError } = await import("./archiveSyncStore.server.ts");
+  store.sync = async () => {
+    throw new ArchiveBudgetError({ code: "items", message: "Archive exceeds the 5000-item limit", limit: 5000, actual: 5001 });
+  };
+  const response = await handleArchiveSync(syncRequest(batch()), dependencies(store));
+  assert.equal(response.status, 413);
+  const body = await response.json();
+  assert.match(body.error, /5000-item/);
+  assert.equal(body.budget.code, "items");
 });

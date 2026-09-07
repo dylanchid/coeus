@@ -112,6 +112,25 @@ Archive exports remain portable Markdown and CSV. The authenticated sync API and
 durable schema are implemented; the browser remains on local storage until the
 queued background-sync and first-account migration work lands.
 
+## Limits and retention
+
+Per-account budgets are enforced at the database boundary (a trigger on the
+immutable revision table) and mirrored by the service-role sync store for
+clearer errors. Defaults live in [`src/lib/archiveBudget.ts`](src/lib/archiveBudget.ts)
+and are meant as generous pre-launch ceilings, not usage shaping:
+
+| Budget | Default | Enforced by |
+|---|---|---|
+| Items / collections / posts per archive | 5000 / 2000 / 5000 | `archive_revisions_budget` trigger + `checkArchiveBudget` |
+| Serialized snapshot size | 8 MiB | same |
+| Any single string field | 20000 chars | `checkArchiveBudget` |
+| Sync requests per account | 60 per 5 min | `consume_archive_sync_budget` (durable, cross-instance); `429` + `Retry-After` |
+| Sync batch body / operations | 2 MiB / 500 ops | `handleArchiveSync` / `parseArchiveSyncBatch` |
+| Revision retention | keep last 50 **and** last 30 days | `prune_all_archive_revisions`, run by the daily cron route |
+
+`archive_storage_stats()` reports per-archive revision counts, byte totals, and
+operation counts for monitoring storage growth.
+
 ## Local Supabase
 
 Install the Supabase CLI and Docker Desktop, then run:

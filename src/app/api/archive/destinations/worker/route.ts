@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { ARCHIVE_BUDGET } from "@/lib/archiveBudget";
 import { SupabaseArchiveSyncStore } from "@/lib/archiveSyncStore.server";
 import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
@@ -37,8 +38,18 @@ export async function GET(request: Request): Promise<Response> {
     .rpc("sweep_conversation_orphans")
     .single();
 
+  // Revision retention: keep the recent N revisions and the last M days.
+  const { data: retention, error: retentionError } = await supabase.rpc("prune_all_archive_revisions", {
+    p_keep_count: ARCHIVE_BUDGET.retention.keepRevisions,
+    p_keep_days: ARCHIVE_BUDGET.retention.keepDays,
+  });
+  const prunedRevisions = Array.isArray(retention)
+    ? (retention as { deleted: number }[]).reduce((total, row) => total + (row.deleted ?? 0), 0)
+    : 0;
+
   return Response.json({
     ...result,
     orphanSweep: sweepError ? { error: sweepError.message } : orphanSweep,
+    retention: retentionError ? { error: retentionError.message } : { prunedRevisions },
   });
 }
