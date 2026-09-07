@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { securityHeaders } from "./src/lib/securityHeaders";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   // Isolate from parent lockfiles in the home directory
   turbopack: {
     root: path.join(__dirname),
@@ -17,6 +19,11 @@ const nextConfig: NextConfig = {
       { source: "/@:handle/:section", destination: "/u/:handle/:section" },
       { source: "/@:handle", destination: "/u/:handle" },
     ];
+  },
+  async headers() {
+    // Applies to HTML, APIs, auth callbacks, and public content alike. Route
+    // handlers can still add their narrower cache/content-type headers.
+    return [{ source: "/:path*", headers: securityHeaders(process.env.NODE_ENV === "production") }];
   },
 };
 

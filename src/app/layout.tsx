@@ -20,10 +20,16 @@ const fontVariables = [
   syne.variable,
 ].join(" ");
 
+// Set this public value to the canonical HTTPS deployment origin in production.
+// The local default keeps metadata deterministic for development and CI.
+const metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "Coeus",
+  metadataBase,
+  title: { default: "Coeus", template: "%s | Coeus" },
   description:
     "Headlines, bare — transparent story ordering, keyword search, and a configurable reading surface.",
+  alternates: { canonical: "/" },
 };
 
 export default function RootLayout({

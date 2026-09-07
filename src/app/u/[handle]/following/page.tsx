@@ -20,6 +20,8 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   return {
     title: `Accounts ${profile.displayName} (@${profile.handle}) follows — Coeus`,
     description: `Accounts @${profile.handle} follows on Coeus.`,
+    alternates: { canonical: `/@${profile.handle}/following` },
+    robots: { index: false, follow: true },
   };
 }
 

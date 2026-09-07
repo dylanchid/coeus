@@ -51,6 +51,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `${publication.name} — Coeus`,
     description: publication.description || publication.curatorNote || undefined,
+    alternates: { canonical: `/c/${publication.slug}` },
+    robots: { index: publication.visibility === "public", follow: true },
   };
 }
 

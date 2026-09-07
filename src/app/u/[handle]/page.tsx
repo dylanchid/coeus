@@ -35,6 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   return {
     title: `${profile.displayName} (@${profile.handle}) — Coeus`,
     description: profile.bio ?? undefined,
+    alternates: { canonical: `/@${profile.handle}` },
   };
 }
 
