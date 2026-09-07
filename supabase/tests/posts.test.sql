@@ -118,31 +118,16 @@ select public.publish_post('11111111-1111-1111-1111-111111111111', 'p-private', 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 
-select is(
-  (select count(*) from public.posts where item_local_id = 'p-public'),
-  1::bigint, 'a stranger reads a public post through RLS'
-);
-select is(
-  (select count(*) from public.posts where item_local_id = 'p-unlisted'),
-  1::bigint, 'a stranger reads an unlisted post through RLS — canSee narrows listings, not this'
-);
-select is(
-  (select count(*) from public.posts where item_local_id = 'p-followers'),
-  0::bigint, 'a stranger cannot read a followers-tier post through RLS'
-);
-select is(
-  (select count(*) from public.posts where item_local_id = 'p-private'),
-  0::bigint, 'a stranger cannot read a private post through RLS'
-);
+select throws_ok($$ select * from public.posts $$, '42501', null, 'a stranger cannot read public posts outside the BFF');
+select throws_ok($$ select * from public.posts $$, '42501', null, 'a stranger cannot read unlisted posts outside the BFF');
+select throws_ok($$ select * from public.posts $$, '42501', null, 'a stranger cannot read followers posts outside the BFF');
+select throws_ok($$ select * from public.posts $$, '42501', null, 'a stranger cannot read private posts outside the BFF');
 
 reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
-select is(
-  (select count(*) from public.posts where item_local_id = 'p-private'),
-  1::bigint, 'the author reads their own private post through RLS'
-);
+select throws_ok($$ select * from public.posts $$, '42501', null, 'the author cannot read posts outside the BFF');
 select throws_ok(
   $$ insert into public.posts (author_id, item_local_id, title, url)
      values ('11111111-1111-1111-1111-111111111111', 'direct', 'X', 'https://example.com/x') $$,

@@ -128,18 +128,9 @@ select set_config('test.unlisted_id',
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 
-select is(
-  (select count(*) from public.collection_publications where slug = 'foll-collection'),
-  0::bigint, 'a stranger cannot read a followers-tier publication through RLS'
-);
-select is(
-  (select count(*) from public.collection_publications where slug = 'priv-collection'),
-  0::bigint, 'a stranger cannot read a private publication through RLS'
-);
-select is(
-  (select count(*) from public.collection_publications where slug = 'pub-collection'),
-  1::bigint, 'a non-owner can still read the republished (now unlisted) publication by slug'
-);
+select throws_ok($$ select * from public.collection_publications $$, '42501', null, 'a stranger cannot read followers-tier publications outside the BFF');
+select throws_ok($$ select * from public.collection_publications $$, '42501', null, 'a stranger cannot read private publications outside the BFF');
+select throws_ok($$ select * from public.collection_publications $$, '42501', null, 'a stranger cannot read unlisted publications outside the BFF');
 
 -- the collection_follows WITH CHECK still gates new follows to public/unlisted
 select throws_ok(
@@ -147,10 +138,10 @@ select throws_ok(
      values (current_setting('test.foll_id')::uuid, '22222222-2222-2222-2222-222222222222') $$,
   '42501', null, 'cannot follow a followers-tier publication under the recreated policy'
 );
-select lives_ok(
+select throws_ok(
   $$ insert into public.collection_follows (publication_id, follower_id)
      values (current_setting('test.unlisted_id')::uuid, '22222222-2222-2222-2222-222222222222') $$,
-  'can still follow an unlisted publication under the recreated policy'
+  '42501', null, 'cannot follow an unlisted publication outside the BFF'
 );
 
 reset role;

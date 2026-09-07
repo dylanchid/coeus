@@ -146,23 +146,24 @@ select lives_ok(
   'recreates a destination for the RLS checks'
 );
 
+select set_config('test.archive_id', (select id::text from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'), false);
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 
-select is((select count(*) from public.destinations), 0::bigint, 'RLS hides all destination rows, even from the owner');
+select throws_ok($$ select * from public.destinations $$, '42501', null, 'grants hide all destination rows, even from the owner');
 
 select throws_ok(
   $$ insert into public.destinations (archive_id, kind, display_name)
      values ((select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'), 'notion', 'x') $$,
   '42501',
-  'new row violates row-level security policy for table "destinations"',
-  'RLS blocks a direct insert into destinations'
+  'permission denied for table destinations',
+  'grants block a direct insert into destinations'
 );
 
 select throws_ok(
   $$ select public.create_destination(
     '11111111-1111-1111-1111-111111111111',
-    (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+    current_setting('test.archive_id')::uuid,
     'obsidian_git'::public.destination_kind, 'x', '{}'::jsonb, null, null, null
   ) $$,
   '42501',
@@ -172,7 +173,7 @@ select throws_ok(
 select throws_ok(
   $$ select public.disconnect_destination(
     '11111111-1111-1111-1111-111111111111',
-    (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+    current_setting('test.archive_id')::uuid,
     'notion'::public.destination_kind
   ) $$,
   '42501',

@@ -51,10 +51,10 @@ select is((select count(*) from public.archive_revisions), 2::bigint, 'stale com
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
-select is((select count(*) from public.archives), 1::bigint, 'owner can read their archive through RLS');
+select throws_ok($$ select * from public.archives $$, '42501', null, 'the owner cannot read archive rows outside the BFF');
 
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
-select is((select count(*) from public.archives), 0::bigint, 'another user cannot read the archive');
+select throws_ok($$ select * from public.archives $$, '42501', null, 'another user cannot read archive rows outside the BFF');
 
 select throws_ok(
   $$ select * from public.commit_archive_sync(

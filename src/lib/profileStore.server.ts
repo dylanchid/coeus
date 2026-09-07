@@ -1,12 +1,7 @@
 import "server-only";
 
-import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
-import {
-  HandleChangeRateLimitedError,
-  HandleQuarantinedError,
-  HandleTakenError,
-  HANDLE_CHANGES_PER_YEAR,
-} from "./profileErrors.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { HandleChangeRateLimitedError, HandleQuarantinedError, HandleTakenError } from "./profileErrors.ts";
 import { HANDLE_PATTERN, normalizeHandle, validateProfileLinks, type Profile, type ProfileInput, type ProfileLink } from "./profile.ts";
 import { isPublicationVisibility } from "./collectionPublication.ts";
 import type { ProfileSectionsPatch, ProfileSectionSwitches } from "./profileSections.ts";
@@ -95,7 +90,7 @@ export class SupabaseProfileStore implements ProfileStore {
   }
 
   async save(userId: string, input: ProfileInput): Promise<Profile> {
-    // A handle that differs from the stored one is a *change*, not a plain
+    /* // A handle that differs from the stored one is a *change*, not a plain
     // column write: the old handle has to be released into handle_history in
     // the same transaction as the rename (sub-epic 4). That, the quarantine
     // check and the rate limit all live in changeHandle() below; a first-time
@@ -133,6 +128,22 @@ export class SupabaseProfileStore implements ProfileStore {
       if (isUniqueViolation(error)) throw new HandleTakenError(`Handle "${input.handle}" is taken`);
       throw error;
     }
+    return profileRow(data as Record<string, unknown>); */
+    const { data, error } = await this.supabase.rpc("save_profile", {
+      p_id: userId, p_handle: input.handle, p_display_name: input.displayName,
+      p_bio: input.bio, p_location: input.location, p_links: input.links,
+      p_avatar_url: input.avatarUrl, p_cover_url: input.coverUrl,
+      p_pinned_collection_slugs: input.pinnedCollectionSlugs,
+    });
+    if (error) {
+      if (error.code === "23505") throw new HandleTakenError(`Handle "${input.handle}" is taken`);
+      if (error.code === "HQ001") throw new HandleQuarantinedError("Handle is quarantined");
+      if (error.code === "HCR01") {
+        const match = error.message.match(/until (.+)$/);
+        throw new HandleChangeRateLimitedError(new Date(match?.[1] ?? Date.now()));
+      }
+      throw error;
+    }
     return profileRow(data as Record<string, unknown>);
   }
 
@@ -148,7 +159,7 @@ export class SupabaseProfileStore implements ProfileStore {
    * A failed RPC writes no history row, so a rejected attempt never counts
    * against the rate limit.
    */
-  private async changeHandle(userId: string, newHandle: string): Promise<void> {
+  /* private async changeHandle(userId: string, newHandle: string): Promise<void> {
     const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
     const windowStart = new Date(Date.now() - YEAR_MS).toISOString();
     const { data: recent, error: recentError } = await this.supabase
@@ -173,7 +184,7 @@ export class SupabaseProfileStore implements ProfileStore {
       throw new HandleQuarantinedError(`Handle "${newHandle}" was released by another account in the last 30 days`);
     }
     throw error;
-  }
+  } */
 
   async updateSections(userId: string, patch: ProfileSectionsPatch): Promise<ProfileSectionSwitches | null> {
     const row: Record<string, unknown> = {};
@@ -281,8 +292,4 @@ function embeddedCount(value: unknown): number {
     return typeof count === "number" ? count : 0;
   }
   return 0;
-}
-
-function isUniqueViolation(error: PostgrestError): boolean {
-  return error.code === "23505";
 }

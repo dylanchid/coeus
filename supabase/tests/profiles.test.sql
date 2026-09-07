@@ -51,32 +51,27 @@ select ok(
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 
-select is(
-  (select count(*) from public.profiles),
-  1::bigint,
-  'any authenticated reader can see every profile'
-);
+select throws_ok($$ select * from public.profiles $$, '42501', null, 'authenticated readers cannot see raw profiles outside the BFF');
 
 select throws_ok(
   $$ insert into public.profiles (id, handle, display_name)
      values ('11111111-1111-1111-1111-111111111111', 'notmine', 'Spoofed') $$,
   '42501',
-  'new row violates row-level security policy for table "profiles"',
-  'a user cannot create a profile for another account'
+  'permission denied for table profiles',
+  'a user cannot create a profile for another account outside the BFF'
 );
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.profiles (id, handle, display_name)
      values ('22222222-2222-2222-2222-222222222222', 'grace', 'Grace Hopper') $$,
-  'a user can create their own profile'
+  '42501', null, 'a user cannot create their own profile outside the BFF'
 );
 
-update public.profiles set display_name = 'Hacked'
-  where id = '11111111-1111-1111-1111-111111111111';
-select is(
-  (select display_name from public.profiles where id = '11111111-1111-1111-1111-111111111111'),
-  'Ada L.',
-  'an update targeting another account''s row is filtered out by RLS'
+select throws_ok(
+  $$ update public.profiles set display_name = 'Hacked'
+     where id = '11111111-1111-1111-1111-111111111111' $$,
+  '42501', null,
+  'an update targeting another account is denied outside the BFF'
 );
 
 select * from finish();

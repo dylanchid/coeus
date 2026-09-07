@@ -76,35 +76,38 @@ select ok(
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 
-select is((select count(*) from public.collection_publications where collection_local_id = 'tools-for-thought'), 1::bigint, 'a non-owner can read a live public collection');
-select is((select count(*) from public.collection_publications where collection_local_id = 'humane-internet'), 0::bigint, 'a non-owner cannot read an unpublished collection');
-select is(
-  (select count(*) from public.collection_publication_items
-    where publication_id = (select id from public.collection_publications where collection_local_id = 'tools-for-thought')),
-  1::bigint,
-  'a non-owner can read items of a live publication through the join policy'
-);
+select throws_ok($$ select * from public.collection_publications $$, '42501', null, 'a non-owner cannot read publication rows outside the BFF');
+select throws_ok($$ select * from public.collection_publications $$, '42501', null, 'unpublished publication rows are also closed by grants');
+select throws_ok($$ select * from public.collection_publication_items $$, '42501', null, 'publication item rows are closed by grants');
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.collection_follows (publication_id, follower_id)
      values ((select id from public.collection_publications where collection_local_id = 'tools-for-thought'), '22222222-2222-2222-2222-222222222222') $$,
-  'a signed-in user can follow a live publication under RLS'
+  '42501', null, 'a signed-in user cannot follow directly outside the BFF'
 );
-select is((select count(*) from public.collection_follows), 1::bigint, 'creates one follow row');
+reset role;
+select is((select count(*) from public.collection_follows), 0::bigint, 'a denied direct follow creates no row');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 
 select throws_ok(
   $$ insert into public.collection_follows (publication_id, follower_id)
      values ((select id from public.collection_publications where collection_local_id = 'tools-for-thought'), '11111111-1111-1111-1111-111111111111') $$,
   '42501',
-  'new row violates row-level security policy for table "collection_follows"',
+  null,
   'a user cannot create a follow row for someone else'
 );
 
-select lives_ok(
+select throws_ok(
   $$ delete from public.collection_follows where follower_id = '22222222-2222-2222-2222-222222222222' $$,
-  'a follower can unfollow by deleting their own follow row'
+  '42501', null, 'a follower cannot unfollow directly outside the BFF'
 );
+reset role;
 select is((select count(*) from public.collection_follows), 0::bigint, 'unfollow removes the row');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
 
 select throws_ok(
   $$ select * from public.publish_collection(
@@ -123,11 +126,7 @@ select throws_ok(
 );
 
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
-select is(
-  (select count(*) from public.collection_publications where collection_local_id = 'humane-internet'),
-  1::bigint,
-  'the owner can still see their own unpublished publication'
-);
+select throws_ok($$ select * from public.collection_publications $$, '42501', null, 'the owner cannot read unpublished publication rows outside the BFF');
 
 select * from finish();
 rollback;

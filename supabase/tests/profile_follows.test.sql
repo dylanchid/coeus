@@ -96,20 +96,19 @@ reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
-select lives_ok(
+select throws_ok(
   $$ insert into public.profile_follows (follower_id, followee_id)
      values ('11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333') $$,
-  'alice creates her own follow of carol under RLS'
+  '42501', null, 'alice cannot create a follow directly outside the BFF'
 );
 reset role;
+insert into public.profile_follows (follower_id, followee_id)
+values ('11111111-1111-1111-1111-111111111111', '33333333-3333-3333-3333-333333333333');
 
 -- ── RLS: the permissive SELECT policy exposes counts to a stranger ──────────
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
-select is(
-  (select count(*) from public.profile_follows where followee_id = '22222222-2222-2222-2222-222222222222'),
-  1::bigint, 'carol, a stranger to the alice->bob edge, can still read bob''s follower count'
-);
+select throws_ok($$ select * from public.profile_follows $$, '42501', null, 'a stranger cannot read the follow graph outside the BFF');
 reset role;
 
 -- ── a follower with no profile row (followed before onboarding) ─────────────

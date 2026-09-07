@@ -14,6 +14,7 @@ import {
   stripHtmlFast,
   vetCachedSummary,
 } from "./summary";
+import { BoundedCache, feedCacheKey } from "./feedCache";
 
 const parser = new Parser({
   timeout: 6_000,
@@ -32,6 +33,8 @@ const CACHE_MAX_ITEMS = 50;
 const CACHE_FRESH_MS = 3 * 60 * 1000;
 /** Stale-but-usable: serve immediately, revalidate in background. */
 const CACHE_STALE_MS = 20 * 60 * 1000;
+/** Bound process memory even if clients submit endlessly distinct custom URLs. */
+const CACHE_MAX_FEEDS = 250;
 const FETCH_CONCURRENCY = 8;
 /** Bump when summary quality / engagement fields change so process cache isn't sticky garbage. */
 const SUMMARY_QUALITY_VERSION = 5;
@@ -74,9 +77,9 @@ type CacheEntry = {
 };
 
 /** Process-local feed cache (survives across requests in Node). */
-const feedCache = new Map<string, CacheEntry>();
+const feedCache = new BoundedCache<string, CacheEntry>(CACHE_MAX_FEEDS);
 /** In-flight de-dupe so concurrent requests share one network fetch. */
-const inflight = new Map<string, Promise<CacheEntry>>();
+const inflight = new BoundedCache<string, Promise<CacheEntry>>(CACHE_MAX_FEEDS);
 
 function ageLabel(iso: string | null): string {
   if (!iso) return "";
@@ -208,7 +211,19 @@ function getOrFetchEntry(sourceId: string, forceRefresh: boolean, sourceById: Ma
   revalidating: boolean;
 } {
   const now = Date.now();
-  const cached = feedCache.get(sourceId);
+  const def = sourceById.get(sourceId);
+  if (!def) {
+    return {
+      entry: null,
+      promise: Promise.resolve({
+        fetchedAt: Date.now(), articles: [], error: "Unknown source", summaryQuality: SUMMARY_QUALITY_VERSION,
+      }),
+      fromCache: false,
+      revalidating: false,
+    };
+  }
+  const cacheKey = feedCacheKey(def);
+  const cached = feedCache.get(cacheKey);
   // Invalidate entries built before current summary quality rules
   const cacheUsable =
     cached && cached.summaryQuality === SUMMARY_QUALITY_VERSION;
@@ -220,34 +235,34 @@ function getOrFetchEntry(sourceId: string, forceRefresh: boolean, sourceById: Ma
     }
     if (age < CACHE_STALE_MS) {
       // Stale-while-revalidate
-      let promise = inflight.get(sourceId) ?? null;
+      let promise = inflight.get(cacheKey) ?? null;
       if (!promise) {
         promise = networkFetch(sourceId, sourceById).then((entry) => {
           // Keep previous good data if revalidate fails empty with error
           if (entry.error && cached.articles.length && !entry.articles.length) {
             const merged = { ...cached, fetchedAt: Date.now() };
-            feedCache.set(sourceId, merged);
-            inflight.delete(sourceId);
+            feedCache.set(cacheKey, merged);
+            inflight.delete(cacheKey);
             return merged;
           }
-          feedCache.set(sourceId, entry);
-          inflight.delete(sourceId);
+          feedCache.set(cacheKey, entry);
+          inflight.delete(cacheKey);
           return entry;
         });
-        inflight.set(sourceId, promise);
+        inflight.set(cacheKey, promise);
       }
       return { entry: cached, promise, fromCache: true, revalidating: true };
     }
   }
 
-  let promise = inflight.get(sourceId);
+  let promise = inflight.get(cacheKey);
   if (!promise) {
     promise = networkFetch(sourceId, sourceById).then((entry) => {
-      feedCache.set(sourceId, entry);
-      inflight.delete(sourceId);
+      feedCache.set(cacheKey, entry);
+      inflight.delete(cacheKey);
       return entry;
     });
-    inflight.set(sourceId, promise);
+    inflight.set(cacheKey, promise);
   }
 
   return { entry: null, promise, fromCache: false, revalidating: false };
@@ -342,13 +357,16 @@ export async function fetchFeeds(options: {
       return materialize(id, entry, limit, hours, sourceById);
     }
     misses++;
-    const resolved = promise ? await promise : feedCache.get(id)!;
+    const resolved = promise ? await promise : feedCache.get(feedCacheKey(sourceById.get(id)!))!;
     return materialize(id, resolved, limit, hours, sourceById);
   });
 
   const newest = Math.max(
     0,
-    ...sourceIds.map((id) => feedCache.get(id)?.fetchedAt ?? 0)
+    ...sourceIds.map((id) => {
+      const def = sourceById.get(id);
+      return def ? feedCache.get(feedCacheKey(def))?.fetchedAt ?? 0 : 0;
+    })
   );
 
   return {

@@ -202,30 +202,15 @@ select public.create_reply(
 );
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
-select is(
-  (select count(*) from public.replies where target_type = 'post'),
-  0::bigint, 'a stranger reads no followers-tier reply on the post through RLS'
-);
-select is(
-  (select count(*) from public.replies where target_type = 'collection'),
-  1::bigint, 'a stranger reads the public-collection reply through RLS'
-);
-select is(
-  (select count(*) from public.likes),
-  0::bigint, 'no likes remain to read'
-);
-select is(
-  (select count(*) from public.reposts) > 0,
-  true, 'a stranger reads repost rows through the permissive policy'
-);
+select throws_ok($$ select * from public.replies $$, '42501', null, 'a stranger cannot read replies outside the BFF');
+select throws_ok($$ select * from public.replies $$, '42501', null, 'public replies are also closed by grants');
+select throws_ok($$ select * from public.likes $$, '42501', null, 'a stranger cannot read likes outside the BFF');
+select throws_ok($$ select * from public.reposts $$, '42501', null, 'a stranger cannot read reposts outside the BFF');
 reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
-select is(
-  (select count(*) from public.replies where target_type = 'post' and author_id = '22222222-2222-2222-2222-222222222222'),
-  1::bigint, 'the author reads their own followers-tier reply through RLS'
-);
+select throws_ok($$ select * from public.replies $$, '42501', null, 'the author cannot read replies outside the BFF');
 select throws_ok(
   $$ insert into public.replies (author_id, target_type, target_id, body)
      values ('22222222-2222-2222-2222-222222222222', 'collection',
