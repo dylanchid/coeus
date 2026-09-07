@@ -20,6 +20,7 @@ import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
 import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { DestinationsPanel } from "./DestinationsPanel";
+import { VisibilitySelect } from "./VisibilitySelect";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
 type Sort = "newest" | "oldest" | "title";
@@ -76,10 +77,7 @@ function PublishPanel({
             : "Not published yet"}
         </p>
         <label htmlFor={`publish-visibility-${collectionId}`}>Visibility</label>
-        <select id={`publish-visibility-${collectionId}`} value={visibility} onChange={(event) => setVisibility(event.target.value as PublicationVisibility)}>
-          <option value="unlisted">Unlisted — link only</option>
-          <option value="public">Public — discoverable</option>
-        </select>
+        <VisibilitySelect id={`publish-visibility-${collectionId}`} value={visibility} onChange={setVisibility} />
         <label htmlFor={`publish-curator-note-${collectionId}`}>Curator note</label>
         <textarea id={`publish-curator-note-${collectionId}`} value={curatorNote} onChange={(event) => setCuratorNote(event.target.value)} placeholder="Why does this collection matter? What should followers expect?" />
         <label htmlFor={`publish-attribution-${collectionId}`}>Attribution</label>
@@ -391,7 +389,7 @@ export function ArchiveApp() {
                 <label htmlFor="collection-kind">Ownership</label>
                 <select id="collection-kind" value={newCollectionKind} onChange={(event) => setNewCollectionKind(event.target.value as CollectionKind)}><option value="personal">Personal</option><option value="community">Community</option></select>
                 <label htmlFor="collection-visibility">Visibility</label>
-                <select id="collection-visibility" value={newCollectionVisibility} onChange={(event) => setNewCollectionVisibility(event.target.value as CollectionVisibility)}><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select>
+                <VisibilitySelect id="collection-visibility" value={newCollectionVisibility} onChange={setNewCollectionVisibility} />
                 <div><button type="submit">Create</button><button type="button" onClick={() => setComposerOpen(false)}>Cancel</button></div>
               </form>
             ) : (

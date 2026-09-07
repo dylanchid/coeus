@@ -107,6 +107,8 @@
 }
 .profile-tab:hover { color: var(--fg); }
 .profile-tab[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
+/* The owner's Posts tab before they have published a post: shown, not a link. */
+.profile-tab.is-greyed { color: var(--line); cursor: default; }
 
 .profile-actions { margin-left: auto; }
 .profile-action {
@@ -158,6 +160,49 @@
 }
 .profile-collection-flag { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; }
 .profile-collection.is-unpublished { opacity: 0.55; }
+
+/* —— Posts tab ——————————————————————————————————————————— */
+.profile-posts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-md); }
+.profile-post {
+  display: grid;
+  gap: 0.6rem;
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--line);
+}
+.profile-post:last-child { border-bottom: none; }
+.profile-post-visibility { margin: 0; }
+.profile-post-commentary {
+  max-width: 44rem;
+  margin: 0;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 2px solid var(--accent);
+  font: 600 clamp(1.05rem, 2.2vw, 1.4rem)/1.35 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+.profile-post-source {
+  display: grid;
+  gap: 0.2rem;
+  max-width: 44rem;
+  padding: 0.7rem;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  text-decoration: none;
+}
+.profile-post-source:visited { color: var(--fg); }
+.profile-post-source:hover { border-color: var(--fg); }
+.profile-post-source-name {
+  color: var(--accent);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.profile-post-source strong { font: 600 0.85rem var(--font-display); }
+.profile-post-source small { color: var(--muted); font-size: 0.62rem; }
+.profile-post-excerpt { color: var(--fg); font-size: var(--text-meta); line-height: 1.5; }
+
+/* The colour-free tier glyph (● ◐ ◍ ○) — the sr-only label carries the name. */
+.visibility-glyph { display: inline-flex; align-items: center; color: var(--handle); }
 
 /* —— Sidebar ——————————————————————————————————————————— */
 .profile-sidebar {

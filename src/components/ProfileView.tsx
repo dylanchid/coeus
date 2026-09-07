@@ -1,9 +1,10 @@
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileCollections } from "./ProfileCollections";
 import { ProfileEditorMount } from "./ProfileEditor";
+import { ProfilePosts } from "./ProfilePosts";
 import { ProfileSidebar } from "./ProfileSidebar";
 import { ProfileTabs } from "./ProfileTabs";
-import type { ProfileTabId } from "@/lib/profileTabs";
+import type { PostsTabState, ProfileTabId } from "@/lib/profileTabs";
 import type { ProfileSectionSwitches } from "@/lib/profileSections";
 import type { PublicProfileView } from "@/lib/publicProfile";
 
@@ -40,10 +41,22 @@ export function ProfileView({
     ? "You haven’t published any collections yet."
     : `@${view.handle} hasn’t published any collections yet.`;
 
+  // The Posts tab: a normal link once there is something to see; greyed for the
+  // owner who has published nothing; absent entirely for a visitor with nothing.
+  const postsTab: PostsTabState = view.posts.length ? "visible" : view.isOwner ? "greyed" : "hidden";
+  // An unknown or hidden ?tab=posts falls back to the overview column.
+  const activeTab: ProfileTabId = tab === "posts" && postsTab === "hidden" ? "overview" : tab;
+
   return (
     <div className="profile-page">
       <ProfileBanner view={view} />
-      <ProfileTabs handle={view.handle} current={tab} isOwner={view.isOwner} follow={follow} />
+      <ProfileTabs
+        handle={view.handle}
+        current={activeTab}
+        isOwner={view.isOwner}
+        follow={follow}
+        posts={postsTab}
+      />
 
       {view.isOwner ? (
         <div className="profile-editor-slot">
@@ -62,7 +75,9 @@ export function ProfileView({
 
       <div className="profile-body">
         <div className="profile-feed">
-          {tab === "collections" ? (
+          {activeTab === "posts" ? (
+            <ProfilePosts posts={view.posts} isOwner={view.isOwner} handle={view.handle} />
+          ) : activeTab === "collections" ? (
             <ProfileCollections cards={view.collections} emptyMessage={emptyMessage} />
           ) : (
             <ProfileCollections
