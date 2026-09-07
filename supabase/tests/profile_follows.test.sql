@@ -1,12 +1,14 @@
 begin;
 
-select plan(18);
+select plan(22);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at)
 values
   ('11111111-1111-1111-1111-111111111111', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'alice@example.test', '', now()),
   ('22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'bob@example.test',   '', now()),
-  ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'carol@example.test', '', now());
+  ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'carol@example.test', '', now()),
+  -- an account that follows before completing onboarding: no profiles row.
+  ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dave@example.test',  '', now());
 
 insert into public.profiles (id, handle, display_name) values
   ('11111111-1111-1111-1111-111111111111', 'alice', 'Alice'),
@@ -109,6 +111,34 @@ select is(
   1::bigint, 'carol, a stranger to the alice->bob edge, can still read bob''s follower count'
 );
 reset role;
+
+-- ── a follower with no profile row (followed before onboarding) ─────────────
+-- follower_id references auth.users, not profiles, so this insert must succeed.
+select lives_ok(
+  $$ insert into public.profile_follows (follower_id, followee_id)
+     values ('44444444-4444-4444-4444-444444444444', '33333333-3333-3333-3333-333333333333') $$,
+  'an account with no profiles row can still follow'
+);
+select is(
+  (select count(*) from public.profile_follows where followee_id = '33333333-3333-3333-3333-333333333333'),
+  2::bigint, 'the raw follower count for carol includes the profile-less follower'
+);
+-- The app renders and counts followers via an inner join to profiles, so the
+-- profile-less follower drops out of BOTH — the list and the figure agree.
+select is(
+  (select count(*)
+     from public.profile_follows f
+     join public.profiles p on p.id = f.follower_id
+    where f.followee_id = '33333333-3333-3333-3333-333333333333'),
+  1::bigint, 'joined to profiles, carol has one renderable follower — count matches the list'
+);
+select is(
+  (select p.handle
+     from public.profile_follows f
+     join public.profiles p on p.id = f.follower_id
+    where f.followee_id = '33333333-3333-3333-3333-333333333333'),
+  'alice', 'the renderable follower is the one with a profile'
+);
 
 -- ── cascade on delete ──────────────────────────────────────────────────────
 -- a follow into bob from an account that survives the follower-cascade test

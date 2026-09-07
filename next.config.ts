@@ -10,7 +10,13 @@ const nextConfig: NextConfig = {
     // /@handle is the canonical public profile URL; /u/[handle] is the route
     // that renders it. A plain array applies at the afterFiles position, so
     // real files and static routes still win over /@something.
-    return [{ source: "/@:handle", destination: "/u/:handle" }];
+    //
+    // The :section rule (followers / following) is listed first so it matches
+    // before the bare-handle rule; path-to-regexp is greedy left to right.
+    return [
+      { source: "/@:handle/:section", destination: "/u/:handle/:section" },
+      { source: "/@:handle", destination: "/u/:handle" },
+    ];
   },
 };
 

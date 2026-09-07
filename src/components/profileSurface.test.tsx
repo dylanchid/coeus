@@ -32,7 +32,19 @@ const { fireEvent } = await import("@testing-library/react");
 const { ProfileTabs } = await import("./ProfileTabs");
 const { ProfileSidebar } = await import("./ProfileSidebar");
 const { ProfilePosts } = await import("./ProfilePosts");
+const { ProfileFollowList } = await import("./ProfileFollowList");
 const { VisibilitySelect } = await import("./VisibilitySelect");
+
+function follower(overrides = {}) {
+  return {
+    id: `id-${Math.random().toString(36).slice(2)}`,
+    handle: "grace",
+    displayName: "Grace Hopper",
+    avatarUrl: null,
+    bio: "Compiler pioneer",
+    ...overrides,
+  };
+}
 const { deriveProfileView, DEFAULT_SECTION_SWITCHES } = await import("@/lib/publicProfile");
 
 function postCard(overrides = {}) {
@@ -238,6 +250,87 @@ test("VisibilitySelect narrows to the allowed set", () => {
   render(<VisibilitySelect value="public" onChange={() => {}} allow={["unlisted", "public"]} />);
   assert.equal(screen.queryByRole("option", { name: /^Private$/ }), null);
   assert.ok(screen.getByRole("option", { name: /discoverable/i }));
+});
+
+// ── ProfileFollowList ──────────────────────────────────────────────────────
+
+test("ProfileFollowList headings match the direction and count", () => {
+  const { rerender } = renderWithRouter(
+    <ProfileFollowList
+      handle="ada" direction="followers" isOwner={false} hiddenFromProfile={false}
+      count={1} items={[follower()]} hasMore={false} nextCursor={null} onCursor={false}
+    />
+  );
+  assert.ok(screen.getByRole("heading", { name: "1 follower" }));
+
+  rerender(
+    <AppRouterContext.Provider value={{} as never}>
+      <PathnameContext.Provider value="/@ada/following">
+        <ProfileFollowList
+          handle="ada" direction="following" isOwner={false} hiddenFromProfile={false}
+          count={4} items={[follower()]} hasMore={false} nextCursor={null} onCursor={false}
+        />
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>
+  );
+  assert.ok(screen.getByRole("heading", { name: "Following 4" }));
+});
+
+test("ProfileFollowList shows the owner a hidden-from-profile note, a visitor never sees it", () => {
+  const { rerender } = renderWithRouter(
+    <ProfileFollowList
+      handle="ada" direction="followers" isOwner hiddenFromProfile
+      count={2} items={[follower(), follower()]} hasMore={false} nextCursor={null} onCursor={false}
+    />
+  );
+  assert.ok(screen.getByText(/hidden from your profile/i));
+
+  rerender(
+    <AppRouterContext.Provider value={{} as never}>
+      <PathnameContext.Provider value="/@ada/followers">
+        <ProfileFollowList
+          handle="ada" direction="followers" isOwner={false} hiddenFromProfile={false}
+          count={2} items={[follower()]} hasMore={false} nextCursor={null} onCursor={false}
+        />
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>
+  );
+  assert.equal(screen.queryByText(/hidden from your profile/i), null);
+});
+
+test("ProfileFollowList renders an Older link only when there is a next page", () => {
+  const { rerender } = renderWithRouter(
+    <ProfileFollowList
+      handle="ada" direction="followers" isOwner={false} hiddenFromProfile={false}
+      count={40} items={[follower()]} hasMore nextCursor="2026-05-05T00:00:00.000Z" onCursor={false}
+    />
+  );
+  const older = screen.getByRole("link", { name: /older/i });
+  assert.match(older.getAttribute("href") ?? "", /cursor=2026-05-05/);
+  assert.equal(screen.queryByRole("link", { name: /newest/i }), null);
+
+  rerender(
+    <AppRouterContext.Provider value={{} as never}>
+      <PathnameContext.Provider value="/@ada/followers">
+        <ProfileFollowList
+          handle="ada" direction="followers" isOwner={false} hiddenFromProfile={false}
+          count={40} items={[follower()]} hasMore={false} nextCursor={null} onCursor
+        />
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>
+  );
+  assert.ok(screen.getByRole("link", { name: /newest/i }));
+  assert.equal(screen.queryByRole("link", { name: /older/i }), null);
+});
+
+test("ProfileFollowList empty state names the direction", () => {
+  renderWithRouter(
+    <ProfileFollowList
+      handle="ada" direction="following" isOwner={false} hiddenFromProfile={false}
+      count={0} items={[]} hasMore={false} nextCursor={null} onCursor={false}
+    />
+  );
+  assert.ok(screen.getByText(/@ada isn’t following anyone yet/i));
 });
 
 test("the derived view handed to the sidebar never serialises the profile UUID", () => {

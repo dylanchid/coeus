@@ -204,6 +204,54 @@
 /* The colour-free tier glyph (● ◐ ◍ ○) — the sr-only label carries the name. */
 .visibility-glyph { display: inline-flex; align-items: center; color: var(--handle); }
 
+/* —— Followers / Following routes ———————————————————————— */
+.follow-list-head {
+  padding: var(--space-lg) clamp(1rem, 3vw, 2rem) var(--space-md);
+  border-bottom: 1px solid var(--header-rule);
+}
+.follow-list-head h1 { margin: 0.3rem 0 0; font-size: clamp(1.4rem, 3vw, 2rem); }
+.follow-list-head .archive-eyebrow a { color: var(--handle); text-decoration: none; }
+.follow-list-hidden { margin: 0.5rem 0 0; color: var(--handle); font-size: var(--text-meta); }
+
+.follow-list { list-style: none; margin: 0; padding: var(--space-md) clamp(1rem, 3vw, 2rem) 0; display: grid; gap: 0.2rem; }
+.follow-list-row { border-bottom: 1px solid var(--line); }
+.follow-list-row:last-child { border-bottom: none; }
+.follow-list-link {
+  display: flex;
+  gap: 0.7rem;
+  align-items: start;
+  padding: 0.8rem 0;
+  color: var(--fg);
+  text-decoration: none;
+}
+.follow-list-link:hover .follow-list-identity strong { text-decoration: underline; }
+.follow-list-avatar,
+.follow-list-avatar-fallback {
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 1px solid var(--line);
+  object-fit: cover;
+}
+.follow-list-avatar-fallback {
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  font: 600 0.8rem var(--font-display);
+  color: var(--handle);
+}
+.follow-list-identity { display: grid; gap: 0.1rem; min-width: 0; }
+.follow-list-identity strong { font-size: 0.95rem; }
+.follow-list-handle { color: var(--handle); font-size: var(--text-meta); }
+.follow-list-bio { color: var(--muted); font-size: var(--text-meta); line-height: 1.4; }
+
+.follow-list-pagination {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-md) clamp(1rem, 3vw, 2rem) var(--space-lg);
+}
+.follow-list-pagination a { color: var(--link); font-size: var(--text-meta); }
+
 /* —— Sidebar ——————————————————————————————————————————— */
 .profile-sidebar {
   align-self: start;
