@@ -602,6 +602,31 @@
 .archive-item-tools button { min-height: 40px; border: 1px solid var(--fg); background: transparent; color: var(--fg); font: 0.62rem var(--font); text-transform: uppercase; cursor: pointer; }
 .archive-item-tools button:hover { background: var(--fg); color: var(--bg); }
 
+/* Publish-as-post: same disclosure shape as the note editor. */
+.archive-post-publish { position: relative; max-width: none; margin: 0; }
+.archive-post-publish > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  color: var(--link);
+  font-size: 0.7rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.archive-post-publish[open] { flex: 1 0 100%; order: 3; }
+.archive-post-publish-body { display: grid; gap: 0.65rem; max-width: 49rem; margin-top: 0.5rem; }
+.archive-post-publish-body label { display: grid; gap: 0.3rem; }
+.archive-post-publish-body label > span { color: var(--muted); font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.archive-post-publish-body textarea { width: 100%; min-height: 4.5rem; resize: vertical; padding: 0.6rem; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: 0.74rem/1.5 var(--font); }
+.archive-post-publish-body select { min-height: 40px; padding: 0.4rem; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: 0.68rem var(--font); }
+.archive-post-publish-body button { min-height: 40px; padding: 0 0.9rem; border: 1px solid var(--fg); background: transparent; color: var(--fg); font: 0.62rem var(--font); text-transform: uppercase; cursor: pointer; }
+.archive-post-publish-body button:hover { background: var(--fg); color: var(--bg); }
+.archive-post-publish-body .archive-danger { border-color: #a33232; color: #a33232; }
+.archive-post-publish-body .archive-danger:hover { background: #a33232; color: white; }
+.archive-post-publish-message { margin: 0; color: var(--muted); font-size: 0.68rem; }
+
 .archive-empty { display: grid; justify-items: center; gap: 0.5rem; padding: 5rem 1rem; }
 .archive-empty > span { color: var(--line); font-size: 2.6rem; }
 .archive-empty p { font-size: 1.45rem; }

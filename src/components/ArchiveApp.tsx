@@ -21,6 +21,7 @@ import type { CollectionPublication, PublicationVisibility } from "@/lib/collect
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { DestinationsPanel } from "./DestinationsPanel";
 import { VisibilitySelect } from "./VisibilitySelect";
+import { PostPublishPanel, type PublishedPost } from "./PostPublishPanel";
 
 type Filter = "all" | "unread" | "starred" | "annotated";
 type Sort = "newest" | "oldest" | "title";
@@ -109,6 +110,9 @@ export function ArchiveApp() {
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [publications, setPublications] = useState<CollectionPublication[]>([]);
   const [publishBusy, setPublishBusy] = useState(false);
+  // itemLocalId -> the post published for it, so each row's PostPublishPanel
+  // opens in the right state. Fetched once; the panels manage their own writes.
+  const [postsByItem, setPostsByItem] = useState<ReadonlyMap<string, PublishedPost>>(new Map());
 
   const update = (recipe: (current: ArchiveData) => ArchiveData) => {
     updateArchive(recipe);
@@ -129,6 +133,23 @@ export function ArchiveApp() {
         if (!cancelled) setPublications(body.publications);
       } catch {
         // Not signed in, or publications are unavailable; publish status stays unknown until the next attempt.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/posts", { credentials: "same-origin", cache: "no-store" });
+        if (!response.ok) return;
+        const body = await response.json() as { posts: { itemLocalId: string; visibility: PublishedPost["visibility"]; commentary: string }[] };
+        if (!cancelled) {
+          setPostsByItem(new Map(body.posts.map((post) => [post.itemLocalId, { visibility: post.visibility, commentary: post.commentary }])));
+        }
+      } catch {
+        // Not signed in, or posts are unavailable; each panel stays in its unpublished default.
       }
     })();
     return () => { cancelled = true; };
@@ -521,6 +542,9 @@ export function ArchiveApp() {
                             <button type="button" disabled={recoveryBusy} onClick={() => void captureContent(item.id)}>Capture private copy</button>
                           </div>
                         </details>
+                        {auth.status !== "signed-out" ? (
+                          <PostPublishPanel key={item.id} itemLocalId={item.id} initialPost={postsByItem.get(item.id) ?? null} />
+                        ) : null}
                       </div>
                     </article>
                   </li>

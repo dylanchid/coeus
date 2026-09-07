@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { handlePublishPost, handleUnpublishPost } from "./postPublicationApi.ts";
+import { handleListPosts, handlePublishPost, handleUnpublishPost } from "./postPublicationApi.ts";
 import { PostItemNotFoundError } from "./postErrors.ts";
 
 /**
@@ -42,6 +42,24 @@ class MemoryPostStore {
   async unpublish(ownerId, itemLocalId) {
     if (this.failNext === "unpublish") { this.failNext = null; throw new Error("db down"); }
     return this.published.delete(`${ownerId}:${itemLocalId}`);
+  }
+
+  async listByAuthor(authorId) {
+    if (this.failNext === "list") { this.failNext = null; throw new Error("db down"); }
+    return [...this.published.entries()]
+      .filter(([key]) => key.startsWith(`${authorId}:`))
+      .map(([, value]) => ({
+        itemLocalId: value.itemLocalId,
+        title: value.title,
+        url: value.url,
+        sourceName: value.sourceName,
+        author: value.author,
+        excerpt: value.excerpt,
+        commentary: value.commentary,
+        visibility: value.visibility,
+        publishedAt: value.createdAt,
+        updatedAt: value.updatedAt,
+      }));
   }
 }
 
@@ -155,4 +173,28 @@ test("handleUnpublishPost rejects an unknown field with 400", async () => {
     deps(store)
   );
   assert.equal(response.status, 400);
+});
+
+test("handleListPosts requires auth, then returns the caller's own posts", async () => {
+  const store = new MemoryPostStore();
+  await store.publish("owner-1", { itemLocalId: "item-1", visibility: "followers", commentary: "note" });
+  await store.publish("owner-1", { itemLocalId: "item-2", visibility: "public", commentary: "" });
+
+  const unauthorized = await handleListPosts({ authenticate: async () => null, store });
+  assert.equal(unauthorized.status, 401);
+
+  const ok = await handleListPosts(deps(store));
+  assert.equal(ok.status, 200);
+  const body = await ok.json();
+  assert.deepEqual(
+    body.posts.map((p) => [p.itemLocalId, p.visibility]).sort(),
+    [["item-1", "followers"], ["item-2", "public"]]
+  );
+});
+
+test("handleListPosts maps a store failure to 503", async () => {
+  const store = new MemoryPostStore();
+  store.failNext = "list";
+  const response = await handleListPosts(deps(store));
+  assert.equal(response.status, 503);
 });

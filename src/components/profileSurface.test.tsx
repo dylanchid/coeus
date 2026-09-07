@@ -36,6 +36,18 @@ const { ProfileFollowList } = await import("./ProfileFollowList");
 const { VisibilitySelect } = await import("./VisibilitySelect");
 const { DiscoverViewTabs } = await import("./DiscoverViewTabs");
 const { FollowingFeed } = await import("./FollowingFeed");
+const { PostPublishPanel } = await import("./PostPublishPanel");
+
+interface FetchLog { url: string; method: string; body: unknown; }
+function stubPostFetch(status: (url: string) => number) {
+  const log: FetchLog[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    log.push({ url, method: (init?.method ?? "GET").toUpperCase(), body: init?.body ? JSON.parse(String(init.body)) : null });
+    return new Response(null, { status: status(url) });
+  }) as typeof fetch;
+  return log;
+}
 
 function follower(overrides = {}) {
   return {
@@ -75,6 +87,7 @@ const noFetch = (async () => {
 afterEach(() => {
   cleanup();
   fetchCalls = 0;
+  globalThis.fetch = noFetch;
 });
 
 function profile(overrides = {}) {
@@ -377,6 +390,43 @@ test("FollowingFeed renders collections and posts and the empty state names the 
     </AppRouterContext.Provider>
   );
   assert.ok(screen.getByText(/people you follow haven’t published/i));
+});
+
+// ── PostPublishPanel ───────────────────────────────────────────────────────
+
+test("PostPublishPanel publishes an unpublished item with only the three allowed fields", async () => {
+  const log = stubPostFetch(() => 201);
+  render(<PostPublishPanel itemLocalId="item-9" initialPost={null} />);
+  assert.ok(screen.getByText("Publish as post"));
+
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "read this" } });
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: "followers" } });
+  fireEvent.click(screen.getByRole("button", { name: /publish post/i }));
+
+  await screen.findByText("Published.");
+  assert.equal(log.length, 1);
+  assert.equal(log[0].url, "/api/posts/publish");
+  assert.deepEqual(log[0].body, { itemLocalId: "item-9", visibility: "followers", commentary: "read this" });
+});
+
+test("PostPublishPanel surfaces a 404 as a sync hint, not a generic error", async () => {
+  stubPostFetch(() => 404);
+  render(<PostPublishPanel itemLocalId="item-x" initialPost={null} />);
+  fireEvent.click(screen.getByRole("button", { name: /publish post/i }));
+  await screen.findByText(/sync this item first/i);
+});
+
+test("PostPublishPanel shows a published item's tier and unpublishes it", async () => {
+  const log = stubPostFetch(() => 204);
+  render(<PostPublishPanel itemLocalId="item-2" initialPost={{ visibility: "public", commentary: "hi" }} />);
+  assert.ok(screen.getByText("Published post"));
+  assert.ok(screen.getByText("Public — discoverable"));
+
+  fireEvent.click(screen.getByRole("button", { name: /unpublish/i }));
+  await screen.findByText("Unpublished.");
+  assert.equal(log[0].url, "/api/posts/unpublish");
+  assert.deepEqual(log[0].body, { itemLocalId: "item-2" });
+  assert.equal(screen.queryByRole("button", { name: /unpublish/i }), null);
 });
 
 test("the derived view handed to the sidebar never serialises the profile UUID", () => {

@@ -1,10 +1,15 @@
 import { parsePublishPostRequest, parseUnpublishPostRequest } from "./post.ts";
 import { PostItemNotFoundError } from "./postErrors.ts";
-import type { PostPublicationStore } from "./postPublicationStore.server.ts";
+import type { PostPublicationStore, PublicPostReader } from "./postPublicationStore.server.ts";
 
 export interface PostPublicationApiDependencies {
   authenticate(): Promise<string | null>;
   store: PostPublicationStore;
+}
+
+export interface PostListApiDependencies {
+  authenticate(): Promise<string | null>;
+  store: PublicPostReader;
 }
 
 function headers(): HeadersInit {
@@ -15,7 +20,7 @@ function errorResponse(message: string, status: number): Response {
   return Response.json({ error: message }, { status, headers: headers() });
 }
 
-async function owner(dependencies: PostPublicationApiDependencies): Promise<string | Response> {
+async function owner(dependencies: { authenticate(): Promise<string | null> }): Promise<string | Response> {
   const userId = await dependencies.authenticate();
   return userId ?? errorResponse("Authentication required", 401);
 }
@@ -25,6 +30,18 @@ async function jsonBody(request: Request): Promise<unknown | Response> {
     return await request.json();
   } catch {
     return errorResponse("Request body must be valid JSON", 400);
+  }
+}
+
+/** GET /api/posts — the caller's own published posts, all tiers, so the archive
+ * UI can show which items are published and at what visibility. */
+export async function handleListPosts(dependencies: PostListApiDependencies): Promise<Response> {
+  const userId = await owner(dependencies);
+  if (userId instanceof Response) return userId;
+  try {
+    return Response.json({ posts: await dependencies.store.listByAuthor(userId) }, { headers: headers() });
+  } catch {
+    return errorResponse("Posts are unavailable", 503);
   }
 }
 
