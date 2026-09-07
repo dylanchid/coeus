@@ -262,6 +262,11 @@ affordance and their private collections greyed. A unit test asserts no private 
 
 ## 6. Phase 2 — visibility model, person graph, posts
 
+**Status: shipped (2026-09-07).** All 14 tasks under `bareaga_web-nfq.2` closed, including a
+post-authoring composer (`nfq.2.14`) added during execution. Exit criteria met; the `/c/[slug]`
+followers-tier viewer gate was pulled forward from a hypothetical later task. Followers-tier
+RSS is a filed follow-up.
+
 **Goal:** the largest phase and the one everything downstream waits on. Three migrations that
 must land in order, plus the first content type Coeus publishes outside a collection.
 
