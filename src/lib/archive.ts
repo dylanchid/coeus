@@ -14,8 +14,8 @@ export type {
   ArchiveState,
   CollectionKind,
   CollectionVisibility,
-  SocialAudience,
   SocialPost,
+  Visibility,
 } from "./archiveTypes";
 export type {
   ArchiveEntityKind,

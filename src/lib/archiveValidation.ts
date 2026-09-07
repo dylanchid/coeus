@@ -1,4 +1,5 @@
 import { createDemoArchive } from "./archiveFixtures.ts";
+import { isVisibility } from "./visibility.ts";
 import type {
   ArchiveCollection,
   ArchiveData,
@@ -49,7 +50,7 @@ function collection(value: unknown): { value: ArchiveCollection; migrated: boole
   for (const field of ["id", "name", "description", "createdAt"] as const) {
     if (typeof item[field] !== "string") return null;
   }
-  if (!(["private", "unlisted", "public"] as unknown[]).includes(item.visibility)) return null;
+  if (!isVisibility(item.visibility)) return null;
   const migrated = item.kind !== "personal" && item.kind !== "community";
   return {
     value: { ...item, kind: item.kind === "community" ? "community" : "personal" } as ArchiveCollection,
@@ -57,14 +58,29 @@ function collection(value: unknown): { value: ArchiveCollection; migrated: boole
   };
 }
 
-function socialPost(value: unknown): SocialPost | null {
+/**
+ * Legacy audience values, mapped to their modern equivalent on read.
+ *
+ * "friends" comes from an earlier mutuals model; under a one-directional
+ * follow graph the equivalent tier is "followers". This map CANNOT be
+ * deleted until no snapshot in `archive_revisions` still carries "friends".
+ * There is no backfill: `migrateArchiveData` returns the normalised value and
+ * flags the result `migrated`, so the next save rewrites it and the legacy
+ * value drains out of the corpus on its own.
+ */
+const LEGACY_AUDIENCE: Record<string, string> = { friends: "followers" };
+
+function socialPost(value: unknown): { value: SocialPost; migrated: boolean } | null {
   const item = record(value);
   if (!item) return null;
   for (const field of ["id", "itemId", "excerpt", "commentary", "createdAt", "author"] as const) {
     if (typeof item[field] !== "string") return null;
   }
-  if (item.audience !== "public" && item.audience !== "friends") return null;
-  return item as unknown as SocialPost;
+  const raw = item.audience;
+  const audience =
+    typeof raw === "string" && raw in LEGACY_AUDIENCE ? LEGACY_AUDIENCE[raw] : raw;
+  if (!isVisibility(audience)) return null;
+  return { value: { ...item, audience } as unknown as SocialPost, migrated: audience !== raw };
 }
 
 /** Validate persisted data and migrate the two legacy v1 omissions. */
@@ -89,13 +105,16 @@ export function migrateArchiveData(value: unknown): ArchiveMigrationResult {
     return { data: createDemoArchive(), valid: false, migrated: false };
   }
 
-  const migrated = data.socialPosts === undefined || collections.some((item) => item?.migrated);
+  const migrated =
+    data.socialPosts === undefined ||
+    collections.some((item) => item?.migrated) ||
+    socialPosts.some((post) => post?.migrated);
   return {
     data: {
       version: 1,
       items: items as ArchiveItem[],
       collections: collections.map((item) => item!.value),
-      socialPosts: socialPosts as SocialPost[],
+      socialPosts: socialPosts.map((post) => post!.value),
     },
     valid: true,
     migrated,

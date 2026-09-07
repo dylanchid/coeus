@@ -1,7 +1,15 @@
+import type { Visibility } from "./visibility.ts";
+
+export type { Visibility } from "./visibility.ts";
+
 export type ArchiveState = "unread" | "read" | "kept";
-export type CollectionVisibility = "private" | "unlisted" | "public";
+/**
+ * Collection visibility in the synced archive snapshot — the same four-value
+ * model as object visibility server-side (src/lib/visibility.ts). "followers"
+ * was added in Phase 2; older snapshots only ever carry the other three.
+ */
+export type CollectionVisibility = Visibility;
 export type CollectionKind = "personal" | "community";
-export type SocialAudience = "public" | "friends";
 
 export interface ArchiveItem {
   id: string;
@@ -35,7 +43,12 @@ export interface SocialPost {
   itemId: string;
   excerpt: string;
   commentary: string;
-  audience: SocialAudience;
+  /**
+   * Who the post is shared with. The legacy value "friends" — from a mutuals
+   * model that no longer exists — is normalised to "followers" on read by
+   * archiveValidation; see the comment there.
+   */
+  audience: Visibility;
   createdAt: string;
   author: string;
 }
