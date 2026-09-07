@@ -27,5 +27,18 @@ export async function GET(request: Request): Promise<Response> {
   const supabase = createAdminSupabaseClient();
   const store = new SupabaseDestinationsStore(supabase, requiredEnvironment("DESTINATION_TOKEN_ENCRYPTION_KEY"));
   const result = await runDestinationWorkerTick(new SupabaseArchiveSyncStore(supabase), store);
-  return Response.json(result);
+
+  // Phase 3 (docs/profile-page-plan.md §7): layer 2 of the polymorphic trade.
+  // (target_type, target_id) on likes / reposts / replies is not a foreign key,
+  // so a like or repost of a collection its owner later deletes leaves an orphan
+  // row. canSeeIndirect() already hides these at read time; this daily sweep is
+  // pure hygiene, keeping the tables from accreting dead rows.
+  const { data: orphanSweep, error: sweepError } = await supabase
+    .rpc("sweep_conversation_orphans")
+    .single();
+
+  return Response.json({
+    ...result,
+    orphanSweep: sweepError ? { error: sweepError.message } : orphanSweep,
+  });
 }
