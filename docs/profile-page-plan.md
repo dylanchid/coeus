@@ -503,6 +503,19 @@ the number.
 All six tabs live. A test proves revoking a collection's visibility removes it from every
 profile that reposted or liked it — the **indirect** case, not just the direct one.
 
+**Status: shipped (2026-09-07).** All six children of `bareaga_web-nfq.3` closed.
+`20260906170000_conversation_layer.sql` adds the three tables, the `target_exists` trigger,
+the service-role write RPCs and `sweep_conversation_orphans()` (wired into the daily worker
+cron); `canSeeIndirect()` in `visibility.ts` re-checks every indirect row's target with a
+named revocation test; `conversation{,Api,Store,Profile,ProfileStore}` carry the write API
+(`/api/{likes,reposts,replies}`) and the profile-tab read paths. `nfq.3.6` closed no-change:
+the first-party Overview stands, with reposts/replies now confined to their own tabs.
+
+A latent Phase 2 bug surfaced and was fixed here: `profile_follows.follower_id` references
+`auth.users`, which PostgREST cannot embed to `profiles`, so `countFollowers` / `listFollowers`
+500'd the profile page against a clean database. Both now resolve the profile rows in a
+second query (`bareaga_web-nfq.3.7`).
+
 ---
 
 ## 8. Handle changes — parallel strand
