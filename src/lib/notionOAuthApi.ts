@@ -1,19 +1,23 @@
-import { createOAuthStateNonce, signOAuthState, verifyOAuthState } from "./oauthState.server.ts";
+import { createOAuthStateNonce, OAUTH_STATE_MAX_AGE_MS, signOAuthState, verifyOAuthState } from "./oauthState.server.ts";
 import type { DestinationsStore } from "./destinationsStore.server.ts";
+import type { NotionOAuthStateStore } from "./notionOAuthStateStore.server.ts";
 
 export interface NotionOAuthStartDependencies {
   authenticate(): Promise<string | null>;
   stateSecret: string;
   clientId: string;
   redirectUri: string;
+  stateStore: NotionOAuthStateStore;
 }
 
 export interface NotionOAuthCallbackDependencies {
+  authenticate(): Promise<string | null>;
   stateSecret: string;
   clientId: string;
   clientSecret: string;
   redirectUri: string;
   store: DestinationsStore;
+  stateStore: NotionOAuthStateStore;
   fetcher?: typeof fetch;
 }
 
@@ -24,18 +28,18 @@ function settingsRedirect(baseUrl: string, params: Record<string, string>): Resp
 }
 
 /**
- * Starts the Notion OAuth flow. The signed `state` reuses OAuthStatePayload's
- * `archiveId` field to carry the caller's owner id (there is a 1:1 owner:archive
- * relationship, and oauthState.server.ts already shipped with that field name).
+ * Starts the Notion OAuth flow with its owner id and a persisted nonce. The
+ * callback consumes that nonce before code exchange, making each attempt
+ * single-use.
  */
 export async function handleNotionOAuthStart(dependencies: NotionOAuthStartDependencies): Promise<Response> {
   const ownerId = await dependencies.authenticate();
   if (!ownerId) return new Response("Authentication required", { status: 401 });
 
-  const state = signOAuthState(
-    { archiveId: ownerId, nonce: createOAuthStateNonce(), issuedAt: Date.now() },
-    dependencies.stateSecret
-  );
+  const issuedAt = Date.now();
+  const nonce = createOAuthStateNonce();
+  await dependencies.stateStore.create(nonce, ownerId, new Date(issuedAt + OAUTH_STATE_MAX_AGE_MS));
+  const state = signOAuthState({ ownerId, nonce, issuedAt }, dependencies.stateSecret);
   const authorizeUrl = new URL("https://api.notion.com/v1/oauth/authorize");
   authorizeUrl.searchParams.set("client_id", dependencies.clientId);
   authorizeUrl.searchParams.set("response_type", "code");
@@ -65,16 +69,22 @@ export async function handleNotionOAuthCallback(request: Request, dependencies: 
   const url = new URL(request.url);
   const redirectError = (message: string) => settingsRedirect(request.url, { destination: "notion", status: "error", message });
 
-  const oauthError = url.searchParams.get("error");
-  if (oauthError) return redirectError(`Notion authorization was denied (${oauthError})`);
-
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  if (!code || !state) return redirectError("Notion did not return a code");
+  const oauthError = url.searchParams.get("error");
+  if (!state) return redirectError(oauthError ? `Notion authorization was denied (${oauthError})` : "Notion did not return a code");
 
   const verified = verifyOAuthState(state, dependencies.stateSecret);
   if (!verified.ok) return redirectError(verified.error);
-  const ownerId = verified.value.archiveId;
+  const ownerId = verified.value.ownerId;
+  const currentUserId = await dependencies.authenticate();
+  if (!currentUserId) return redirectError("Please sign in again to complete the Notion connection");
+  if (currentUserId !== ownerId) return redirectError("This Notion connection belongs to a different account");
+  if (!(await dependencies.stateStore.consume(verified.value.nonce, ownerId))) {
+    return redirectError("This Notion connection has expired or was already used");
+  }
+  if (oauthError) return redirectError(`Notion authorization was denied (${oauthError})`);
+  if (!code) return redirectError("Notion did not return a code");
 
   const tokenResponse = await fetcher("https://api.notion.com/v1/oauth/token", {
     method: "POST",

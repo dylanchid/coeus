@@ -1,10 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-const MAX_AGE_MS = 10 * 60 * 1000;
+export const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 const CLOCK_SKEW_MS = 60 * 1000;
 
 export interface OAuthStatePayload {
-  archiveId: string;
+  ownerId: string;
   nonce: string;
   issuedAt: number;
 }
@@ -52,15 +52,15 @@ export function verifyOAuthState(token: string, secret: string, now = Date.now()
   }
   if (
     !isRecord(payload) ||
-    typeof payload.archiveId !== "string" || !payload.archiveId ||
+    typeof payload.ownerId !== "string" || !payload.ownerId ||
     typeof payload.nonce !== "string" || !payload.nonce ||
     typeof payload.issuedAt !== "number" || !Number.isFinite(payload.issuedAt)
   ) {
     return { ok: false, error: "OAuth state payload is invalid" };
   }
-  if (payload.issuedAt > now + CLOCK_SKEW_MS || now - payload.issuedAt > MAX_AGE_MS) {
+  if (payload.issuedAt > now + CLOCK_SKEW_MS || now - payload.issuedAt > OAUTH_STATE_MAX_AGE_MS) {
     return { ok: false, error: "OAuth state has expired" };
   }
 
-  return { ok: true, value: { archiveId: payload.archiveId, nonce: payload.nonce, issuedAt: payload.issuedAt } };
+  return { ok: true, value: { ownerId: payload.ownerId, nonce: payload.nonce, issuedAt: payload.issuedAt } };
 }

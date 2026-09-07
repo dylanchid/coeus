@@ -1,5 +1,6 @@
 import { handleNotionOAuthStart } from "@/lib/notionOAuthApi";
-import { authenticateArchiveRequest, requiredEnvironment } from "@/lib/supabase.server";
+import { SupabaseNotionOAuthStateStore } from "@/lib/notionOAuthStateStore.server";
+import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +10,6 @@ export async function GET(): Promise<Response> {
     stateSecret: requiredEnvironment("DESTINATION_OAUTH_STATE_SECRET"),
     clientId: requiredEnvironment("NOTION_OAUTH_CLIENT_ID"),
     redirectUri: requiredEnvironment("NOTION_OAUTH_REDIRECT_URI"),
+    stateStore: new SupabaseNotionOAuthStateStore(createAdminSupabaseClient()),
   });
 }
