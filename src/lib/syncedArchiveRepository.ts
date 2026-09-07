@@ -1,15 +1,44 @@
 import { parseArchiveSyncSnapshot, type ArchiveEntityKind, type ArchiveSyncConflict, type ArchiveSyncOperation, type ArchiveSyncSnapshot } from "./archiveSync.ts";
 import type { ArchiveData, ArchiveRepository } from "./archiveTypes.ts";
 import { LOCAL_ARCHIVE_STORAGE_KEY, LocalStorageArchiveRepository } from "./localArchiveRepository.ts";
+import { backoffMs, classifyStatus, isPermanent, type BackoffConfig, type SyncFailureClass } from "./syncFailure.ts";
 
 const QUEUE_KEY = "coeus.archive.sync-queue.v1";
 const STATE_KEY = "coeus.archive.sync-state.v1";
+const CORRUPT_QUEUE_KEY = `${QUEUE_KEY}.corrupt`;
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">;
 interface QueueState { clientId: string; archiveId?: string; base?: ArchiveSyncSnapshot; operations: ArchiveSyncOperation[]; conflicts: ArchiveSyncConflict[]; }
 
-export type ArchiveSyncStatus = "local" | "syncing" | "synced" | "offline" | "conflicted";
-export interface ArchiveSyncState { status: ArchiveSyncStatus; pending: number; conflicts: number; }
+export type ArchiveSyncStatus = "local" | "syncing" | "synced" | "offline" | "conflicted" | "error" | "auth_required";
+export interface ArchiveSyncState {
+  status: ArchiveSyncStatus;
+  pending: number;
+  conflicts: number;
+  /** Human-readable detail for a non-terminal (`offline`) or paused (`error`/`auth_required`) state. */
+  message?: string;
+  /** True while auto-sync is stopped on a permanent failure; `retrySync()` is required to resume. */
+  paused: boolean;
+  /** True once for the session if a corrupt sync queue was found and copied aside instead of dropped. */
+  recoveredCorruptQueue: boolean;
+}
+
+export interface SyncedArchiveRepositoryOptions {
+  scheduler?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>;
+  backoff?: Partial<BackoffConfig>;
+}
+
+/** A classified synchronization failure. Raw network errors are wrapped as `retryable`. */
+class SyncError extends Error {
+  readonly kind: SyncFailureClass;
+  readonly retryAfter: string | null;
+  constructor(kind: SyncFailureClass, message: string, retryAfter: string | null = null) {
+    super(message);
+    this.name = "SyncError";
+    this.kind = kind;
+    this.retryAfter = retryAfter;
+  }
+}
 
 function storage(): StorageLike | undefined {
   return typeof window === "undefined" ? undefined : window.localStorage;
@@ -61,14 +90,28 @@ function empty(data: ArchiveData): boolean { return !data.items.length && !data.
 export class SyncedArchiveRepository implements ArchiveRepository {
   private readonly local: LocalStorageArchiveRepository;
   private readonly store?: StorageLike;
+  private readonly scheduler: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>;
+  private readonly backoffConfig?: Partial<BackoffConfig>;
   private queue: QueueState;
   private last?: ArchiveData;
   private status: ArchiveSyncStatus = "local";
+  private message?: string;
   private running?: Promise<void>;
   private retryTimer?: ReturnType<typeof setTimeout>;
+  private retryAttempt = 0;
+  /** Set on a permanent failure; auto-sync is suppressed until `retrySync()`. */
+  private paused?: { status: "error" | "auth_required"; message: string };
+  private recoveredCorruptQueue = false;
 
-  constructor(local = new LocalStorageArchiveRepository(), persistentStorage = storage()) {
-    this.local = local; this.store = persistentStorage;
+  constructor(
+    local = new LocalStorageArchiveRepository(),
+    persistentStorage = storage(),
+    options: SyncedArchiveRepositoryOptions = {}
+  ) {
+    this.local = local;
+    this.store = persistentStorage;
+    this.scheduler = options.scheduler ?? ((fn, ms) => setTimeout(fn, ms));
+    this.backoffConfig = options.backoff;
     this.queue = this.readQueue();
   }
 
@@ -89,7 +132,33 @@ export class SyncedArchiveRepository implements ArchiveRepository {
   subscribe(listener: (data: ArchiveData) => void): () => void { return this.local.subscribe(listener); }
   getSyncStatus(): ArchiveSyncStatus { return this.status; }
   getConflicts(): readonly ArchiveSyncConflict[] { return this.queue.conflicts; }
-  getSyncState(): ArchiveSyncState { return { status: this.status, pending: this.queue.operations.length, conflicts: this.queue.conflicts.length }; }
+  getSyncState(): ArchiveSyncState {
+    return {
+      status: this.status,
+      pending: this.queue.operations.length,
+      conflicts: this.queue.conflicts.length,
+      message: this.paused?.message ?? this.message,
+      paused: Boolean(this.paused),
+      recoveredCorruptQueue: this.recoveredCorruptQueue,
+    };
+  }
+
+  /**
+   * Serialize the durable queue for user-driven recovery/export. Includes a
+   * corrupt earlier queue when one was preserved. Never contains credentials.
+   */
+  exportQueue(): { queue: QueueState; corrupt: string | null } {
+    return { queue: structuredClone(this.queue), corrupt: this.store?.getItem(CORRUPT_QUEUE_KEY) ?? null };
+  }
+
+  /** Clear a permanent-failure pause (e.g. after re-authenticating) and try again. */
+  retrySync(): void {
+    this.paused = undefined;
+    this.retryAttempt = 0;
+    this.clearRetryTimer();
+    void this.synchronize();
+  }
+
   async replaceFromServer(archiveId: string, base: ArchiveSyncSnapshot): Promise<void> {
     this.queue.archiveId = archiveId;
     this.queue.base = base;
@@ -102,32 +171,62 @@ export class SyncedArchiveRepository implements ArchiveRepository {
   }
 
   private readQueue(): QueueState {
-    try {
-      const saved = JSON.parse(this.store?.getItem(QUEUE_KEY) ?? "null") as Partial<QueueState> | null;
-      if (saved?.clientId && Array.isArray(saved.operations) && Array.isArray(saved.conflicts)) return saved as QueueState;
-    } catch { /* corrupt transient queue is replaced; the archive itself remains intact */ }
+    const raw = this.store?.getItem(QUEUE_KEY) ?? null;
+    if (raw && raw !== "null") {
+      try {
+        const saved = JSON.parse(raw) as Partial<QueueState>;
+        if (saved?.clientId && Array.isArray(saved.operations) && Array.isArray(saved.conflicts)) return saved as QueueState;
+      } catch { /* fall through to preservation */ }
+      // Non-null but unusable: keep the bytes for recovery/export rather than
+      // silently dropping pending operations. Don't clobber an earlier copy.
+      try {
+        if (this.store && !this.store.getItem(CORRUPT_QUEUE_KEY)) this.store.setItem(CORRUPT_QUEUE_KEY, raw);
+      } catch { /* storage full or unavailable; nothing more we can do */ }
+      this.recoveredCorruptQueue = true;
+    }
     return { clientId: id("client"), operations: [], conflicts: [] };
   }
+
   private persistQueue(): void { this.store?.setItem(QUEUE_KEY, JSON.stringify(this.queue)); }
+
   private publishState(): void {
     const state = this.getSyncState();
     this.store?.setItem(STATE_KEY, JSON.stringify(state));
     if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("coeus:archive-sync", { detail: state }));
   }
 
+  private clearRetryTimer(): void {
+    if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = undefined; }
+  }
+
   private async synchronize(): Promise<void> {
-    if (this.running || (typeof navigator !== "undefined" && navigator.onLine === false)) { if (!this.running) { this.status = "offline"; this.publishState(); } return; }
+    if (this.paused) return; // permanent failure: wait for retrySync()
+    if (this.running || (typeof navigator !== "undefined" && navigator.onLine === false)) {
+      if (!this.running) { this.status = "offline"; this.message = "You are offline."; this.publishState(); }
+      return;
+    }
     this.running = this.syncLoop().finally(() => { this.running = undefined; });
     return this.running;
   }
+
   private async syncLoop(): Promise<void> {
-    this.status = "syncing"; this.publishState();
+    this.status = "syncing"; this.message = undefined; this.publishState();
     try {
-      const response = await fetch("/api/archive", { credentials: "same-origin", cache: "no-store" });
-      if (response.status === 401) { this.status = "local"; this.publishState(); return; }
-      if (!response.ok) throw new Error(`Archive read failed (${response.status})`);
-      const remote = await response.json() as { archiveId: string; snapshot: unknown };
-      const parsed = parseArchiveSyncSnapshot(remote.snapshot); if (!parsed.ok) throw new Error(parsed.error);
+      const response = await this.request("/api/archive", { credentials: "same-origin", cache: "no-store" });
+      if (response.status === 401) {
+        // Not signed in is a normal resting state for a local-first archive, not a failure.
+        this.status = "local"; this.message = undefined; this.retryAttempt = 0; this.publishState();
+        return;
+      }
+      if (response.status === 403) {
+        throw new SyncError("auth", "This account is not permitted to sync.", response.headers.get("retry-after"));
+      }
+      if (!response.ok) {
+        throw new SyncError(classifyStatus(response.status), `Archive read failed (${response.status})`, response.headers.get("retry-after"));
+      }
+      const remote = await this.readJson(response) as { archiveId: string; snapshot: unknown };
+      const parsed = parseArchiveSyncSnapshot(remote.snapshot);
+      if (!parsed.ok) throw new SyncError("malformed", `Server sent an unreadable archive snapshot: ${parsed.error}`);
       this.queue.archiveId = remote.archiveId; this.queue.base = parsed.value;
       const currentLocal = this.last ?? await this.local.load();
       // First account connection uploads a local archive as operations; it never overwrites a remote snapshot.
@@ -135,21 +234,77 @@ export class SyncedArchiveRepository implements ArchiveRepository {
       while (this.queue.operations.length) {
         const base = this.queue.base;
         const body = { syncVersion: 1, archiveId: this.queue.archiveId, clientId: this.queue.clientId, baseRevision: base.revision, operations: this.queue.operations.slice(0, 500) };
-        const synced = await fetch("/api/archive/sync", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-        if (!synced.ok) throw new Error(`Archive sync failed (${synced.status})`);
-        const result = await synced.json() as { snapshot: unknown; acceptedOperationIds: string[]; conflicts: ArchiveSyncConflict[] };
-        const next = parseArchiveSyncSnapshot(result.snapshot); if (!next.ok) throw new Error(next.error);
+        const synced = await this.request("/api/archive/sync", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        if (!synced.ok) {
+          throw new SyncError(classifyStatus(synced.status), `Archive sync failed (${synced.status})`, synced.headers.get("retry-after"));
+        }
+        const result = await this.readJson(synced) as { snapshot: unknown; acceptedOperationIds: string[]; conflicts: ArchiveSyncConflict[] };
+        const next = parseArchiveSyncSnapshot(result.snapshot);
+        if (!next.ok) throw new SyncError("malformed", `Server sent an unreadable sync result: ${next.error}`);
+        if (!Array.isArray(result.acceptedOperationIds) || !Array.isArray(result.conflicts)) {
+          throw new SyncError("malformed", "Server sync result is missing accepted/conflict lists.");
+        }
         const processed = new Set([...result.acceptedOperationIds, ...result.conflicts.map((conflict) => conflict.operationId)]);
+        if (processed.size === 0) {
+          // The server accepted the request but advanced nothing; retrying the
+          // identical batch would loop. Treat as a broken contract.
+          throw new SyncError("malformed", "Server accepted the sync but processed no operations.");
+        }
         this.queue.operations = this.queue.operations.filter((operation) => !processed.has(operation.operationId));
         this.queue.conflicts.push(...result.conflicts); this.queue.base = next.value;
         const rebased = applyOperations(next.value.archive, this.queue.operations);
         await this.local.save(rebased); this.last = rebased; this.persistQueue();
       }
-      this.status = this.queue.conflicts.length ? "conflicted" : "synced"; this.persistQueue(); this.publishState();
+      this.retryAttempt = 0;
+      this.clearRetryTimer();
+      this.status = this.queue.conflicts.length ? "conflicted" : "synced";
+      this.message = undefined;
+      this.persistQueue(); this.publishState();
+    } catch (error) {
+      this.handleFailure(error);
+    }
+  }
+
+  private handleFailure(error: unknown): void {
+    const failure: SyncError = error instanceof SyncError
+      ? error
+      : new SyncError("retryable", error instanceof Error ? error.message : "Network request failed");
+    this.persistQueue();
+
+    if (isPermanent(failure.kind)) {
+      const status = failure.kind === "auth" ? "auth_required" : "error";
+      this.paused = { status, message: failure.message };
+      this.status = status;
+      this.message = failure.message;
+      this.clearRetryTimer();
+      this.publishState();
+      return;
+    }
+
+    // Retryable: bounded exponential backoff with jitter, honoring Retry-After.
+    this.status = "offline";
+    this.message = failure.message;
+    this.publishState();
+    const delay = backoffMs(this.retryAttempt, failure.retryAfter, {
+      baseMs: this.backoffConfig?.baseMs ?? 1_000,
+      maxMs: this.backoffConfig?.maxMs ?? 5 * 60_000,
+      random: this.backoffConfig?.random,
+    });
+    this.retryAttempt += 1;
+    if (!this.retryTimer) {
+      this.retryTimer = this.scheduler(() => { this.retryTimer = undefined; void this.synchronize(); }, delay);
+    }
+  }
+
+  private request(input: string, init: RequestInit): Promise<Response> {
+    return fetch(input, init);
+  }
+
+  private async readJson(response: Response): Promise<unknown> {
+    try {
+      return await response.json();
     } catch {
-      this.status = "offline"; this.persistQueue(); this.publishState();
-      // A failed request is retained and retried without waiting for another edit.
-      this.retryTimer ??= setTimeout(() => { this.retryTimer = undefined; void this.synchronize(); }, 5_000);
+      throw new SyncError("malformed", "Server response was not valid JSON.");
     }
   }
 }

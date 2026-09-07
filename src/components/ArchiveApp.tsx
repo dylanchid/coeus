@@ -94,7 +94,7 @@ function PublishPanel({
 }
 
 export function ArchiveApp() {
-  const { archive: data, updateArchive, sync, replaceArchiveFromServer } = useArchive();
+  const { archive: data, updateArchive, sync, retrySync, replaceArchiveFromServer } = useArchive();
   const auth = useAuth();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -438,6 +438,9 @@ export function ArchiveApp() {
               <summary>Sync, recovery &amp; account</summary>
               <div className="archive-sidebar-actions" aria-label="Archive sync and recovery">
                 <p className="archive-sync-state" role="status">Sync: {sync.status}{sync.pending ? ` · ${sync.pending} queued` : ""}{sync.conflicts ? ` · ${sync.conflicts} conflicts retained` : ""}</p>
+                {sync.message && sync.status !== "synced" ? <p className="archive-sync-state" role="status">{sync.message}</p> : null}
+                {sync.recoveredCorruptQueue ? <p className="archive-sync-state" role="alert">A damaged offline queue was set aside for recovery; export your archive if recent edits are missing.</p> : null}
+                {sync.paused ? <button type="button" onClick={() => retrySync()}>Retry sync now</button> : null}
                 <button type="button" disabled={recoveryBusy} onClick={() => void refreshRecovery()}>Refresh recovery history</button>
                 {revisions.map((revision) => <button key={revision.revision} type="button" disabled={recoveryBusy} onClick={() => void restoreRevision(revision.revision)}>Restore revision {revision.revision}</button>)}
                 {contentSnapshots.length ? <div className="archive-snapshot-list">{contentSnapshots.map((snapshot) => <a key={snapshot.id} href={`/api/archive/snapshots/${snapshot.id}`}>Captured {snapshot.itemId} · {snapshot.status}</a>)}</div> : null}

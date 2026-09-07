@@ -44,17 +44,25 @@ function backoffDelay(attempt: number, opts: Required<Pick<RetryOptions, "baseDe
   return Math.round(capped * random());
 }
 
-function retryAfterMs(response: Response): number | null {
-  const header = response.headers.get("retry-after");
+/**
+ * Parse a `Retry-After` header value (delta-seconds or an HTTP date) into
+ * milliseconds, clamped to `maxMs` and rejecting nonsense. Shared with the
+ * client sync queue's backoff.
+ */
+export function parseRetryAfterMs(header: string | null, maxMs = 120_000): number | null {
   if (!header) return null;
   const seconds = Number(header);
-  if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 120) return seconds * 1000;
+  if (Number.isFinite(seconds) && seconds >= 0 && seconds * 1000 <= maxMs) return seconds * 1000;
   const date = Date.parse(header);
   if (Number.isFinite(date)) {
     const delta = date - Date.now();
-    if (delta >= 0 && delta <= 120_000) return delta;
+    if (delta >= 0 && delta <= maxMs) return delta;
   }
   return null;
+}
+
+function retryAfterMs(response: Response): number | null {
+  return parseRetryAfterMs(response.headers.get("retry-after"));
 }
 
 /**

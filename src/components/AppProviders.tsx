@@ -36,6 +36,7 @@ interface ArchiveContextValue {
   sync: ArchiveSyncState;
   persistence: PersistenceState;
   retryPersistence(): Promise<boolean>;
+  retrySync(): void;
   replaceArchiveFromServer(archiveId: string, snapshot: ArchiveSyncSnapshot): Promise<void>;
 }
 
@@ -145,8 +146,13 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     setSync(repository.getSyncState());
   }, []);
 
+  const retrySync = useCallback(() => {
+    repository.retrySync();
+    setSync(repository.getSyncState());
+  }, []);
+
   const prefsValue = useMemo(() => ({ prefs, updatePrefs, persistence: prefsPersistence, retryPersistence: retryPrefsPersistence }), [prefs, updatePrefs, prefsPersistence, retryPrefsPersistence]);
-  const archiveValue = useMemo(() => ({ archive, updateArchive, sync, persistence: archivePersistence, retryPersistence: retryArchivePersistence, replaceArchiveFromServer }), [archive, updateArchive, sync, archivePersistence, retryArchivePersistence, replaceArchiveFromServer]);
+  const archiveValue = useMemo(() => ({ archive, updateArchive, sync, persistence: archivePersistence, retryPersistence: retryArchivePersistence, retrySync, replaceArchiveFromServer }), [archive, updateArchive, sync, archivePersistence, retryArchivePersistence, retrySync, replaceArchiveFromServer]);
   return (
     <AuthProvider>
       <PreferencesContext.Provider value={prefsValue}>
