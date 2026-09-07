@@ -4,20 +4,36 @@ import { ProfileEditorMount } from "./ProfileEditor";
 import { ProfileSidebar } from "./ProfileSidebar";
 import { ProfileTabs } from "./ProfileTabs";
 import type { ProfileTabId } from "@/lib/profileTabs";
+import type { ProfileSectionSwitches } from "@/lib/profileSections";
 import type { PublicProfileView } from "@/lib/publicProfile";
 
 const OVERVIEW_LIMIT = 4;
 
+/** The follow relationship, resolved by the page for a signed-in non-owner.
+ * Carries `profileId` (a profiles.id UUID) as a sibling of `view` so it never
+ * enters PublicProfileView — the load-bearing "no id crosses" invariant. */
+export interface ProfileFollowContext {
+  profileId: string;
+  initialFollowing: boolean;
+}
+
 /** Composes the whole read-only profile surface. All viewer filtering already
- * happened in deriveProfileView(); this only lays the pieces out. The one
- * client island — ProfileEditor — mounts only for the owner. */
+ * happened in deriveProfileView(); this only lays the pieces out. The client
+ * islands — ProfileEditor (owner), ProfileFollowButton (visitor),
+ * SectionSwitches (owner) — mount from here. */
 export function ProfileView({
   view,
   tab,
+  follow = null,
+  sectionSwitches = null,
   openEditor = false,
 }: {
   view: PublicProfileView;
   tab: ProfileTabId;
+  /** Non-null only for a signed-in non-owner. */
+  follow?: ProfileFollowContext | null;
+  /** The owner's stored switches, for the SectionSwitches island. Null for a visitor. */
+  sectionSwitches?: ProfileSectionSwitches | null;
   openEditor?: boolean;
 }) {
   const emptyMessage = view.isOwner
@@ -27,7 +43,7 @@ export function ProfileView({
   return (
     <div className="profile-page">
       <ProfileBanner view={view} />
-      <ProfileTabs handle={view.handle} current={tab} isOwner={view.isOwner} />
+      <ProfileTabs handle={view.handle} current={tab} isOwner={view.isOwner} follow={follow} />
 
       {view.isOwner ? (
         <div className="profile-editor-slot">
@@ -58,7 +74,7 @@ export function ProfileView({
           )}
         </div>
 
-        <ProfileSidebar view={view} />
+        <ProfileSidebar view={view} sectionSwitches={sectionSwitches} />
       </div>
     </div>
   );

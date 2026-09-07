@@ -47,6 +47,9 @@ export interface CollectionPublicationSnapshot {
 export interface CollectionPublication extends CollectionPublicationSnapshot {
   id: string;
   archiveId: string;
+  /** The publisher's profile id (denormalised onto the row in Phase 1). The
+   * /c/[slug] page needs it to resolve a Viewer for the private/followers tiers. */
+  ownerId: string;
   publishedAt: string;
   updatedAt: string;
   unpublishedAt: string | null;

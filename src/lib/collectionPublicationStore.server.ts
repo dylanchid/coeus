@@ -49,6 +49,7 @@ function toPublication(data: Record<string, unknown>, items: Record<string, unkn
   return {
     id: String(data.id),
     archiveId: String(data.archive_id),
+    ownerId: String(data.owner_id),
     collectionLocalId: String(data.collection_local_id),
     slug: String(data.slug),
     visibility: data.visibility as CollectionPublication["visibility"],
@@ -88,10 +89,11 @@ export class SupabaseCollectionPublicationStore
   }
 
   /**
-   * Unauthenticated read by stable slug. The admin client bypasses RLS, so
-   * visibility/unpublished filtering happens explicitly here rather than
-   * relying on the collection_publications RLS policy (defense-in-depth for
-   * a hypothetical future direct client read, not the enforcement point).
+   * Read by stable slug. The admin client bypasses RLS, so this returns a row
+   * at ANY visibility tier that is still live — the caller (the /c/[slug] page)
+   * resolves a Viewer and applies canSee() for the private/followers tiers.
+   * public/unlisted keep a zero-auth fast path there. Unpublished rows are
+   * filtered here since there is no viewer for whom they are visible.
    */
   async getBySlug(slug: string): Promise<CollectionPublication | null> {
     const { data, error } = await this.supabase
@@ -99,7 +101,6 @@ export class SupabaseCollectionPublicationStore
       .select("*")
       .eq("slug", slug)
       .is("unpublished_at", null)
-      .in("visibility", ["public", "unlisted"])
       .maybeSingle();
     if (error) throw error;
     if (!data) return null;

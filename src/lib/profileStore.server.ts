@@ -41,13 +41,20 @@ function profileRow(row: Record<string, unknown>): Profile {
     avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : null,
     coverUrl: typeof row.cover_url === "string" ? row.cover_url : null,
     pinnedCollectionSlugs: toStringArray(row.pinned_collection_slugs),
+    // The show_* / likes_visibility columns ride along in every profile read,
+    // so the profile page and the followers/following routes never pay an
+    // extra query to know which sections the owner wants rendered.
+    sections: sectionSwitches(row),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
 }
 
+// Keep this a single string literal (not a concatenation) so PostgREST's
+// .select() keeps its parsed column typing. The section columns here must stay
+// in sync with SECTION_COLUMNS above.
 const COLUMNS =
-  "id,handle,display_name,bio,location,links,avatar_url,cover_url,pinned_collection_slugs,created_at,updated_at";
+  "id,handle,display_name,bio,location,links,avatar_url,cover_url,pinned_collection_slugs,show_followers,show_following,show_reposts,show_replies,show_likes,likes_visibility,created_at,updated_at";
 
 /** The handle → profile lookup, wrapped in an envelope so sub-epic 4 can add a
  * redirect without changing any caller. In Phase 1 `redirectFrom` is always null. */

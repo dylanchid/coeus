@@ -35,6 +35,20 @@ export interface ProfileSectionSwitches {
   likesVisibility: PublicationVisibility;
 }
 
+/**
+ * The column defaults from 20260906160000_profile_follows.sql: every section
+ * on, likes public. Used for a profile row that predates the switch columns or
+ * for callers/tests with no row to read.
+ */
+export const DEFAULT_SECTION_SWITCHES: ProfileSectionSwitches = {
+  showFollowers: true,
+  showFollowing: true,
+  showReposts: true,
+  showReplies: true,
+  showLikes: true,
+  likesVisibility: "public",
+};
+
 /** Maps a section key to the switch column that governs it. */
 const SWITCH_FOR: Record<ProfileSectionKey, keyof ProfileSectionSwitches> = {
   followers: "showFollowers",

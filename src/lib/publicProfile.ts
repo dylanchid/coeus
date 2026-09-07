@@ -1,4 +1,11 @@
 import type { Profile, ProfileLink } from "./profile.ts";
+import {
+  DEFAULT_SECTION_SWITCHES,
+  visibleSections,
+  type ProfileSectionSwitches,
+  type VisibleSections,
+} from "./profileSections.ts";
+import { isListable, type Viewer, type Visibility } from "./visibility.ts";
 
 /**
  * The public-safe boundary for the profile page. This is the profile analogue
@@ -9,9 +16,15 @@ import type { Profile, ProfileLink } from "./profile.ts";
  * Pure by contract — no "server-only", no Supabase, no next import — so the
  * boundary is exhaustively testable under `node --test` with no database, the
  * same way collectionPublication.test.mjs tests its snapshot.
+ *
+ * Phase 2: the collections AND posts filters both go through
+ * `isListable(visibility, viewer)` from src/lib/visibility.ts — the one read
+ * gate. The `viewer` is the canonical four-kind `Viewer` union, resolved once
+ * by the page loader (which resolves the follow relationship for the
+ * `followers` tier — plan risk R5) and passed in whole.
  */
 
-export type PublicationVisibility = "unlisted" | "public";
+export { DEFAULT_SECTION_SWITCHES };
 
 /** One of an owner's published collections, as loaded by
  * SupabaseProfileStore.listOwnedPublications (owner_id-indexed, no archive join). */
@@ -21,7 +34,7 @@ export interface OwnedPublication {
   name: string;
   description: string;
   curatorNote: string;
-  visibility: PublicationVisibility;
+  visibility: Visibility;
   publishedAt: string;
   updatedAt: string;
   /** Non-null once the owner has taken the collection down. */
@@ -31,10 +44,23 @@ export interface OwnedPublication {
   followerCount: number;
 }
 
-/** Who is looking. An explicit argument, never an ambient lookup, so an
- * owner-only row is a deliberate input rather than a filter someone forgot. */
-export interface ProfileViewer {
-  isOwner: boolean;
+/** One of an author's published posts, as loaded by
+ * SupabasePostPublicationStore.listByAuthor (author_id-indexed). The profile
+ * analogue of OwnedPublication. There is no "unpublished" state — unpublish
+ * deletes the row. */
+export interface OwnedPost {
+  itemLocalId: string;
+  title: string;
+  url: string;
+  sourceName: string;
+  author: string;
+  excerpt: string;
+  commentary: string;
+  visibility: Visibility;
+  /** posts.created_at */
+  publishedAt: string;
+  /** posts.updated_at */
+  updatedAt: string;
 }
 
 export interface ProfileCollectionCard {
@@ -42,7 +68,7 @@ export interface ProfileCollectionCard {
   name: string;
   description: string;
   curatorNote: string;
-  visibility: PublicationVisibility;
+  visibility: Visibility;
   itemCount: number;
   publishedAt: string;
   updatedAt: string;
@@ -52,10 +78,27 @@ export interface ProfileCollectionCard {
   isPinned: boolean;
 }
 
+/** What a post row renders as. Deliberately carries no author id, no post
+ * uuid and no itemLocalId — none of those may cross to a viewer. */
+export interface ProfilePostCard {
+  title: string;
+  url: string;
+  sourceName: string;
+  author: string;
+  excerpt: string;
+  commentary: string;
+  visibility: Visibility;
+  publishedAt: string;
+  updatedAt: string;
+}
+
 export interface ProfileFigures {
   /** Always equals collections.length — never a raw count that could imply a hidden row. */
   collections: number;
+  /** Always equals posts.length — per-viewer filtered (design decision #11). */
   posts: number;
+  /** Person-follow counts, resolved by the page loader and gated by the
+   * show_followers / show_following switches at the view layer. */
   followers: number;
   following: number;
 }
@@ -69,18 +112,25 @@ export interface PublicProfileView {
   avatarUrl: string | null;
   coverUrl: string | null;
   collections: ProfileCollectionCard[];
+  posts: ProfilePostCard[];
   figures: ProfileFigures;
+  /** Which profile sections cross to this viewer. For a non-owner a
+   * switched-off section is absent entirely; for the owner every section is
+   * present, flagged `hidden` where the switch is off. */
+  visibleSections: VisibleSections;
   isOwner: boolean;
 }
 
 export interface DeriveProfileOptions {
-  /** Collection followers — an aggregate over this owner's collection_follows.
-   * Phase 1 labels the Followers figure as "collection followers"; Phase 2
-   * swaps it for person-follows. When omitted, it is summed from the live
-   * publications passed in. */
+  /** This author's published posts, all tiers. The isListable cut happens here. */
+  posts?: readonly OwnedPost[];
+  /** The owner's stored section switches. Required so the change is coherent
+   * across every caller; DEFAULT_SECTION_SWITCHES covers a profile with no row. */
+  sections: ProfileSectionSwitches;
+  /** Person-follower count for this profile (profile_follows). Never summed
+   * from collections any more — the loader always passes the real number. */
   followers?: number;
-  /** People / collections this owner follows. Phase 1 has no person graph, so
-   * the route passes 0 or a collection-follow count. */
+  /** People this profile follows (profile_follows). */
   following?: number;
 }
 
@@ -89,35 +139,29 @@ function isLive(publication: OwnedPublication): boolean {
 }
 
 /**
- * Decide whether a publication belongs on THIS viewer's profile listing.
+ * Does this collection belong on THIS viewer's profile listing?
  *
- * Phase 2 replaces this with `isListable(visibility, viewer)` from
- * src/lib/visibility.ts. Until then:
  *   - the owner sees every collection they have published, including ones
- *     since unpublished (rendered greyed);
- *   - a visitor sees only live, public collections. `unlisted` stays reachable
- *     by direct /c/<slug> link but never appears in a listing — the same rule
- *     the Discover listing already applies.
+ *     since unpublished (rendered greyed) and unlisted ones;
+ *   - everyone else sees only live collections that pass isListable — public
+ *     to all, followers to a follower, unlisted to nobody in a listing.
  */
-function crossesFor(publication: OwnedPublication, viewer: ProfileViewer): boolean {
-  if (viewer.isOwner) return true;
-  return isLive(publication) && publication.visibility === "public";
+function collectionCrosses(publication: OwnedPublication, viewer: Viewer): boolean {
+  if (viewer.kind === "owner") return true;
+  return isLive(publication) && isListable(publication.visibility, viewer);
 }
 
 export function deriveProfileView(
   profile: Profile,
   publications: readonly OwnedPublication[],
-  viewer: ProfileViewer,
-  options: DeriveProfileOptions = {}
+  viewer: Viewer,
+  options: DeriveProfileOptions
 ): PublicProfileView {
-  const followers =
-    options.followers ??
-    publications.reduce((total, publication) => (isLive(publication) ? total + publication.followerCount : total), 0);
-
+  const isOwner = viewer.kind === "owner";
   const pinned = new Set(profile.pinnedCollectionSlugs);
 
   const cards: ProfileCollectionCard[] = publications
-    .filter((publication) => crossesFor(publication, viewer))
+    .filter((publication) => collectionCrosses(publication, viewer))
     .map((publication) => ({
       slug: publication.slug,
       name: publication.name,
@@ -141,6 +185,20 @@ export function deriveProfileView(
     return 0;
   });
 
+  const posts: ProfilePostCard[] = (options.posts ?? [])
+    .filter((post) => isListable(post.visibility, viewer))
+    .map((post) => ({
+      title: post.title,
+      url: post.url,
+      sourceName: post.sourceName,
+      author: post.author,
+      excerpt: post.excerpt,
+      commentary: post.commentary,
+      visibility: post.visibility,
+      publishedAt: post.publishedAt,
+      updatedAt: post.updatedAt,
+    }));
+
   return {
     handle: profile.handle,
     displayName: profile.displayName,
@@ -150,14 +208,16 @@ export function deriveProfileView(
     avatarUrl: profile.avatarUrl,
     coverUrl: profile.coverUrl,
     collections,
+    posts,
     figures: {
       // The rule: a figure equals the length of what actually crossed the
       // boundary, so a number can never imply a row this viewer cannot reach.
       collections: collections.length,
-      posts: 0, // Phase 2 introduces posts.
-      followers: Math.max(0, Math.trunc(followers)),
+      posts: posts.length,
+      followers: Math.max(0, Math.trunc(options.followers ?? 0)),
       following: Math.max(0, Math.trunc(options.following ?? 0)),
     },
-    isOwner: viewer.isOwner,
+    visibleSections: visibleSections(options.sections, { isOwner }),
+    isOwner,
   };
 }

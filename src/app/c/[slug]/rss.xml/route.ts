@@ -10,7 +10,12 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   // An unhandled rejection here (e.g. a Supabase outage) falls through to Next's
   // default 500 rather than being reported as a 404 for a slug that does exist.
   const publication = await store.getBySlug(slug);
-  if (!publication) return new Response("Not found", { status: 404 });
+  // getBySlug now returns rows at any tier; RSS stays link-reachable only —
+  // a private/followers feed has no authenticated request to gate on here.
+  // (followers-tier RSS with a token is a filed follow-up.)
+  if (!publication || (publication.visibility !== "public" && publication.visibility !== "unlisted")) {
+    return new Response("Not found", { status: 404 });
+  }
 
   const origin = new URL(request.url).origin;
   const xml = renderCollectionRss(publication, {

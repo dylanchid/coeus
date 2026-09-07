@@ -4,8 +4,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseArchiveSyncSnapshot } from "./archiveSync.ts";
 import { derivePostSnapshot, parsePostSnapshot, type Post, type PublishPostRequest } from "./post.ts";
 import { PostItemNotFoundError } from "./postErrors.ts";
+import type { OwnedPost } from "./publicProfile.ts";
+import type { Visibility } from "./visibility.ts";
 
 export { PostItemNotFoundError };
+
+/**
+ * The read path for an author's published posts, feeding the profile Posts tab
+ * and the Discover "Following" view. Mirrors how PublicCollectionReader lives
+ * beside CollectionPublicationStore: every tier comes back, and the
+ * isListable/canSee cut happens in deriveProfileView — exactly as
+ * listOwnedPublications returns unpublished rows for the derive layer to filter.
+ */
+export interface PublicPostReader {
+  listByAuthor(authorId: string): Promise<OwnedPost[]>;
+}
 
 /**
  * Writes to the posts table (20260906150000_posts.sql) go through the
@@ -19,13 +32,39 @@ export interface PostPublicationStore {
   unpublish(ownerId: string, itemLocalId: string): Promise<boolean>;
 }
 
-export class SupabasePostPublicationStore implements PostPublicationStore {
+export class SupabasePostPublicationStore implements PostPublicationStore, PublicPostReader {
   // A TS parameter-property constructor breaks tests importing this module under
   // node --experimental-strip-types — see collectionPublicationStore.server.ts.
   private readonly supabase: SupabaseClient;
 
   constructor(supabase: SupabaseClient) {
     this.supabase = supabase;
+  }
+
+  /**
+   * Every post this author has published, newest first — all tiers. The admin
+   * client bypasses RLS; the visibility cut is deriveProfileView's job. One
+   * index-only scan on posts_author_live_idx (author_id, created_at desc).
+   */
+  async listByAuthor(authorId: string): Promise<OwnedPost[]> {
+    const { data, error } = await this.supabase
+      .from("posts")
+      .select("item_local_id,title,url,source_name,author,excerpt,commentary,visibility,created_at,updated_at")
+      .eq("author_id", authorId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+      itemLocalId: String(row.item_local_id),
+      title: String(row.title),
+      url: String(row.url),
+      sourceName: String(row.source_name ?? ""),
+      author: String(row.author ?? ""),
+      excerpt: String(row.excerpt ?? ""),
+      commentary: String(row.commentary ?? ""),
+      visibility: row.visibility as Visibility,
+      publishedAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+    }));
   }
 
   async publish(ownerId: string, request: PublishPostRequest): Promise<Post> {

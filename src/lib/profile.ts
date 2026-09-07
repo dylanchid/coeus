@@ -5,6 +5,8 @@
  * /welcome form reject bad input before it hits the API.
  */
 
+import type { ProfileSectionSwitches } from "./profileSections.ts";
+
 /** An external link on a profile. Ordered; at most {@link LINKS_MAX} per profile. */
 export interface ProfileLink {
   label: string;
@@ -21,6 +23,10 @@ export interface Profile {
   avatarUrl: string | null;
   coverUrl: string | null;
   pinnedCollectionSlugs: string[];
+  /** The owner's profile-section display switches (show_* + likes_visibility).
+   * Read from the profiles row by SupabaseProfileStore; DEFAULT_SECTION_SWITCHES
+   * when a row predates the columns. */
+  sections: ProfileSectionSwitches;
   createdAt: string;
   updatedAt: string;
 }
