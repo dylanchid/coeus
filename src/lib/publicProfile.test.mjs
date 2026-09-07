@@ -99,9 +99,14 @@ test("the view exposes exactly the public fields", () => {
     "figures",
     "handle",
     "isOwner",
+    "likes",
+    "likesSurface",
+    "likesVisibility",
     "links",
     "location",
     "posts",
+    "replies",
+    "reposts",
     "visibleSections",
   ]);
 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { profileTabs, type PostsTabState, type ProfileTabId } from "@/lib/profileTabs";
+import { profileTabs, type ProfileTabId, type ProfileTabStates } from "@/lib/profileTabs";
 import { ProfileFollowButton } from "./ProfileFollowButton";
 import type { ProfileFollowContext } from "./ProfileView";
 
@@ -7,7 +7,7 @@ import type { ProfileFollowContext } from "./ProfileView";
  * The tab + actions row under the banner. Tabs are real links carrying `?tab=`
  * (not role=tablist — this is navigation, not in-page panels), so switching
  * tabs is a server render with no client navigation required. A greyed tab
- * (the owner's empty Posts tab) renders as plain text, not a link.
+ * (an owner's still-empty section) renders as plain text, not a link.
  *
  * The actions slot holds the owner's "Edit profile" link, or — for a signed-in
  * non-owner — the Follow button, seeded with `initialFollowing` from the server
@@ -18,17 +18,18 @@ export function ProfileTabs({
   current,
   isOwner,
   follow = null,
-  posts = "hidden",
+  tabStates = {},
 }: {
   handle: string;
   current: ProfileTabId;
   isOwner: boolean;
   follow?: ProfileFollowContext | null;
-  posts?: PostsTabState;
+  /** Per-tab visible / greyed / hidden state for Posts, Reposts, Replies, Likes. */
+  tabStates?: ProfileTabStates;
 }) {
   return (
     <nav className="profile-tabs" aria-label="Profile sections">
-      {profileTabs(handle, current, posts).map((tab) =>
+      {profileTabs(handle, current, tabStates).map((tab) =>
         tab.greyed ? (
           <span key={tab.id} className="profile-tab is-greyed" aria-disabled="true">
             {tab.label}

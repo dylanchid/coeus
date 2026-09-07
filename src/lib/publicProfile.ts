@@ -1,5 +1,15 @@
 import type { Profile, ProfileLink } from "./profile.ts";
 import {
+  deriveInteractionFeed,
+  deriveReplyThreads,
+  likesSurface,
+  type LikesSurface,
+  type LoadedInteraction,
+  type LoadedReply,
+  type ProfileInteractionCard,
+  type ProfileReplyThread,
+} from "./conversationProfile.ts";
+import {
   DEFAULT_SECTION_SWITCHES,
   visibleSections,
   type ProfileSectionSwitches,
@@ -113,6 +123,21 @@ export interface PublicProfileView {
   coverUrl: string | null;
   collections: ProfileCollectionCard[];
   posts: ProfilePostCard[];
+  /** Reposts this profile made, each already re-checked against its target's
+   * current visibility (canSeeIndirect). Empty when show_reposts is off for a
+   * visitor. */
+  reposts: ProfileInteractionCard[];
+  /** Likes this profile made, same indirect re-check. Empty unless
+   * `likes.render` — the surface gate below folds in likes_visibility. */
+  likes: ProfileInteractionCard[];
+  /** Reply threads this profile is a root author of. Empty when show_replies
+   * is off for a visitor. */
+  replies: ProfileReplyThread[];
+  /** Whether the Likes tab + sidebar strip render at all, and (owner only)
+   * whether they show marked-hidden. */
+  likesSurface: LikesSurface;
+  /** The owner's likes_visibility tier, for the glyph on their own view. */
+  likesVisibility: Visibility;
   figures: ProfileFigures;
   /** Which profile sections cross to this viewer. For a non-owner a
    * switched-off section is absent entirely; for the owner every section is
@@ -132,6 +157,18 @@ export interface DeriveProfileOptions {
   followers?: number;
   /** People this profile follows (profile_follows). */
   following?: number;
+  /** This profile's reposts and likes, each with its target freshly joined —
+   * dropped here unless canSeeIndirect() clears the target's CURRENT state. */
+  reposts?: readonly LoadedInteraction[];
+  likes?: readonly LoadedInteraction[];
+  /** This profile's reply rows (roots + two levels of descendants). */
+  replies?: readonly LoadedReply[];
+  /**
+   * The set of target-owner ids that THIS viewer follows — resolved once by the
+   * loader across every distinct target owner in reposts/likes/replies, so the
+   * `followers`-tier target check never issues a query per row.
+   */
+  viewerFollowsTargetOwners?: ReadonlySet<string>;
 }
 
 function isLive(publication: OwnedPublication): boolean {
@@ -185,6 +222,21 @@ export function deriveProfileView(
     return 0;
   });
 
+  const switches = options.sections;
+  const follows = options.viewerFollowsTargetOwners ?? new Set<string>();
+  const followsOwner = (ownerId: string) => follows.has(ownerId);
+
+  const surface = likesSurface(switches, viewer);
+  const reposts = switches.showReposts || isOwner
+    ? deriveInteractionFeed(options.reposts ?? [], viewer, followsOwner)
+    : [];
+  const likes = surface.render
+    ? deriveInteractionFeed(options.likes ?? [], viewer, followsOwner)
+    : [];
+  const replies = switches.showReplies || isOwner
+    ? deriveReplyThreads(options.replies ?? [], viewer, followsOwner)
+    : [];
+
   const posts: ProfilePostCard[] = (options.posts ?? [])
     .filter((post) => isListable(post.visibility, viewer))
     .map((post) => ({
@@ -209,6 +261,11 @@ export function deriveProfileView(
     coverUrl: profile.coverUrl,
     collections,
     posts,
+    reposts,
+    likes,
+    replies,
+    likesSurface: surface,
+    likesVisibility: switches.likesVisibility as Visibility,
     figures: {
       // The rule: a figure equals the length of what actually crossed the
       // boundary, so a number can never imply a row this viewer cannot reach.

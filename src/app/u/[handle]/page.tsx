@@ -8,7 +8,9 @@ import { loadProfileIdentity } from "@/lib/profilePageLoader.server";
 import { SupabaseProfileStore } from "@/lib/profileStore.server";
 import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
 import { SupabasePostPublicationStore } from "@/lib/postPublicationStore.server";
+import { SupabaseConversationProfileReader } from "@/lib/conversationProfileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
+import type { ReplyComposeTarget } from "@/components/ProfileReplies";
 import type { Viewer } from "@/lib/visibility";
 
 export const dynamic = "force-dynamic";
@@ -52,14 +54,19 @@ export default async function ProfilePage({
   const profileStore = new SupabaseProfileStore(admin);
   const followStore = new SupabaseProfileFollowStore(admin);
   const postReader = new SupabasePostPublicationStore(admin);
+  const conversationReader = new SupabaseConversationProfileReader(admin);
 
-  const [publications, posts, followers, following, initialFollowing] = await Promise.all([
-    profileStore.listOwnedPublications(profile.id),
-    postReader.listByAuthor(profile.id),
-    followStore.countFollowers(profile.id),
-    followStore.countFollowing(profile.id),
-    viewerId && !isOwner ? followStore.isFollowing(viewerId, profile.id) : Promise.resolve(false),
-  ]);
+  const [publications, posts, followers, following, initialFollowing, reposts, likes, replies] =
+    await Promise.all([
+      profileStore.listOwnedPublications(profile.id),
+      postReader.listByAuthor(profile.id),
+      followStore.countFollowers(profile.id),
+      followStore.countFollowing(profile.id),
+      viewerId && !isOwner ? followStore.isFollowing(viewerId, profile.id) : Promise.resolve(false),
+      conversationReader.listRepostsByActor(profile.id),
+      conversationReader.listLikesByActor(profile.id),
+      conversationReader.listRepliesByActor(profile.id),
+    ]);
 
   const viewer: Viewer = isOwner
     ? { kind: "owner", id: viewerId! }
@@ -69,12 +76,46 @@ export default async function ProfilePage({
         ? { kind: "signed-in", id: viewerId }
         : { kind: "anonymous" };
 
+  // The `followers`-tier target check in canSeeIndirect needs, for each row,
+  // whether THIS viewer follows that row's target owner — a different person
+  // from the profile owner. Resolve it once across every distinct target owner.
+  // A signed-in owner viewing their own profile short-circuits canSeeIndirect,
+  // so only a signed-in non-owner needs the lookup.
+  let viewerFollowsTargetOwners = new Set<string>();
+  if (viewerId && !isOwner) {
+    const targetOwnerIds = [
+      ...reposts,
+      ...likes,
+      ...replies,
+    ].flatMap((row) => (row.target ? [row.target.ownerId] : []));
+    viewerFollowsTargetOwners = await conversationReader.followsAmong(viewerId, targetOwnerIds);
+  }
+
   const view = deriveProfileView(profile, publications, viewer, {
     posts,
     sections: profile.sections,
     followers,
     following,
+    reposts,
+    likes,
+    replies,
+    viewerFollowsTargetOwners,
   });
+
+  // Owner-only: the ids each reply thread needs so the composer can post into
+  // it. Kept out of PublicProfileView so no target uuid crosses to a visitor.
+  const replyComposeTargets: Record<string, ReplyComposeTarget> = {};
+  if (isOwner) {
+    for (const row of replies) {
+      if (row.parentId === null && row.target) {
+        replyComposeTargets[row.id] = {
+          targetType: row.targetType,
+          targetId: row.targetId,
+          targetVisibility: row.target.visibility,
+        };
+      }
+    }
+  }
   const openEditor = isOwner && (query.edit === "1" || query.edit === "true");
 
   return (
@@ -85,6 +126,7 @@ export default async function ProfilePage({
         follow={isOwner ? null : { profileId: profile.id, initialFollowing }}
         sectionSwitches={isOwner ? profile.sections : null}
         openEditor={openEditor}
+        replyComposeTargets={replyComposeTargets}
       />
     </AppShell>
   );

@@ -19,6 +19,7 @@ export function VisibilitySelect({
   onChange,
   allow,
   className,
+  disabled = false,
 }: {
   id?: string;
   name?: string;
@@ -26,6 +27,9 @@ export function VisibilitySelect({
   onChange: (value: Visibility) => void;
   allow?: readonly Visibility[];
   className?: string;
+  /** Rendered read-only where the tier is fixed — e.g. a reply that inherits
+   * its target's visibility on the server (Phase 3). */
+  disabled?: boolean;
 }) {
   const choices = visibilityChoices().filter((choice) => !allow || allow.includes(choice.value));
   return (
@@ -34,6 +38,7 @@ export function VisibilitySelect({
       name={name}
       className={className}
       value={value}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value as Visibility)}
     >
       {choices.map((choice) => (

@@ -204,6 +204,164 @@
 /* The colour-free tier glyph (● ◐ ◍ ○) — the sr-only label carries the name. */
 .visibility-glyph { display: inline-flex; align-items: center; color: var(--handle); }
 
+/* —— Reposts & Likes tabs ————————————————————————————————— */
+.profile-interactions { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-md); }
+.profile-interaction {
+  display: grid;
+  gap: 0.3rem;
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--line);
+}
+.profile-interaction:last-child { border-bottom: none; }
+.profile-interaction-when { margin: 0; color: var(--muted); font-size: var(--text-meta); }
+.profile-interaction-when time { font-variant-numeric: tabular-nums; }
+
+/* Likes: a light one-line row. */
+.profile-interaction-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--fg);
+  line-height: 1.5;
+}
+.profile-interaction-line a { color: var(--fg); }
+.profile-interaction-source { color: var(--accent); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.profile-interaction-owner { color: var(--handle); font-size: var(--text-meta); text-decoration: none; }
+.profile-interaction-owner:hover { text-decoration: underline; }
+
+/* Reposts: a compact card with the target's own metadata. */
+.profile-interaction-card {
+  border: 1px solid var(--line);
+  padding: 0.7rem;
+  max-width: 44rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.profile-interaction-card h3 { margin: 0; font: 600 0.95rem var(--font-display); }
+.profile-interaction-card h3 a { color: var(--fg); text-decoration: none; }
+.profile-interaction-card h3 a:hover { text-decoration: underline; }
+.profile-interaction-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+.profile-interaction-kind { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.58rem; }
+
+/* —— Replies tab: two levels, one left rule ————————————————— */
+.profile-replies { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-lg); }
+.profile-reply-thread { display: grid; gap: 0.5rem; }
+.profile-reply-context { margin: 0; color: var(--muted); font-size: var(--text-meta); line-height: 1.5; }
+.profile-reply-context-kind { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.58rem; }
+.profile-reply-context a { color: var(--fg); }
+.profile-reply-context-owner { color: var(--handle); }
+
+.profile-reply-card { display: grid; gap: 0.25rem; max-width: 44rem; }
+.profile-reply-lead { margin: 0; color: var(--handle); font-size: var(--text-meta); }
+.profile-reply-lead a { color: var(--handle); }
+.profile-reply-text { margin: 0; color: var(--fg); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.profile-reply-meta {
+  margin: 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: var(--text-meta);
+}
+.profile-reply-edited { font-style: italic; }
+
+/* The one and only indent — a left rule + padding. Never nested twice, so the
+   body measure survives a 320px viewport (design nfq.3.5). */
+.profile-reply-responses {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 0.7rem;
+  border-left: 2px solid var(--line);
+  display: grid;
+  gap: var(--space-md);
+}
+@media (max-width: 360px) {
+  /* Reclaim the body measure at the narrow end — one shallow indent only. */
+  .profile-body { padding-left: 0.6rem; padding-right: 0.6rem; }
+  .profile-reply-responses { padding-left: 0.5rem; }
+}
+
+.profile-reply-compose { margin-top: 0.5rem; }
+
+/* —— Reply composer island ———————————————————————————————— */
+.reply-composer { display: grid; gap: 0.5rem; max-width: 44rem; }
+.reply-composer-body {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--text-body) var(--font);
+  resize: vertical;
+}
+.reply-composer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.reply-composer-visibility { display: flex; align-items: center; gap: 0.35rem; font-size: var(--text-meta); }
+.reply-composer-visibility span { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.reply-composer-visibility select {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--text-meta) var(--font);
+  padding: 0.25rem 0.4rem;
+}
+.reply-composer-submit {
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: 0.64rem var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.85rem;
+  cursor: pointer;
+}
+.reply-composer-submit:hover:not(:disabled) { background: var(--fg); color: var(--bg); }
+.reply-composer-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+.reply-composer-error { margin: 0; color: var(--error); font-size: var(--text-meta); }
+
+/* —— Sidebar Likes strip ————————————————————————————————— */
+.profile-likes-strip { display: grid; gap: 0.5rem; }
+.profile-likes-head {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: var(--text-meta);
+}
+.profile-likes-head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.profile-likes-tier { font-size: 0.7rem; }
+.profile-likes-count { color: var(--fg); font-variant-numeric: tabular-nums; }
+.profile-likes-thumbs { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
+.profile-likes-thumbs a {
+  display: block;
+  color: var(--fg);
+  font-size: var(--text-meta);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-likes-thumbs a:hover { text-decoration: underline; }
+.profile-likes-all a { color: var(--link); font-size: var(--text-meta); }
+.profile-likes-empty { margin: 0; color: var(--muted); font-size: var(--text-meta); }
+
 /* —— Followers / Following routes ———————————————————————— */
 .follow-list-head {
   padding: var(--space-lg) clamp(1rem, 3vw, 2rem) var(--space-md);

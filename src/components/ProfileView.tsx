@@ -1,10 +1,12 @@
 import { ProfileBanner } from "./ProfileBanner";
 import { ProfileCollections } from "./ProfileCollections";
 import { ProfileEditorMount } from "./ProfileEditor";
+import { ProfileInteractions } from "./ProfileInteractions";
 import { ProfilePosts } from "./ProfilePosts";
+import { ProfileReplies, type ReplyComposeTarget } from "./ProfileReplies";
 import { ProfileSidebar } from "./ProfileSidebar";
 import { ProfileTabs } from "./ProfileTabs";
-import type { PostsTabState, ProfileTabId } from "@/lib/profileTabs";
+import type { ProfileTabId, ProfileTabStates, TabState } from "@/lib/profileTabs";
 import type { ProfileSectionSwitches } from "@/lib/profileSections";
 import type { PublicProfileView } from "@/lib/publicProfile";
 
@@ -18,16 +20,30 @@ export interface ProfileFollowContext {
   initialFollowing: boolean;
 }
 
+/**
+ * The three-state rule shared by every conditional tab: a link when there is
+ * something to see, plain text for the owner who has nothing there yet, absent
+ * for anyone else. `available` folds in the section switch / visibility gate
+ * that deriveProfileView already applied (an empty list means "not available"
+ * to a visitor).
+ */
+function tabState(count: number, isOwner: boolean, available: boolean): TabState {
+  if (count > 0) return "visible";
+  if (isOwner && available) return "greyed";
+  return "hidden";
+}
+
 /** Composes the whole read-only profile surface. All viewer filtering already
  * happened in deriveProfileView(); this only lays the pieces out. The client
  * islands — ProfileEditor (owner), ProfileFollowButton (visitor),
- * SectionSwitches (owner) — mount from here. */
+ * SectionSwitches (owner), ReplyComposer — mount from here. */
 export function ProfileView({
   view,
   tab,
   follow = null,
   sectionSwitches = null,
   openEditor = false,
+  replyComposeTargets = {},
 }: {
   view: PublicProfileView;
   tab: ProfileTabId;
@@ -36,16 +52,25 @@ export function ProfileView({
   /** The owner's stored switches, for the SectionSwitches island. Null for a visitor. */
   sectionSwitches?: ProfileSectionSwitches | null;
   openEditor?: boolean;
+  /** Owner-only: per-thread compose targets, keyed by thread-root reply id. */
+  replyComposeTargets?: Record<string, ReplyComposeTarget>;
 }) {
-  const emptyMessage = view.isOwner
+  const { isOwner } = view;
+  const emptyMessage = isOwner
     ? "You haven’t published any collections yet."
     : `@${view.handle} hasn’t published any collections yet.`;
 
-  // The Posts tab: a normal link once there is something to see; greyed for the
-  // owner who has published nothing; absent entirely for a visitor with nothing.
-  const postsTab: PostsTabState = view.posts.length ? "visible" : view.isOwner ? "greyed" : "hidden";
-  // An unknown or hidden ?tab=posts falls back to the overview column.
-  const activeTab: ProfileTabId = tab === "posts" && postsTab === "hidden" ? "overview" : tab;
+  const tabStates: ProfileTabStates = {
+    posts: tabState(view.posts.length, isOwner, true),
+    reposts: tabState(view.reposts.length, isOwner, Boolean(view.visibleSections.reposts)),
+    replies: tabState(view.replies.length, isOwner, Boolean(view.visibleSections.replies)),
+    likes: tabState(view.likes.length, isOwner, view.likesSurface.render),
+  };
+
+  // An unknown or hidden ?tab= falls back to the overview column.
+  const requested = tab as keyof ProfileTabStates;
+  const activeTab: ProfileTabId =
+    requested in tabStates && tabStates[requested] === "hidden" ? "overview" : tab;
 
   return (
     <div className="profile-page">
@@ -53,12 +78,12 @@ export function ProfileView({
       <ProfileTabs
         handle={view.handle}
         current={activeTab}
-        isOwner={view.isOwner}
+        isOwner={isOwner}
         follow={follow}
-        posts={postsTab}
+        tabStates={tabStates}
       />
 
-      {view.isOwner ? (
+      {isOwner ? (
         <div className="profile-editor-slot">
           <ProfileEditorMount
             handle={view.handle}
@@ -76,7 +101,28 @@ export function ProfileView({
       <div className="profile-body">
         <div className="profile-feed">
           {activeTab === "posts" ? (
-            <ProfilePosts posts={view.posts} isOwner={view.isOwner} handle={view.handle} />
+            <ProfilePosts posts={view.posts} isOwner={isOwner} handle={view.handle} />
+          ) : activeTab === "reposts" ? (
+            <ProfileInteractions
+              cards={view.reposts}
+              kind="reposts"
+              isOwner={isOwner}
+              handle={view.handle}
+            />
+          ) : activeTab === "likes" ? (
+            <ProfileInteractions
+              cards={view.likes}
+              kind="likes"
+              isOwner={isOwner}
+              handle={view.handle}
+            />
+          ) : activeTab === "replies" ? (
+            <ProfileReplies
+              threads={view.replies}
+              isOwner={isOwner}
+              handle={view.handle}
+              composeTargets={replyComposeTargets}
+            />
           ) : activeTab === "collections" ? (
             <ProfileCollections cards={view.collections} emptyMessage={emptyMessage} />
           ) : (
