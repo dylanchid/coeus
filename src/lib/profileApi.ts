@@ -1,5 +1,6 @@
 import { validateProfileInput } from "./profile.ts";
 import { HandleTakenError } from "./profileErrors.ts";
+import { parseProfileSectionsPatch } from "./profileSections.ts";
 import type { ProfileStore } from "./profileStore.server.ts";
 
 export interface ProfileApiDependencies {
@@ -63,5 +64,36 @@ export async function handleSaveProfile(request: Request, dependencies: ProfileA
       return error("That handle is already taken.", 409, { field: "handle" });
     }
     return error("Saving your profile failed", 503);
+  }
+}
+
+/**
+ * PATCH /api/account/profile/sections — the five show_* switches and
+ * likes_visibility, as a partial update. Separate from the profile PUT so
+ * toggling one switch never re-sends the whole profile. An empty body is a
+ * 400, not a no-op success. 404 when the caller has not onboarded.
+ */
+export async function handlePatchProfileSections(
+  request: Request,
+  dependencies: ProfileApiDependencies
+): Promise<Response> {
+  const userId = await owner(dependencies);
+  if (userId instanceof Response) return userId;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return error("Request body must be valid JSON", 400);
+  }
+  const parsed = parseProfileSectionsPatch(body);
+  if (!parsed.ok) return error(parsed.error, 400);
+
+  try {
+    const sections = await dependencies.store.updateSections(userId, parsed.value);
+    if (!sections) return error("Profile not found", 404);
+    return Response.json({ sections }, { headers: headers() });
+  } catch {
+    return error("Saving your section settings failed", 503);
   }
 }

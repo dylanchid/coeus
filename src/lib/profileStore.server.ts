@@ -3,7 +3,23 @@ import "server-only";
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import { HandleTakenError } from "./profileErrors.ts";
 import { HANDLE_PATTERN, normalizeHandle, validateProfileLinks, type Profile, type ProfileInput, type ProfileLink } from "./profile.ts";
+import { isPublicationVisibility } from "./collectionPublication.ts";
+import type { ProfileSectionsPatch, ProfileSectionSwitches } from "./profileSections.ts";
 import type { OwnedPublication } from "./publicProfile.ts";
+
+const SECTION_COLUMNS =
+  "show_followers,show_following,show_reposts,show_replies,show_likes,likes_visibility";
+
+function sectionSwitches(row: Record<string, unknown>): ProfileSectionSwitches {
+  return {
+    showFollowers: row.show_followers !== false,
+    showFollowing: row.show_following !== false,
+    showReposts: row.show_reposts !== false,
+    showReplies: row.show_replies !== false,
+    showLikes: row.show_likes !== false,
+    likesVisibility: isPublicationVisibility(row.likes_visibility) ? row.likes_visibility : "public",
+  };
+}
 
 function toLinks(raw: unknown): ProfileLink[] {
   const parsed = validateProfileLinks(raw);
@@ -45,6 +61,12 @@ export interface ProfileStore {
   get(userId: string): Promise<Profile | null>;
   /** Insert-or-update this account's profile. Throws {@link HandleTakenError} when the handle belongs to someone else. */
   save(userId: string, input: ProfileInput): Promise<Profile>;
+  /**
+   * Partial update of just the section switches and likes_visibility, so
+   * toggling one switch never re-sends the whole profile. Null when the caller
+   * has no profile row yet (onboarding not done).
+   */
+  updateSections(userId: string, patch: ProfileSectionsPatch): Promise<ProfileSectionSwitches | null>;
 }
 
 export class SupabaseProfileStore implements ProfileStore {
@@ -84,6 +106,25 @@ export class SupabaseProfileStore implements ProfileStore {
       throw error;
     }
     return profileRow(data as Record<string, unknown>);
+  }
+
+  async updateSections(userId: string, patch: ProfileSectionsPatch): Promise<ProfileSectionSwitches | null> {
+    const row: Record<string, unknown> = {};
+    if (patch.showFollowers !== undefined) row.show_followers = patch.showFollowers;
+    if (patch.showFollowing !== undefined) row.show_following = patch.showFollowing;
+    if (patch.showReposts !== undefined) row.show_reposts = patch.showReposts;
+    if (patch.showReplies !== undefined) row.show_replies = patch.showReplies;
+    if (patch.showLikes !== undefined) row.show_likes = patch.showLikes;
+    if (patch.likesVisibility !== undefined) row.likes_visibility = patch.likesVisibility;
+
+    const { data, error } = await this.supabase
+      .from("profiles")
+      .update(row)
+      .eq("id", userId)
+      .select(SECTION_COLUMNS)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? sectionSwitches(data as Record<string, unknown>) : null;
   }
 
   /**

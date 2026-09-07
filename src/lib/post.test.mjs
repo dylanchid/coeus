@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { derivePostSnapshot, parsePostSnapshot } from "./post.ts";
+import {
+  derivePostSnapshot,
+  parsePostSnapshot,
+  parsePublishPostRequest,
+  parseUnpublishPostRequest,
+} from "./post.ts";
 
 /** An ArchiveItem with every PRIVATE field set to a recognisable sentinel. */
 function itemWithPrivateSentinels() {
@@ -128,4 +133,29 @@ test("parsePostSnapshot rejects an empty title and a missing itemLocalId", () =>
   };
   assert.equal(parsePostSnapshot({ ...base, title: "" }).ok, false);
   assert.equal(parsePostSnapshot({ ...base, itemLocalId: "" }).ok, false);
+});
+
+test("parsePublishPostRequest accepts the client's three fields and defaults commentary", () => {
+  const parsed = parsePublishPostRequest({ itemLocalId: "item-1", visibility: "public" });
+  assert.deepEqual(parsed, { ok: true, value: { itemLocalId: "item-1", visibility: "public", commentary: "" } });
+});
+
+test("parsePublishPostRequest rejects unknown fields — the client cannot send post content", () => {
+  for (const extra of ["title", "url", "excerpt", "author", "sourceName"]) {
+    const parsed = parsePublishPostRequest({ itemLocalId: "i", visibility: "public", [extra]: "x" });
+    assert.equal(parsed.ok, false, `${extra} must be rejected`);
+    assert.match(parsed.error, /Unknown field/);
+  }
+});
+
+test("parsePublishPostRequest rejects a bad visibility and a missing itemLocalId", () => {
+  assert.equal(parsePublishPostRequest({ itemLocalId: "i", visibility: "nonsense" }).ok, false);
+  assert.equal(parsePublishPostRequest({ visibility: "public" }).ok, false);
+  assert.equal(parsePublishPostRequest({ itemLocalId: "i", visibility: "public", commentary: "x".repeat(4001) }).ok, false);
+});
+
+test("parseUnpublishPostRequest accepts a bare itemLocalId and rejects extras", () => {
+  assert.deepEqual(parseUnpublishPostRequest({ itemLocalId: "item-1" }), { ok: true, value: { itemLocalId: "item-1" } });
+  assert.equal(parseUnpublishPostRequest({ itemLocalId: "i", visibility: "public" }).ok, false);
+  assert.equal(parseUnpublishPostRequest({}).ok, false);
 });

@@ -126,3 +126,59 @@ export function parsePostSnapshot(raw: unknown): PostParseResult {
     },
   };
 }
+
+/**
+ * What a client sends to publish or republish a post. The server derives the
+ * public-safe snapshot from its own archive data — the client never sends
+ * title/url/excerpt — exactly how PublishCollectionRequest works.
+ */
+export interface PublishPostRequest {
+  itemLocalId: string;
+  visibility: PublicationVisibility;
+  commentary: string;
+}
+
+export type PublishPostRequestParseResult =
+  | { ok: true; value: PublishPostRequest }
+  | { ok: false; error: string };
+
+export function parsePublishPostRequest(raw: unknown): PublishPostRequestParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Request body must be a JSON object" };
+  const allowed = new Set(["itemLocalId", "visibility", "commentary"]);
+  const unknownField = Object.keys(raw).find((key) => !allowed.has(key));
+  if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
+  if (!isNonEmptyString(raw.itemLocalId, MAX_ITEM_LOCAL_ID_LENGTH)) {
+    return { ok: false, error: "itemLocalId must be a non-empty string" };
+  }
+  if (!isPublicationVisibility(raw.visibility)) {
+    return { ok: false, error: "visibility must be 'private', 'followers', 'unlisted', or 'public'" };
+  }
+  const commentary = raw.commentary === undefined ? "" : raw.commentary;
+  if (!isBoundedString(commentary, MAX_COMMENTARY_LENGTH)) return { ok: false, error: "commentary is invalid" };
+  return { ok: true, value: { itemLocalId: raw.itemLocalId, visibility: raw.visibility, commentary } };
+}
+
+export interface UnpublishPostRequest {
+  itemLocalId: string;
+}
+
+export type UnpublishPostRequestParseResult =
+  | { ok: true; value: UnpublishPostRequest }
+  | { ok: false; error: string };
+
+export function parseUnpublishPostRequest(raw: unknown): UnpublishPostRequestParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Request body must be a JSON object" };
+  const unknownField = Object.keys(raw).find((key) => key !== "itemLocalId");
+  if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
+  if (!isNonEmptyString(raw.itemLocalId, MAX_ITEM_LOCAL_ID_LENGTH)) {
+    return { ok: false, error: "itemLocalId must be a non-empty string" };
+  }
+  return { ok: true, value: { itemLocalId: raw.itemLocalId } };
+}
+
+/** A post as persisted, once it has a durable identity. */
+export interface Post extends PostSnapshot {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}

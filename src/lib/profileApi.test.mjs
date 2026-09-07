@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { handleGetProfile, handleSaveProfile } from "./profileApi.ts";
+import { handleGetProfile, handlePatchProfileSections, handleSaveProfile } from "./profileApi.ts";
 import { HandleTakenError } from "./profileErrors.ts";
 
 class MemoryProfileStore {
@@ -37,6 +37,40 @@ class MemoryProfileStore {
     this.profiles.set(userId, profile);
     return profile;
   }
+
+  sections = new Map();
+
+  async updateSections(userId, patch) {
+    if (this.failNext === "updateSections") { this.failNext = null; throw new Error("db down"); }
+    if (!this.sections.has(userId)) return null; // no profile row yet
+    const current = this.sections.get(userId);
+    const next = {
+      showFollowers: patch.showFollowers ?? current.showFollowers,
+      showFollowing: patch.showFollowing ?? current.showFollowing,
+      showReposts: patch.showReposts ?? current.showReposts,
+      showReplies: patch.showReplies ?? current.showReplies,
+      showLikes: patch.showLikes ?? current.showLikes,
+      likesVisibility: patch.likesVisibility ?? current.likesVisibility,
+    };
+    this.sections.set(userId, next);
+    return next;
+  }
+}
+
+const DEFAULT_SECTIONS = {
+  showFollowers: true,
+  showFollowing: true,
+  showReposts: true,
+  showReplies: true,
+  showLikes: true,
+  likesVisibility: "public",
+};
+
+function patchSections(body) {
+  return new Request("https://coeus.test/api/account/profile/sections", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 }
 
 function deps(store, ownerId = "user-1") {
@@ -148,5 +182,63 @@ test("a store failure on save is a 503, not a crash", async () => {
   const store = new MemoryProfileStore();
   store.failNext = "save";
   const response = await handleSaveProfile(put({ handle: "ada", displayName: "Ada" }), deps(store));
+  assert.equal(response.status, 503);
+});
+
+// ── PATCH /api/account/profile/sections ─────────────────────────────────────
+
+test("PATCH sections requires authentication", async () => {
+  const response = await handlePatchProfileSections(patchSections({ showLikes: false }), deps(new MemoryProfileStore(), null));
+  assert.equal(response.status, 401);
+});
+
+test("PATCH sections applies a partial update and echoes the new switches", async () => {
+  const store = new MemoryProfileStore();
+  store.sections.set("user-1", { ...DEFAULT_SECTIONS });
+
+  const response = await handlePatchProfileSections(
+    patchSections({ showReplies: false, likesVisibility: "followers" }),
+    deps(store)
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "private, no-store, max-age=0");
+  const body = await response.json();
+  assert.equal(body.sections.showReplies, false);
+  assert.equal(body.sections.likesVisibility, "followers");
+  assert.equal(body.sections.showLikes, true); // untouched
+});
+
+test("PATCH sections rejects an empty body with 400", async () => {
+  const store = new MemoryProfileStore();
+  store.sections.set("user-1", { ...DEFAULT_SECTIONS });
+  const response = await handlePatchProfileSections(patchSections({}), deps(store));
+  assert.equal(response.status, 400);
+});
+
+test("PATCH sections rejects an unknown key and likesVisibility of unlisted", async () => {
+  const store = new MemoryProfileStore();
+  store.sections.set("user-1", { ...DEFAULT_SECTIONS });
+
+  const unknown = await handlePatchProfileSections(patchSections({ showComments: false }), deps(store));
+  assert.equal(unknown.status, 400);
+
+  const unlisted = await handlePatchProfileSections(patchSections({ likesVisibility: "unlisted" }), deps(store));
+  assert.equal(unlisted.status, 400);
+
+  const notBoolean = await handlePatchProfileSections(patchSections({ showLikes: "no" }), deps(store));
+  assert.equal(notBoolean.status, 400);
+});
+
+test("PATCH sections is a 404 when the caller has not onboarded", async () => {
+  const store = new MemoryProfileStore(); // no sections row for user-1
+  const response = await handlePatchProfileSections(patchSections({ showLikes: false }), deps(store));
+  assert.equal(response.status, 404);
+});
+
+test("PATCH sections maps a store failure to 503", async () => {
+  const store = new MemoryProfileStore();
+  store.sections.set("user-1", { ...DEFAULT_SECTIONS });
+  store.failNext = "updateSections";
+  const response = await handlePatchProfileSections(patchSections({ showLikes: false }), deps(store));
   assert.equal(response.status, 503);
 });
