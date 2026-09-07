@@ -126,3 +126,31 @@
   .sources-topic-grid { grid-template-columns: 1fr; }
   .sources-topic-group { min-height: 0; }
 }
+
+/* —— Discover: Everyone / Following segmented control + Following feed —— */
+.discover-view-tabs { display: flex; gap: 0 1.1rem; padding: 0.4rem 0 0; border-bottom: 1px solid var(--header-rule); }
+.discover-view-tab {
+  padding: 0.55rem 0;
+  color: var(--muted);
+  font: var(--text-meta)/1 var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.discover-view-tab:hover { color: var(--fg); }
+.discover-view-tab[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
+
+.discover-following-empty { padding: 2.5rem 0; color: var(--muted); max-width: 40rem; }
+.discover-following-empty a { color: var(--link); }
+
+.following-feed { list-style: none; margin: 0; padding: 1.2rem 0 0; display: grid; gap: 1.2rem; }
+.following-feed-item { display: grid; gap: 0.55rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--line); }
+.following-feed-item:last-child { border-bottom: none; }
+.following-feed-item h3 { margin: 0; font: 600 1.05rem var(--font-display); }
+.following-feed-item h3 a { color: var(--fg); text-decoration: none; }
+.following-feed-item h3 a:hover { text-decoration: underline; }
+.following-feed-item p { margin: 0; color: var(--fg); line-height: 1.55; }
+.following-feed-kind { color: var(--accent); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.following-feed-meta { color: var(--muted); font-size: var(--text-meta); }

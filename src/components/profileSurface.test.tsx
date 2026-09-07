@@ -34,6 +34,8 @@ const { ProfileSidebar } = await import("./ProfileSidebar");
 const { ProfilePosts } = await import("./ProfilePosts");
 const { ProfileFollowList } = await import("./ProfileFollowList");
 const { VisibilitySelect } = await import("./VisibilitySelect");
+const { DiscoverViewTabs } = await import("./DiscoverViewTabs");
+const { FollowingFeed } = await import("./FollowingFeed");
 
 function follower(overrides = {}) {
   return {
@@ -331,6 +333,50 @@ test("ProfileFollowList empty state names the direction", () => {
     />
   );
   assert.ok(screen.getByText(/@ada isn’t following anyone yet/i));
+});
+
+// ── Discover: Following view ───────────────────────────────────────────────
+
+test("DiscoverViewTabs marks the active view with aria-current", () => {
+  const { rerender } = renderWithRouter(<DiscoverViewTabs current="everyone" />);
+  assert.equal(screen.getByRole("link", { name: "Everyone" }).getAttribute("aria-current"), "page");
+  assert.equal(screen.getByRole("link", { name: "Following" }).getAttribute("aria-current"), null);
+
+  rerender(
+    <AppRouterContext.Provider value={{} as never}>
+      <PathnameContext.Provider value="/discover">
+        <DiscoverViewTabs current="following" />
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>
+  );
+  assert.equal(screen.getByRole("link", { name: "Following" }).getAttribute("aria-current"), "page");
+});
+
+test("FollowingFeed renders collections and posts and the empty state names the cause", () => {
+  const { rerender } = renderWithRouter(
+    <FollowingFeed
+      items={[
+        { kind: "collection", publishedAt: "2026-06-06T00:00:00.000Z", slug: "notes", name: "Field Notes", description: "d", curatorNote: "", attribution: "", itemCount: 2 },
+        { kind: "post", publishedAt: "2026-05-05T00:00:00.000Z", title: "A clip", url: "https://example.com/x", sourceName: "example.com", author: "", excerpt: "", commentary: "worth reading" },
+      ]}
+      hasMore
+      offset={0}
+      pageSize={20}
+    />
+  );
+  assert.ok(screen.getByRole("link", { name: "Field Notes" }));
+  assert.ok(screen.getByRole("link", { name: /a clip/i }));
+  assert.ok(screen.getByText("worth reading"));
+  assert.ok(screen.getByRole("link", { name: /older/i }));
+
+  rerender(
+    <AppRouterContext.Provider value={{} as never}>
+      <PathnameContext.Provider value="/discover">
+        <FollowingFeed items={[]} hasMore={false} offset={0} pageSize={20} />
+      </PathnameContext.Provider>
+    </AppRouterContext.Provider>
+  );
+  assert.ok(screen.getByText(/people you follow haven’t published/i));
 });
 
 test("the derived view handed to the sidebar never serialises the profile UUID", () => {

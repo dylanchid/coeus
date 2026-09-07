@@ -8,6 +8,7 @@ import { useArchive } from "./AppProviders";
 import { AppShell } from "./AppShell";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { AlreadyArchivedButton, PreviewFollowButton } from "./DiscoverPreviewControls";
+import { DiscoverViewTabs } from "./DiscoverViewTabs";
 
 function timeAgo(iso: string): string {
   const hours = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 3_600_000));
@@ -89,6 +90,7 @@ export function DiscoverApp() {
       subline="Collections, articles, and links shared by people—not ranked by an engagement algorithm."
     >
       <div className="social-page">
+      <DiscoverViewTabs current="everyone" />
       {composerOpen ? (
         <section className="social-composer" aria-label="Share a link or clip">
           <div className="social-composer-head"><span>New sourced post</span><small>The original URL always travels with the clip.</small></div>
@@ -138,7 +140,7 @@ export function DiscoverApp() {
           {communityCollections.map((collection) => (
             <article key={collection.id}><span>◎ Community · {collection.visibility}</span><h3>{collection.name}</h3><p>{collection.description}</p><small>{data.items.filter((item) => item.collectionIds.includes(collection.id)).length} pieces · 3 curators</small><PreviewFollowButton initialPreviewing={collection.id === "open-web-notes"} /></article>
           ))}
-          <p className="social-preview-note"><strong>Discover preview.</strong> Preview follows reset when this page reloads and do not filter the feed. Account-backed follows live in public collections.</p>
+          <p className="social-preview-note"><strong>Everyone view.</strong> This feed is a local preview and isn&rsquo;t filtered by who you follow. The <Link href="/discover?view=following">Following</Link> view shows content from people you follow, account-backed.</p>
         </aside>
       </div>
       </div>
