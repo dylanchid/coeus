@@ -2,11 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { handleGetProfile, handlePatchProfileSections, handleSaveProfile } from "./profileApi.ts";
-import { HandleTakenError } from "./profileErrors.ts";
+import {
+  HandleChangeRateLimitedError,
+  HandleQuarantinedError,
+  HandleTakenError,
+} from "./profileErrors.ts";
 
 class MemoryProfileStore {
   profiles = new Map();
   takenHandles = new Set();
+  quarantinedHandles = new Set();
+  rateLimitedFrom = null; // Date the next handle change would be allowed
   failNext = null;
 
   async get(userId) {
@@ -17,8 +23,15 @@ class MemoryProfileStore {
   async save(userId, input) {
     if (this.failNext === "save") { this.failNext = null; throw new Error("db down"); }
     const existing = this.profiles.get(userId);
+    const handleChanged = existing != null && existing.handle !== input.handle;
+    if (handleChanged && this.rateLimitedFrom) {
+      throw new HandleChangeRateLimitedError(this.rateLimitedFrom);
+    }
     if (this.takenHandles.has(input.handle) && existing?.handle !== input.handle) {
       throw new HandleTakenError("taken");
+    }
+    if (handleChanged && this.quarantinedHandles.has(input.handle)) {
+      throw new HandleQuarantinedError("quarantined");
     }
     const now = "2026-09-05T00:00:00.000Z";
     const profile = {
@@ -170,6 +183,40 @@ test("PUT lets an existing owner keep their own handle", async () => {
   const response = await handleSaveProfile(put({ handle: "ada", displayName: "Ada Lovelace" }), deps(store));
   assert.equal(response.status, 200);
   assert.equal((await response.json()).profile.displayName, "Ada Lovelace");
+});
+
+test("PUT changing to a taken handle is 409 tagged to the handle field", async () => {
+  const store = new MemoryProfileStore();
+  await handleSaveProfile(put({ handle: "ada", displayName: "Ada" }), deps(store));
+  store.takenHandles.add("grace");
+  const response = await handleSaveProfile(put({ handle: "grace", displayName: "Ada" }), deps(store));
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).field, "handle");
+  assert.equal((await store.get("user-1")).handle, "ada", "the failed change left the handle untouched");
+});
+
+test("PUT changing to a handle quarantined by someone else is 409 with a distinct message", async () => {
+  const store = new MemoryProfileStore();
+  await handleSaveProfile(put({ handle: "ada", displayName: "Ada" }), deps(store));
+  store.quarantinedHandles.add("grace");
+  const response = await handleSaveProfile(put({ handle: "grace", displayName: "Ada" }), deps(store));
+  assert.equal(response.status, 409);
+  const body = await response.json();
+  assert.equal(body.field, "handle");
+  assert.notEqual(body.error, "That handle is already taken.", "quarantine gets its own message");
+});
+
+test("PUT exceeding the handle-change rate limit is 429 with a Retry-After and retryAt", async () => {
+  const store = new MemoryProfileStore();
+  await handleSaveProfile(put({ handle: "ada", displayName: "Ada" }), deps(store));
+  const nextAllowed = new Date(Date.now() + 60_000);
+  store.rateLimitedFrom = nextAllowed;
+  const response = await handleSaveProfile(put({ handle: "adanew", displayName: "Ada" }), deps(store));
+  assert.equal(response.status, 429);
+  assert.ok(Number(response.headers.get("Retry-After")) >= 1);
+  const body = await response.json();
+  assert.equal(body.field, "handle");
+  assert.equal(body.retryAt, nextAllowed.toISOString());
 });
 
 test("PUT rejects a malformed JSON body with 400", async () => {

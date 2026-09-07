@@ -520,6 +520,17 @@ second query (`bareaga_web-nfq.3.7`).
 
 ## 8. Handle changes — parallel strand
 
+**Status: shipped (2026-09-07).** All three children of `bareaga_web-nfq.4` closed.
+`20260906180000_handle_history.sql` adds the table, the `handle_available()` quarantine rule
+and the `change_handle()` atomic swap (20 pgTAP assertions). `resolveHandle()` falls back to
+`handle_history` and resolves the profile by id, so `/@old` 308s straight to the current
+`/@handle` with no intermediate hop; the `/@handle`, `/followers` and `/following` routes all
+honour `redirectFrom` before rendering. The profile `save()` path routes a changed handle
+through `change_handle`, guarded by a rolling-year rate limit of
+`HANDLE_CHANGES_PER_YEAR` (3) counted from `handle_history` — `FixedWindowBudget` is
+process-local and no use for a year-long window — surfacing `HandleQuarantinedError` → 409
+(distinct message) and `HandleChangeRateLimitedError` → 429 (`Retry-After` + `retryAt`).
+
 Off the Phase 1 → 2 → 3 critical path; it can land any time after Phase 1. But **Phase 1 must
 build for it** — that is the entire reason task 1.7 routes every handle lookup through
 `resolveHandle()`.

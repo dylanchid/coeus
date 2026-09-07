@@ -25,6 +25,8 @@ export interface FollowListData {
   isOwner: boolean;
   /** Owner only: the section is switched off, so it renders marked hidden. */
   hiddenFromProfile: boolean;
+  /** Set when `handle` is a retired handle: the caller 308s to the canonical one. */
+  redirectFrom: string | null;
   count: number;
   page: FollowPage;
 }
@@ -39,6 +41,20 @@ export async function loadFollowList(
   const resolution = await loadProfileIdentity(handle);
   if (!resolution) return null;
   const { profile } = resolution;
+
+  // Retired handle: hand the canonical handle back and skip every query — the
+  // route 308s before it renders. The visibility check below is deliberately
+  // not run first, so a redirect never depends on the owner's section switches.
+  if (resolution.redirectFrom) {
+    return {
+      profile,
+      isOwner: false,
+      hiddenFromProfile: false,
+      redirectFrom: resolution.redirectFrom,
+      count: 0,
+      page: { items: [], hasMore: false, nextCursor: null },
+    };
+  }
 
   const viewerId = await authenticateArchiveRequest();
   const isOwner = viewerId !== null && viewerId === profile.id;
@@ -56,5 +72,5 @@ export async function loadFollowList(
     direction === "followers" ? store.countFollowers(profile.id) : store.countFollowing(profile.id),
   ]);
 
-  return { profile, isOwner, hiddenFromProfile: section.hidden, count, page };
+  return { profile, isOwner, hiddenFromProfile: section.hidden, redirectFrom: null, count, page };
 }

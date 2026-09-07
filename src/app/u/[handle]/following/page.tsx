@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ProfileFollowList } from "@/components/ProfileFollowList";
 import { loadFollowList } from "@/lib/followListPage.server";
@@ -34,6 +34,7 @@ export default async function FollowingPage({
   const cursor = cursorParam((await searchParams).cursor);
   const data = await loadFollowList(handle, "following", cursor);
   if (!data) notFound();
+  if (data.redirectFrom) permanentRedirect(`/@${data.profile.handle}/following`);
 
   return (
     <AppShell section="account">

@@ -1,5 +1,5 @@
 import { validateProfileInput } from "./profile.ts";
-import { HandleTakenError } from "./profileErrors.ts";
+import { HandleChangeRateLimitedError, HandleQuarantinedError, HandleTakenError } from "./profileErrors.ts";
 import { parseProfileSectionsPatch } from "./profileSections.ts";
 import type { ProfileStore } from "./profileStore.server.ts";
 
@@ -32,7 +32,12 @@ export async function handleGetProfile(dependencies: ProfileApiDependencies): Pr
   }
 }
 
-/** PUT /api/account/profile — create or update the caller's profile. 409 with `field: "handle"` when the handle is taken. */
+/**
+ * PUT /api/account/profile — create or update the caller's profile.
+ *   409 { field: "handle" } — the handle is taken, or was released by another
+ *       account inside its 30-day quarantine (distinct message).
+ *   429 { field: "handle", retryAt } — too many handle changes this year.
+ */
 export async function handleSaveProfile(request: Request, dependencies: ProfileApiDependencies): Promise<Response> {
   const userId = await owner(dependencies);
   if (userId instanceof Response) return userId;
@@ -62,6 +67,24 @@ export async function handleSaveProfile(request: Request, dependencies: ProfileA
   } catch (cause) {
     if (cause instanceof HandleTakenError) {
       return error("That handle is already taken.", 409, { field: "handle" });
+    }
+    if (cause instanceof HandleQuarantinedError) {
+      return error(
+        "That handle was released by another account recently. It opens up 30 days after it was given up.",
+        409,
+        { field: "handle" }
+      );
+    }
+    if (cause instanceof HandleChangeRateLimitedError) {
+      const retryAfter = Math.max(1, Math.ceil((cause.nextChangeAllowedAt.getTime() - Date.now()) / 1000));
+      return Response.json(
+        {
+          error: "You've changed your handle too many times this year.",
+          field: "handle",
+          retryAt: cause.nextChangeAllowedAt.toISOString(),
+        },
+        { status: 429, headers: { ...headers(), "Retry-After": String(retryAfter) } }
+      );
     }
     return error("Saving your profile failed", 503);
   }

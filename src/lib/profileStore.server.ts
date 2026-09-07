@@ -1,7 +1,12 @@
 import "server-only";
 
 import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
-import { HandleTakenError } from "./profileErrors.ts";
+import {
+  HandleChangeRateLimitedError,
+  HandleQuarantinedError,
+  HandleTakenError,
+  HANDLE_CHANGES_PER_YEAR,
+} from "./profileErrors.ts";
 import { HANDLE_PATTERN, normalizeHandle, validateProfileLinks, type Profile, type ProfileInput, type ProfileLink } from "./profile.ts";
 import { isPublicationVisibility } from "./collectionPublication.ts";
 import type { ProfileSectionsPatch, ProfileSectionSwitches } from "./profileSections.ts";
@@ -90,6 +95,22 @@ export class SupabaseProfileStore implements ProfileStore {
   }
 
   async save(userId: string, input: ProfileInput): Promise<Profile> {
+    // A handle that differs from the stored one is a *change*, not a plain
+    // column write: the old handle has to be released into handle_history in
+    // the same transaction as the rename (sub-epic 4). That, the quarantine
+    // check and the rate limit all live in changeHandle() below; a first-time
+    // save (no row yet) and a save that keeps the same handle skip it entirely.
+    const { data: existingRow, error: existingError } = await this.supabase
+      .from("profiles")
+      .select("handle")
+      .eq("id", userId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    const currentHandle = existingRow ? String((existingRow as { handle: string }).handle) : null;
+    if (currentHandle !== null && currentHandle !== input.handle) {
+      await this.changeHandle(userId, input.handle);
+    }
+
     const { data, error } = await this.supabase
       .from("profiles")
       .upsert(
@@ -115,6 +136,45 @@ export class SupabaseProfileStore implements ProfileStore {
     return profileRow(data as Record<string, unknown>);
   }
 
+  /**
+   * Release this account's current handle and take `newHandle`, via the
+   * `change_handle` security-definer RPC so the release and the rename commit
+   * together. Guards, in order:
+   *   - rate limit: at most HANDLE_CHANGES_PER_YEAR releases per rolling 365
+   *     days, counted straight from handle_history (a serverless-safe count —
+   *     FixedWindowBudget is process-local and no use for a year-long window);
+   *   - handle currently taken → HandleTakenError (23505);
+   *   - handle quarantined by another account → HandleQuarantinedError (HQ001).
+   * A failed RPC writes no history row, so a rejected attempt never counts
+   * against the rate limit.
+   */
+  private async changeHandle(userId: string, newHandle: string): Promise<void> {
+    const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+    const windowStart = new Date(Date.now() - YEAR_MS).toISOString();
+    const { data: recent, error: recentError } = await this.supabase
+      .from("handle_history")
+      .select("released_at")
+      .eq("profile_id", userId)
+      .gte("released_at", windowStart)
+      .order("released_at", { ascending: true });
+    if (recentError) throw recentError;
+    if ((recent?.length ?? 0) >= HANDLE_CHANGES_PER_YEAR) {
+      const oldest = new Date(String((recent![0] as { released_at: string }).released_at));
+      throw new HandleChangeRateLimitedError(new Date(oldest.getTime() + YEAR_MS));
+    }
+
+    const { error } = await this.supabase.rpc("change_handle", {
+      p_profile_id: userId,
+      p_new_handle: newHandle,
+    });
+    if (!error) return;
+    if (error.code === "23505") throw new HandleTakenError(`Handle "${newHandle}" is taken`);
+    if (error.code === "HQ001") {
+      throw new HandleQuarantinedError(`Handle "${newHandle}" was released by another account in the last 30 days`);
+    }
+    throw error;
+  }
+
   async updateSections(userId: string, patch: ProfileSectionsPatch): Promise<ProfileSectionSwitches | null> {
     const row: Record<string, unknown> = {};
     if (patch.showFollowers !== undefined) row.show_followers = patch.showFollowers;
@@ -136,22 +196,49 @@ export class SupabaseProfileStore implements ProfileStore {
 
   /**
    * Resolve a public handle to a profile. THE ONLY handle lookup in the
-   * codebase — every route and API that needs a profile-by-handle calls this,
-   * so sub-epic 4 (handle changes with redirects) can add the redirect path
-   * here without touching a single caller.
+   * codebase — every route and API that needs a profile-by-handle calls this.
+   * A hit in `profiles` returns `redirectFrom: null`; a hit only in
+   * `handle_history` returns the profile's current row with `redirectFrom` set
+   * to the retired handle, and the caller 308s to the canonical `/@handle`.
    */
   async resolveHandle(handle: string): Promise<HandleResolution | null> {
     const normalized = normalizeHandle(handle);
     if (!HANDLE_PATTERN.test(normalized)) return null;
+
     const { data, error } = await this.supabase
       .from("profiles")
       .select(COLUMNS)
       .eq("handle", normalized)
       .maybeSingle();
     if (error) throw error;
-    if (!data) return null;
-    // Phase 1: no redirect. Sub-epic 4 fills redirectFrom from handle_history.
-    return { profile: profileRow(data as Record<string, unknown>), redirectFrom: null };
+    if (data) {
+      return { profile: profileRow(data as Record<string, unknown>), redirectFrom: null };
+    }
+
+    // Miss in profiles: the handle may have been retired (sub-epic 4). Look it
+    // up in handle_history and resolve the profile that released it by *id*, so
+    // the redirect target is always that profile's CURRENT handle — a handle
+    // changed twice (a → b → c) still redirects /@a straight to /@c, never
+    // through /@b. handle_history.old_handle is a primary key, so at most one row.
+    const { data: retired, error: retiredError } = await this.supabase
+      .from("handle_history")
+      .select("profile_id")
+      .eq("old_handle", normalized)
+      .maybeSingle();
+    if (retiredError) throw retiredError;
+    if (!retired) return null;
+
+    const { data: current, error: currentError } = await this.supabase
+      .from("profiles")
+      .select(COLUMNS)
+      .eq("id", (retired as { profile_id: string }).profile_id)
+      .maybeSingle();
+    if (currentError) throw currentError;
+    // on delete cascade means an orphaned history row should not exist; if one
+    // does, treat the URL as a 404 rather than redirecting into nothing.
+    if (!current) return null;
+
+    return { profile: profileRow(current as Record<string, unknown>), redirectFrom: normalized };
   }
 
   /**

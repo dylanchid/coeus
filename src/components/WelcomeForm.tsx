@@ -55,7 +55,7 @@ export function WelcomeForm({ next: rawNext }: { next?: string }) {
         router.replace(next);
         return;
       }
-      if (response.status === 409 && body?.field === "handle") {
+      if ((response.status === 409 || response.status === 429) && body?.field === "handle") {
         setErrors({ handle: body.error ?? "That handle is already taken." });
         return;
       }
@@ -125,7 +125,7 @@ function ProfileFields({
       <h1 id="welcome-heading">{editing ? "Edit your profile" : "Choose your handle"}</h1>
       <p className="welcome-lede">
         {editing
-          ? "Your handle and name appear on collections you publish."
+          ? "Your handle and name appear on collections you publish. Links to your old handle keep working, but you can only change it a few times a year."
           : "This is how you’ll appear on collections you publish. You can change it later."}
       </p>
 

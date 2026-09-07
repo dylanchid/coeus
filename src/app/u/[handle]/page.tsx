@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ProfileView } from "@/components/ProfileView";
 import { deriveProfileView } from "@/lib/publicProfile";
@@ -28,6 +28,10 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const resolution = await loadProfileIdentity(handle);
   if (!resolution) return { title: "Profile not found — Coeus" };
   const { profile } = resolution;
+  // No redirect handling here on purpose: when the page body calls
+  // permanentRedirect the response is a 308 with no rendered document, so this
+  // metadata is never delivered. Returning the canonical profile's metadata is
+  // harmless if a crawler ignores the redirect.
   return {
     title: `${profile.displayName} (@${profile.handle}) — Coeus`,
     description: profile.bio ?? undefined,
@@ -47,6 +51,9 @@ export default async function ProfilePage({
   if (!resolution) notFound();
 
   const { profile } = resolution;
+  // A retired handle 308s straight to the canonical one, before any data load
+  // or render. permanentRedirect throws, so it must stay outside a try block.
+  if (resolution.redirectFrom) permanentRedirect(`/@${profile.handle}`);
   const viewerId = await authenticateArchiveRequest();
   const isOwner = viewerId !== null && viewerId === profile.id;
 
