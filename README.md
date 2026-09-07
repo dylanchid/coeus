@@ -183,6 +183,11 @@ private `archive-snapshots` bucket.
 
 Edit [`src/lib/sources.ts`](src/lib/sources.ts) and provide the full `SourceDef` metadata. Source IDs are validated by `/api/feeds`; adding a catalog entry does not silently enable it for existing users.
 
+## Deployment
+
+Required secrets, database migration steps, the deploy flow, and rollback
+procedure are in [`docs/deployment.md`](docs/deployment.md).
+
 ## Project workflow
 
 This repository uses Beads for durable work tracking. Run `bd ready` to see unblocked work and `bd show <id>` for acceptance criteria.
