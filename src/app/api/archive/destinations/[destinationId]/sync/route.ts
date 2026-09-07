@@ -14,7 +14,15 @@ export async function POST(_request: Request, context: { params: Promise<{ desti
   return handleTriggerSync(destinationId, {
     authenticate: authenticateArchiveRequest,
     triggerSync: async (ownerId) => {
-      await runDestinationWorkerTick(reader, store, { ownerId });
+      // A manual "sync now" is user-initiated, so bypass the rate-limit window
+      // (the lease still enforces one run at a time across instances).
+      const tick = await runDestinationWorkerTick(reader, store, { ownerId, minIntervalSeconds: 0 });
+      return {
+        correlationId: tick.correlationId,
+        processed: tick.processed,
+        skipped: tick.skipped,
+        results: tick.results,
+      };
     },
   });
 }

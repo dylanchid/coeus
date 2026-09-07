@@ -62,11 +62,26 @@ test("a 401 is mapped to an authError, distinct from a 429 rate limit", async ()
   const authFailure = await unauthorizedAdapter.pushUpsert(ITEM, null);
   assert.deepEqual(authFailure, { ok: false, httpStatus: 401, authError: true, error: "Notion authentication failed" });
 
+  // retries:0 isolates the status mapping from the retry/backoff behaviour,
+  // which is covered in httpRetry.test.mjs.
   const rateLimited = fetcherFromScript([jsonResponse({ message: "rate limited" }, 429)]);
-  const rateLimitedAdapter = new NotionAdapter(CONFIG, "token", rateLimited.fetcher);
+  const rateLimitedAdapter = new NotionAdapter(CONFIG, "token", rateLimited.fetcher, { retries: 0 });
   const rateLimitFailure = await rateLimitedAdapter.pushUpsert(ITEM, null);
   assert.deepEqual(rateLimitFailure, { ok: false, httpStatus: 429, error: "Notion rate limit exceeded" });
   assert.equal(rateLimitFailure.authError, undefined);
+});
+
+test("a 429 is retried before it is finally mapped to a retryable failure", async () => {
+  const script = [
+    jsonResponse({ message: "rate limited" }, 429),
+    jsonResponse({ message: "rate limited" }, 429),
+    jsonResponse({ message: "rate limited" }, 429),
+  ];
+  const { fetcher, calls } = fetcherFromScript(script);
+  const adapter = new NotionAdapter(CONFIG, "token", fetcher, { retries: 2, sleep: async () => {} });
+  const result = await adapter.pushUpsert(ITEM, null);
+  assert.equal(calls.length, 3, "the first attempt plus two retries");
+  assert.deepEqual(result, { ok: false, httpStatus: 429, error: "Notion rate limit exceeded" });
 });
 
 test("a 5xx surfaces Notion's error message without an auth flag", async () => {

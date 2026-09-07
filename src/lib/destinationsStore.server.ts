@@ -96,6 +96,25 @@ export interface DestinationWorkerStore {
   deliveries(ownerId: string, kind: DestinationKind): Promise<DestinationDelivery[]>;
   recordOutcome(ownerId: string, kind: DestinationKind, outcome: DeliveryOutcomeInput): Promise<void>;
   markStatus(ownerId: string, kind: DestinationKind, status: DestinationStatus): Promise<void>;
+  /**
+   * Atomically take the delivery lease for one destination. Returns false when
+   * another run holds a live lease or the previous run started less than
+   * `minIntervalSeconds` ago (the cross-invocation rate limit).
+   */
+  acquireDeliveryLease(
+    ownerId: string,
+    kind: DestinationKind,
+    leaseToken: string,
+    ttlSeconds: number,
+    minIntervalSeconds: number
+  ): Promise<boolean>;
+  /** Release a lease held under `leaseToken` and record a redaction-safe run summary. A stale token is a no-op. */
+  releaseDeliveryLease(
+    ownerId: string,
+    kind: DestinationKind,
+    leaseToken: string,
+    outcome: Record<string, unknown>
+  ): Promise<void>;
 }
 
 export class SupabaseDestinationsStore implements DestinationsStore, DestinationWorkerStore {
@@ -227,6 +246,43 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
       p_archive_id: archiveId,
       p_kind: kind,
       p_status: status,
+    });
+    if (error) throw error;
+  }
+
+  async acquireDeliveryLease(
+    ownerId: string,
+    kind: DestinationKind,
+    leaseToken: string,
+    ttlSeconds: number,
+    minIntervalSeconds: number
+  ): Promise<boolean> {
+    const archiveId = await this.archiveId(ownerId);
+    const { data, error } = await this.supabase.rpc("acquire_destination_delivery_lease", {
+      p_owner_id: ownerId,
+      p_archive_id: archiveId,
+      p_kind: kind,
+      p_lease_token: leaseToken,
+      p_ttl_seconds: ttlSeconds,
+      p_min_interval_seconds: minIntervalSeconds,
+    });
+    if (error) throw error;
+    return Boolean(data);
+  }
+
+  async releaseDeliveryLease(
+    ownerId: string,
+    kind: DestinationKind,
+    leaseToken: string,
+    outcome: Record<string, unknown>
+  ): Promise<void> {
+    const archiveId = await this.archiveId(ownerId);
+    const { error } = await this.supabase.rpc("release_destination_delivery_lease", {
+      p_owner_id: ownerId,
+      p_archive_id: archiveId,
+      p_kind: kind,
+      p_lease_token: leaseToken,
+      p_outcome: outcome,
     });
     if (error) throw error;
   }

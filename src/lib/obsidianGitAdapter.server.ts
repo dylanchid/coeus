@@ -1,5 +1,6 @@
 import type { ObsidianGitConfig } from "./destinations.ts";
 import type { DestinationPushResult } from "./destinationAdapter.ts";
+import { fetchWithRetry, type RetryOptions } from "./httpRetry.ts";
 
 export interface GitBatchAction {
   itemId: string;
@@ -43,11 +44,17 @@ export class GitHubGitAdapter {
   private readonly config: ObsidianGitConfig;
   private readonly token: string;
   private readonly fetcher: typeof fetch;
+  private readonly retryOptions: RetryOptions;
 
-  constructor(config: ObsidianGitConfig, token: string, fetcher: typeof fetch = fetch) {
+  constructor(config: ObsidianGitConfig, token: string, fetcher: typeof fetch = fetch, retryOptions: RetryOptions = {}) {
     this.config = config;
     this.token = token;
     this.fetcher = fetcher;
+    this.retryOptions = retryOptions;
+  }
+
+  private request(url: string, init: RequestInit): Promise<Response> {
+    return fetchWithRetry(this.fetcher, url, init, this.retryOptions);
   }
 
   path(itemId: string): string {
@@ -58,7 +65,7 @@ export class GitHubGitAdapter {
   async pushBatch(actions: GitBatchAction[]): Promise<Map<string, DestinationPushResult>> {
     if (!actions.length) return new Map();
 
-    const refResponse = await this.fetcher(
+    const refResponse = await this.request(
       `${GITHUB_API}/repos/${this.config.repo}/git/ref/heads/${encodeURIComponent(this.config.branch)}`,
       { headers: githubHeaders(this.token) }
     );
@@ -67,7 +74,7 @@ export class GitHubGitAdapter {
     const refBody = (await refResponse.json()) as { object: { sha: string } };
     const parentCommitSha = refBody.object.sha;
 
-    const commitResponse = await this.fetcher(
+    const commitResponse = await this.request(
       `${GITHUB_API}/repos/${this.config.repo}/git/commits/${parentCommitSha}`,
       { headers: githubHeaders(this.token) }
     );
@@ -80,7 +87,7 @@ export class GitHubGitAdapter {
         ? { path: action.path, mode: "100644", type: "blob", content: action.content ?? "" }
         : { path: action.path, mode: "100644", type: "blob", sha: null }
     );
-    const treeResponse = await this.fetcher(`${GITHUB_API}/repos/${this.config.repo}/git/trees`, {
+    const treeResponse = await this.request(`${GITHUB_API}/repos/${this.config.repo}/git/trees`, {
       method: "POST",
       headers: githubHeaders(this.token),
       body: JSON.stringify({ base_tree: commitBody.tree.sha, tree }),
@@ -89,7 +96,7 @@ export class GitHubGitAdapter {
     if (treeFailure) return treeFailure;
     const treeBody = (await treeResponse.json()) as { sha: string };
 
-    const newCommitResponse = await this.fetcher(`${GITHUB_API}/repos/${this.config.repo}/git/commits`, {
+    const newCommitResponse = await this.request(`${GITHUB_API}/repos/${this.config.repo}/git/commits`, {
       method: "POST",
       headers: githubHeaders(this.token),
       body: JSON.stringify({
@@ -102,7 +109,7 @@ export class GitHubGitAdapter {
     if (newCommitFailure) return newCommitFailure;
     const newCommitBody = (await newCommitResponse.json()) as { sha: string };
 
-    const updateRefResponse = await this.fetcher(
+    const updateRefResponse = await this.request(
       `${GITHUB_API}/repos/${this.config.repo}/git/refs/heads/${encodeURIComponent(this.config.branch)}`,
       { method: "PATCH", headers: githubHeaders(this.token), body: JSON.stringify({ sha: newCommitBody.sha }) }
     );

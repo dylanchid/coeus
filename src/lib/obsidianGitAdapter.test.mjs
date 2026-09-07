@@ -78,11 +78,27 @@ test("a 401 on any call fails the whole batch as an auth error, with no later ca
 });
 
 test("a 429 fails the whole batch as retryable, not an auth error", async () => {
+  // retries:0 isolates the status mapping; retry/backoff is covered in httpRetry.test.mjs.
   const { fetcher } = fetcherFromScript([jsonResponse({ object: { sha: "sha" } }), jsonResponse({ message: "rate limited" }, 429)]);
-  const adapter = new GitHubGitAdapter(CONFIG, "token", fetcher);
+  const adapter = new GitHubGitAdapter(CONFIG, "token", fetcher, { retries: 0 });
   const outcomes = await adapter.pushBatch([{ itemId: "item-1", kind: "upsert", path: "coeus/item-1.md", content: "hi" }]);
   assert.deepEqual(outcomes.get("item-1"), { ok: false, httpStatus: 429, error: "GitHub rate limit exceeded" });
   assert.equal(outcomes.get("item-1").authError, undefined);
+});
+
+test("a transient 429 is retried and the batch then succeeds", async () => {
+  const { fetcher, calls } = fetcherFromScript([
+    jsonResponse({ message: "rate limited" }, 429),
+    jsonResponse({ object: { sha: "parent-commit-sha" } }),
+    jsonResponse({ tree: { sha: "base-tree-sha" } }),
+    jsonResponse({ sha: "new-tree-sha" }),
+    jsonResponse({ sha: "new-commit-sha" }),
+    jsonResponse({ ref: "refs/heads/main" }),
+  ]);
+  const adapter = new GitHubGitAdapter(CONFIG, "token", fetcher, { retries: 2, sleep: async () => {} });
+  const outcomes = await adapter.pushBatch([{ itemId: "item-1", kind: "upsert", path: "coeus/item-1.md", content: "hi" }]);
+  assert.equal(calls.length, 6, "the 429 on the ref lookup is retried once, then the batch completes");
+  assert.equal(outcomes.get("item-1").ok, true);
 });
 
 test("a mid-batch 5xx surfaces the GitHub error message without an auth flag", async () => {

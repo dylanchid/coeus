@@ -1,6 +1,7 @@
 import type { ArchiveItem } from "./archiveTypes.ts";
 import type { DestinationAdapter, DestinationPushResult } from "./destinationAdapter.ts";
 import type { NotionConfig } from "./destinations.ts";
+import { fetchWithRetry, type RetryOptions } from "./httpRetry.ts";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
@@ -57,16 +58,22 @@ export class NotionAdapter implements DestinationAdapter {
   private readonly config: NotionConfig;
   private readonly token: string;
   private readonly fetcher: typeof fetch;
+  private readonly retryOptions: RetryOptions;
 
-  constructor(config: NotionConfig, token: string, fetcher: typeof fetch = fetch) {
+  constructor(config: NotionConfig, token: string, fetcher: typeof fetch = fetch, retryOptions: RetryOptions = {}) {
     this.config = config;
     this.token = token;
     this.fetcher = fetcher;
+    this.retryOptions = retryOptions;
+  }
+
+  private request(url: string, init: RequestInit): Promise<Response> {
+    return fetchWithRetry(this.fetcher, url, init, this.retryOptions);
   }
 
   async pushUpsert(item: ArchiveItem, existingExternalRef: string | null): Promise<DestinationPushResult> {
     if (!existingExternalRef) {
-      const response = await this.fetcher(`${NOTION_API}/pages`, {
+      const response = await this.request(`${NOTION_API}/pages`, {
         method: "POST",
         headers: notionHeaders(this.token),
         body: JSON.stringify({
@@ -81,7 +88,7 @@ export class NotionAdapter implements DestinationAdapter {
       return { ok: true, externalRef: body.id, httpStatus: response.status };
     }
 
-    const response = await this.fetcher(`${NOTION_API}/pages/${existingExternalRef}`, {
+    const response = await this.request(`${NOTION_API}/pages/${existingExternalRef}`, {
       method: "PATCH",
       headers: notionHeaders(this.token),
       body: JSON.stringify({ properties: titleProperty(item) }),
@@ -92,7 +99,7 @@ export class NotionAdapter implements DestinationAdapter {
   }
 
   async pushDelete(_itemId: string, existingExternalRef: string): Promise<DestinationPushResult> {
-    const response = await this.fetcher(`${NOTION_API}/pages/${existingExternalRef}`, {
+    const response = await this.request(`${NOTION_API}/pages/${existingExternalRef}`, {
       method: "PATCH",
       headers: notionHeaders(this.token),
       body: JSON.stringify({ archived: true }),

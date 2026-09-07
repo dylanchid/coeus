@@ -177,6 +177,7 @@ test("handleTriggerSync requires auth, validates kind, and maps runner failures 
     triggerSync: async (owner, kind) => {
       calls.push([owner, kind]);
       if (shouldThrow) throw new Error("adapter down");
+      return { correlationId: "cid-1", processed: 1, skipped: 0 };
     },
   });
 
@@ -188,6 +189,7 @@ test("handleTriggerSync requires auth, validates kind, and maps runner failures 
 
   const accepted = await handleTriggerSync("obsidian_git", dependenciesWithRunner());
   assert.equal(accepted.status, 202);
+  assert.deepEqual(await accepted.json(), { correlationId: "cid-1", processed: 1, skipped: 0 });
   assert.deepEqual(calls, [["user-1", "obsidian_git"]]);
 
   const failure = await handleTriggerSync("obsidian_git", dependenciesWithRunner("user-1", true));

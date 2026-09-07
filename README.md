@@ -92,6 +92,16 @@ The root provider is the only UI integration point for preferences, theme hydrat
 
 The feed endpoint validates and deduplicates inputs, rejects unknown sources and topics, rate-limits forced refresh fan-out, and marks server-only RSS/provider modules explicitly. Ordinary responses expose short public cache headers; forced refreshes and errors are `no-store`.
 
+Destination delivery (Obsidian/GitHub, Notion) runs from three overlapping
+triggers — the post-sync `after()` hook, the manual "sync now" route, and the
+daily cron sweep. Each destination is guarded by a durable lease
+(`acquire_destination_delivery_lease`) that gives both cross-instance mutual
+exclusion (so two runs can't create duplicate Notion pages) and a
+cross-invocation rate limit via a minimum interval between runs. Outbound
+adapter requests carry per-request timeouts and bounded retry/backoff. A
+delivery failure is captured in a structured, correlation-id-tagged log and
+never fails or delays the archive sync response.
+
 ## Local data
 
 - Preferences: `coeus.prefs.v1`, with migration from `bareaga.prefs.v1` and, before that, `brp.prefs.v1`.

@@ -9,8 +9,12 @@ export interface DestinationsApiDependencies {
 
 export interface DestinationsSyncApiDependencies {
   authenticate(): Promise<string | null>;
-  /** Runs one delivery pass for this owner's destination of the given kind. */
-  triggerSync(ownerId: string, kind: DestinationKind): Promise<void>;
+  /**
+   * Runs one delivery pass for this owner's destination of the given kind and
+   * returns a redaction-safe summary (counts, status, correlation id) for the
+   * response body. Must not throw for an ordinary delivery failure.
+   */
+  triggerSync(ownerId: string, kind: DestinationKind): Promise<Record<string, unknown>>;
 }
 
 function headers(): HeadersInit {
@@ -137,8 +141,8 @@ export async function handleTriggerSync(kind: string, dependencies: Destinations
   const parsedKind = parseDestinationKind(kind);
   if (!parsedKind) return error("Unknown destination kind", 404);
   try {
-    await dependencies.triggerSync(userId, parsedKind);
-    return new Response(null, { status: 202, headers: headers() });
+    const summary = await dependencies.triggerSync(userId, parsedKind);
+    return Response.json(summary ?? {}, { status: 202, headers: headers() });
   } catch {
     return error("Triggering sync failed", 503);
   }
