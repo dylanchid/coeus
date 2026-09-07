@@ -46,6 +46,8 @@ const { AuthProvider } = await import("./AuthProvider");
 const { SignInPanel } = await import("./SignInPanel");
 const { WelcomeForm } = await import("./WelcomeForm");
 const { AccountMenu } = await import("./AccountMenu");
+const { ProfileFollowButton } = await import("./ProfileFollowButton");
+const { SectionSwitches } = await import("./SectionSwitches");
 const { ChromeProvider, useChrome } = await import("./ChromeProvider");
 const { AppRouterContext } = await import(
   "next/dist/shared/lib/app-router-context.shared-runtime"
@@ -481,4 +483,82 @@ test("Account menu prompts an onboarding-incomplete account to finish its profil
   const trigger = await screen.findByRole("button", { name: /octocat/ });
   fireEvent.click(trigger);
   assert.ok(await screen.findByRole("menuitem", { name: "Finish your profile" }));
+});
+
+// ── ProfileFollowButton ────────────────────────────────────────────────────
+
+test("Profile follow button paints its initial state from props with no fetch on mount", async () => {
+  let fetchCalls = 0;
+  globalThis.fetch = (async () => { fetchCalls += 1; return new Response(null, { status: 204 }); }) as typeof fetch;
+
+  render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing />);
+  const button = screen.getByRole("button", { name: "Following ✓" });
+  assert.equal(button.getAttribute("aria-pressed"), "true");
+  assert.equal(fetchCalls, 0);
+
+  fireEvent.click(button);
+  await waitFor(() => assert.equal(screen.getByRole("button").getAttribute("aria-pressed"), "false"));
+  assert.equal(fetchCalls, 1);
+});
+
+test("Profile follow button shows a sign-in prompt on a 401, linking back to the profile", async () => {
+  stubFetch(() => new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 }));
+  render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing={false} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Follow" }));
+  const link = await screen.findByRole("link", { name: "Sign in" });
+  assert.equal(link.getAttribute("href"), "/signin?next=%2F%40ada");
+  // The follow state did not flip.
+  assert.equal(screen.getByRole("button").getAttribute("aria-pressed"), "false");
+});
+
+// ── SectionSwitches ────────────────────────────────────────────────────────
+
+const SECTIONS_ALL_ON = {
+  showFollowers: true,
+  showFollowing: true,
+  showReposts: true,
+  showReplies: true,
+  showLikes: true,
+  likesVisibility: "public" as const,
+};
+
+test("Section switches are not rendered for a visitor", () => {
+  const { container } = render(<SectionSwitches isOwner={false} initial={SECTIONS_ALL_ON} />);
+  assert.equal(container.innerHTML, "");
+});
+
+test("Section switches toggle optimistically and roll back only the failed one", async () => {
+  const bodies: Record<string, unknown>[] = [];
+  globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    bodies.push(body);
+    // Fail the Replies toggle only; succeed everything else.
+    return new Response(null, { status: "showReplies" in body ? 503 : 204 });
+  }) as typeof fetch;
+
+  render(<SectionSwitches isOwner initial={SECTIONS_ALL_ON} />);
+  const reposts = screen.getByRole("switch", { name: "Reposts" });
+  const replies = screen.getByRole("switch", { name: "Replies" });
+
+  fireEvent.click(reposts); // succeeds → stays off
+  fireEvent.click(replies); // fails → rolls back on
+
+  await waitFor(() => assert.equal(replies.getAttribute("aria-checked"), "true"));
+  assert.equal(reposts.getAttribute("aria-checked"), "false");
+  assert.ok(screen.getByRole("status").textContent?.includes("Couldn’t save"));
+  assert.deepEqual(bodies, [{ showReposts: false }, { showReplies: false }]);
+});
+
+test("Section switches PATCH just the one changed field", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+    bodies.push(String(init?.body ?? ""));
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+
+  render(<SectionSwitches isOwner initial={SECTIONS_ALL_ON} />);
+  fireEvent.click(screen.getByRole("switch", { name: "Likes" }));
+  await waitFor(() => assert.equal(bodies.length, 1));
+  assert.deepEqual(JSON.parse(bodies[0]), { showLikes: false });
 });

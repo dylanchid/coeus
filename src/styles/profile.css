@@ -176,6 +176,58 @@
 .profile-sidebar-links a { color: var(--link); font-size: var(--text-meta); word-break: break-word; }
 .profile-sidebar-note { margin: 0; color: var(--handle); font-size: var(--text-meta); line-height: 1.5; }
 
+/* —— Follow button (someone else's profile) —————————————————— */
+.profile-follow { margin-top: 0.9rem; }
+.profile-follow-button {
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+  font: 0.64rem var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+}
+.profile-follow-button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.profile-follow-button:disabled { cursor: wait; opacity: 0.55; }
+.profile-follow-message { margin: 0.5rem 0 0; color: var(--muted); font-size: var(--text-meta); }
+.profile-follow-message a { color: var(--link); }
+
+/* —— Owner's section switches ————————————————————————————— */
+.section-switches { display: grid; gap: 0.75rem; }
+.section-switches-group { border: 0; margin: 0; padding: 0; }
+.section-switches-group legend {
+  padding: 0;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--text-meta);
+  margin-bottom: 0.4rem;
+}
+.section-switches-pills { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.section-switch {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  font: 0.62rem var(--font);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+.section-switch[aria-checked="true"] { border-color: var(--fg); background: var(--fg); color: var(--bg); }
+.section-switch:disabled { cursor: wait; opacity: 0.55; }
+.section-likes-visibility { display: grid; gap: 0.3rem; font-size: var(--text-meta); }
+.section-likes-visibility span { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.section-likes-visibility select {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--text-meta) var(--font);
+  padding: 0.3rem 0.4rem;
+}
+.section-switches-error { margin: 0; color: var(--error); font-size: var(--text-meta); }
+
 /* —— Owner's inline editor ——————————————————————————————— */
 .profile-editor-slot { padding: var(--space-md) clamp(1rem, 3vw, 2rem) 0; }
 .profile-editor {
