@@ -29,11 +29,6 @@ function followedProfile(row: Record<string, unknown>): FollowedProfile {
   };
 }
 
-function firstEmbedded(value: unknown): Record<string, unknown> | null {
-  if (Array.isArray(value)) return (value[0] as Record<string, unknown>) ?? null;
-  return (value as Record<string, unknown>) ?? null;
-}
-
 /**
  * Reads and writes the person-follow graph (profile_follows,
  * 20260906160000_profile_follows.sql). A separate store from
@@ -124,62 +119,65 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
   }
 
   async listFollowers(followeeId: string, page: FollowPageRequest): Promise<FollowPage> {
-    // !inner drops rows whose follower_id (an auth.users id) has no profiles
-    // row — an account that followed before completing onboarding. That row is
-    // then absent from the list AND from countFollowers, so the two agree.
-    return this.pageFollows(
-      "created_at, profile:profiles!profile_follows_follower_id_fkey!inner(id,handle,display_name,avatar_url,bio)",
-      "followee_id",
-      followeeId,
-      page
-    );
+    // The other side of the edge is follower_id, which references auth.users —
+    // NOT profiles — so PostgREST cannot embed the profile row (there is no
+    // public FK to follow). Resolve it in a second query, dropping followers
+    // with no profiles row (followed before onboarding) so the page and
+    // countFollowers still agree.
+    return this.pageFollows("followee_id", followeeId, "follower_id", page);
   }
 
   async listFollowing(followerId: string, page: FollowPageRequest): Promise<FollowPage> {
-    return this.pageFollows(
-      "created_at, profile:profiles!profile_follows_followee_id_fkey!inner(id,handle,display_name,avatar_url,bio)",
-      "follower_id",
-      followerId,
-      page
-    );
+    return this.pageFollows("follower_id", followerId, "followee_id", page);
   }
 
   async countFollowers(followeeId: string): Promise<number> {
-    const { count, error } = await this.supabase
-      .from("profile_follows")
-      .select("follower_id, profiles!profile_follows_follower_id_fkey!inner(id)", {
-        count: "exact",
-        head: true,
-      })
-      .eq("followee_id", followeeId);
-    if (error) throw error;
-    return count ?? 0;
+    return this.countJoinable(followeeId, "followee_id", "follower_id");
   }
 
   async countFollowing(followerId: string): Promise<number> {
-    const { count, error } = await this.supabase
+    return this.countJoinable(followerId, "follower_id", "followee_id");
+  }
+
+  /**
+   * Count profile_follows rows in one direction whose OTHER end has a profiles
+   * row. A plain `count` over the join column would include a `follower_id`
+   * with no profile (followed before onboarding); this keeps the figure equal
+   * to what {@link listFollowers} renders.
+   */
+  private async countJoinable(
+    scopeValue: string,
+    scopeColumn: "follower_id" | "followee_id",
+    joinColumn: "follower_id" | "followee_id"
+  ): Promise<number> {
+    const { data, error } = await this.supabase
       .from("profile_follows")
-      .select("followee_id, profiles!profile_follows_followee_id_fkey!inner(id)", {
-        count: "exact",
-        head: true,
-      })
-      .eq("follower_id", followerId);
+      .select(joinColumn)
+      .eq(scopeColumn, scopeValue);
     if (error) throw error;
+    const ids = [...new Set(((data ?? []) as Record<string, string>[]).map((row) => row[joinColumn]))];
+    if (!ids.length) return 0;
+    const { count, error: profileError } = await this.supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .in("id", ids);
+    if (profileError) throw profileError;
     return count ?? 0;
   }
 
   /** Shared paginator for listFollowers / listFollowing: created_at desc, a
-   * `.lt` cursor, and the one-extra-row hasMore idiom listPublic uses. */
+   * `.lt` cursor, the one-extra-row hasMore idiom, then a second query to
+   * resolve the `joinColumn` end to profile rows (dropping any without one). */
   private async pageFollows(
-    select: string,
     scopeColumn: "follower_id" | "followee_id",
     scopeValue: string,
+    joinColumn: "follower_id" | "followee_id",
     page: FollowPageRequest
   ): Promise<FollowPage> {
     const limit = Math.min(Math.max(Math.trunc(page.limit), 1), MAX_FOLLOW_PAGE_SIZE);
     let query = this.supabase
       .from("profile_follows")
-      .select(select)
+      .select(`created_at, ${joinColumn}`)
       .eq(scopeColumn, scopeValue)
       .order("created_at", { ascending: false })
       .limit(limit + 1);
@@ -188,17 +186,28 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
     const { data, error } = await query;
     if (error) throw error;
 
-    const rows = (data ?? []) as unknown as {
-      created_at: string;
-      profile: Record<string, unknown> | Record<string, unknown>[] | null;
-    }[];
-    const hasMore = rows.length > limit;
-    const pageRows = rows.slice(0, limit);
-    const items = pageRows
-      .map((row) => firstEmbedded(row.profile))
+    const edges = (data ?? []) as unknown as Record<string, string>[];
+    const hasMore = edges.length > limit;
+    const pageEdges = edges.slice(0, limit);
+
+    const ids = [...new Set(pageEdges.map((edge) => edge[joinColumn]))];
+    const profilesById = new Map<string, Record<string, unknown>>();
+    if (ids.length) {
+      const { data: profileRows, error: profileError } = await this.supabase
+        .from("profiles")
+        .select("id,handle,display_name,avatar_url,bio")
+        .in("id", ids);
+      if (profileError) throw profileError;
+      for (const row of (profileRows ?? []) as Record<string, unknown>[]) {
+        profilesById.set(String(row.id), row);
+      }
+    }
+
+    const items = pageEdges
+      .map((edge) => profilesById.get(edge[joinColumn]))
       .filter((profile): profile is Record<string, unknown> => Boolean(profile))
       .map(followedProfile);
-    const nextCursor = pageRows.length ? pageRows[pageRows.length - 1].created_at : null;
+    const nextCursor = pageEdges.length ? String(pageEdges[pageEdges.length - 1].created_at) : null;
     return { items, hasMore, nextCursor };
   }
 }
