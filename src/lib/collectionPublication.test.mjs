@@ -185,6 +185,31 @@ test("parsePublishRequest rejects an invalid visibility", () => {
   assert.match(result.error, /visibility/);
 });
 
+test("parsePublishRequest accepts the four-value visibility tiers", () => {
+  for (const visibility of ["private", "followers", "unlisted", "public"]) {
+    const result = parsePublishRequest({ collectionLocalId: "humane-internet", visibility });
+    assert.equal(result.ok, true, `${visibility} should be accepted`);
+    assert.equal(result.ok && result.value.visibility, visibility);
+  }
+});
+
+test("parsePublicationSnapshot accepts the new private and followers tiers", () => {
+  for (const visibility of ["private", "followers"]) {
+    const result = parsePublicationSnapshot({
+      collectionLocalId: "humane-internet",
+      slug: "a-humane-internet",
+      visibility,
+      name: "Test",
+      description: "",
+      curatorNote: "",
+      attribution: "",
+      items: [],
+    });
+    assert.equal(result.ok, true, `${visibility} should be accepted`);
+    assert.equal(result.ok && result.value.visibility, visibility);
+  }
+});
+
 test("parsePublishRequest rejects unknown fields", () => {
   const result = parsePublishRequest({ collectionLocalId: "c1", visibility: "unlisted", slug: "sneaky" });
   assert.equal(result.ok, false);

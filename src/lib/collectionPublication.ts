@@ -1,7 +1,24 @@
 import { slugifyId } from "./sources.ts";
 import type { ArchiveCollection, ArchiveItem } from "./archiveTypes.ts";
 
-export type PublicationVisibility = "unlisted" | "public";
+/**
+ * Object-level visibility, matching the four-value `public.visibility` Postgres
+ * type (20260906140000_visibility_type_swap.sql), ordered least to most visible.
+ * The fine-grained gating for `private`/`followers` lives in src/lib/visibility.ts
+ * (canSee); the publish path only needs to accept and persist the tier.
+ */
+export type PublicationVisibility = "private" | "followers" | "unlisted" | "public";
+
+const PUBLICATION_VISIBILITIES: readonly PublicationVisibility[] = [
+  "private",
+  "followers",
+  "unlisted",
+  "public",
+];
+
+export function isPublicationVisibility(value: unknown): value is PublicationVisibility {
+  return typeof value === "string" && (PUBLICATION_VISIBILITIES as readonly string[]).includes(value);
+}
 
 export interface CollectionPublicationItem {
   itemLocalId: string;
@@ -189,7 +206,7 @@ export function parsePublicationSnapshot(raw: unknown): PublicationParseResult {
   if (unknownField) return { ok: false, error: `Unknown publication field: ${unknownField}` };
   if (!isNonEmptyString(raw.collectionLocalId, 160)) return { ok: false, error: "collectionLocalId must be a non-empty string" };
   if (!isValidSlug(raw.slug as string)) return { ok: false, error: "slug is invalid" };
-  if (raw.visibility !== "unlisted" && raw.visibility !== "public") return { ok: false, error: "visibility must be 'unlisted' or 'public'" };
+  if (!isPublicationVisibility(raw.visibility)) return { ok: false, error: "visibility must be 'private', 'followers', 'unlisted', or 'public'" };
   if (!isNonEmptyString(raw.name, MAX_NAME_LENGTH)) return { ok: false, error: "name must be a non-empty string" };
   if (!isBoundedString(raw.description, MAX_TEXT_LENGTH)) return { ok: false, error: "description is invalid" };
   if (!isBoundedString(raw.curatorNote, MAX_TEXT_LENGTH)) return { ok: false, error: "curatorNote is invalid" };
@@ -239,7 +256,7 @@ export function parsePublishRequest(raw: unknown): PublishRequestParseResult {
   const unknownField = Object.keys(raw).find((key) => !allowed.has(key));
   if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
   if (!isNonEmptyString(raw.collectionLocalId, 160)) return { ok: false, error: "collectionLocalId must be a non-empty string" };
-  if (raw.visibility !== "unlisted" && raw.visibility !== "public") return { ok: false, error: "visibility must be 'unlisted' or 'public'" };
+  if (!isPublicationVisibility(raw.visibility)) return { ok: false, error: "visibility must be 'private', 'followers', 'unlisted', or 'public'" };
   const curatorNote = raw.curatorNote === undefined ? "" : raw.curatorNote;
   const attribution = raw.attribution === undefined ? "" : raw.attribution;
   if (!isBoundedString(curatorNote, MAX_TEXT_LENGTH)) return { ok: false, error: "curatorNote is invalid" };

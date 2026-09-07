@@ -92,7 +92,7 @@ select current_revision from public.initialize_archive(
 select publish_collection(
   '11111111-1111-1111-1111-111111111111',
   (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
-  'c-one', 'owner-collection-one', 'public'::public.collection_publication_visibility,
+  'c-one', 'owner-collection-one', 'public'::public.visibility,
   'Owner Collection One', '', '', '', '[]'::jsonb
 );
 
@@ -106,7 +106,7 @@ select is(
 select publish_collection(
   '11111111-1111-1111-1111-111111111111',
   (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
-  'c-one', 'ignored-on-republish', 'unlisted'::public.collection_publication_visibility,
+  'c-one', 'ignored-on-republish', 'unlisted'::public.visibility,
   'Owner Collection One', 'edited', '', '', '[]'::jsonb
 );
 select is(

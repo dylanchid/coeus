@@ -21,7 +21,7 @@ select results_eq(
   $$ select slug from public.publish_collection(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
-    'humane-internet', 'a-humane-internet', 'public'::public.collection_publication_visibility,
+    'humane-internet', 'a-humane-internet', 'public'::public.visibility,
     'A humane internet', 'Protocols worth re-reading.', 'A running list.', 'Curated by One',
     '[{"itemLocalId":"a-item-1","position":0,"title":"Cool URIs don''t change","url":"https://example.com/a1","sourceName":"W3C","author":"TBL","excerpt":"","curatorComment":""}]'::jsonb
   ) $$,
@@ -36,7 +36,7 @@ select results_eq(
   $$ select slug from public.publish_collection(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
-    'humane-internet', 'a-completely-different-slug', 'unlisted'::public.collection_publication_visibility,
+    'humane-internet', 'a-completely-different-slug', 'unlisted'::public.visibility,
     'A humane internet', 'Updated description.', 'Updated curator note.', 'Curated by One',
     '[{"itemLocalId":"a-item-1","position":0,"title":"Cool URIs don''t change","url":"https://example.com/a1","sourceName":"W3C","author":"TBL","excerpt":"","curatorComment":""},{"itemLocalId":"a-item-2","position":1,"title":"The Internet is for End Users","url":"https://example.com/a2","sourceName":"RFC Editor","author":"MN","excerpt":"","curatorComment":""}]'::jsonb
   ) $$,
@@ -51,7 +51,7 @@ select results_eq(
   $$ select slug from public.publish_collection(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
-    'tools-for-thought', 'tools-for-thought', 'public'::public.collection_publication_visibility,
+    'tools-for-thought', 'tools-for-thought', 'public'::public.visibility,
     'Tools for thought', 'Interfaces for remembering and connecting.', '', 'Curated by One',
     '[{"itemLocalId":"b-item-1","position":0,"title":"A Brief History of the Digital Garden","url":"https://example.com/b1","sourceName":"Maggie Appleton","author":"","excerpt":"","curatorComment":""}]'::jsonb
   ) $$,
@@ -109,7 +109,7 @@ select is((select count(*) from public.collection_follows), 0::bigint, 'unfollow
 select throws_ok(
   $$ select * from public.publish_collection(
     '22222222-2222-2222-2222-222222222222', '00000000-0000-0000-0000-000000000000',
-    'x', 'x', 'public'::public.collection_publication_visibility, 'x', '', '', '', '[]'::jsonb
+    'x', 'x', 'public'::public.visibility, 'x', '', '', '', '[]'::jsonb
   ) $$,
   '42501',
   'permission denied for function publish_collection',
