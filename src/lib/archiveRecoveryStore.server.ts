@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRecoverySnapshot, type ArchiveRevisionSummary, type ContentSnapshotSummary } from "./archiveRecovery.ts";
 import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "./archiveSync.ts";
 import { fetchSafeContent } from "./safeContentFetch.server.ts";
+import { removeStoragePrefix } from "./storageCleanup.ts";
 
 export interface ArchiveRecoveryStore {
   export(ownerId: string): Promise<{ archiveId: string; current: ArchiveSyncSnapshot; revisions: ArchiveRevisionSummary[]; contentSnapshots: ContentSnapshotSummary[] }>;
@@ -106,14 +107,9 @@ export class SupabaseArchiveRecoveryStore implements ArchiveRecoveryStore {
   async deleteAccount(ownerId: string): Promise<void> {
     let archive: { id: string; current: ArchiveSyncSnapshot } | null = null;
     try { archive = await this.archive(ownerId); } catch { archive = null; }
+    await removeStoragePrefix(this.supabase.storage.from("profile-media"), ownerId);
     if (archive) {
-      const { data: paths, error: pathsError } = await this.supabase.from("content_snapshots").select("object_path").eq("archive_id", archive.id).not("object_path", "is", null);
-      if (pathsError) throw pathsError;
-      const objectPaths = (paths ?? []).map((row) => row.object_path).filter((path): path is string => Boolean(path));
-      if (objectPaths.length) {
-        const { error } = await this.supabase.storage.from("archive-snapshots").remove(objectPaths);
-        if (error) throw error;
-      }
+      await removeStoragePrefix(this.supabase.storage.from("archive-snapshots"), `snapshots/${archive.id}`);
     }
     const { error } = await this.supabase.auth.admin.deleteUser(ownerId);
     if (error) throw error;
