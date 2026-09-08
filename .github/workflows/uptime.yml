@@ -1,0 +1,63 @@
+name: Uptime
+
+# Backstop health monitoring for production. A dedicated uptime service
+# (BetterStack, UptimeRobot, …) polling /api/health is the primary alert path
+# and is documented in docs/deployment.md; this workflow is a free, in-repo
+# safety net. A failed run notifies the repo owner by email + GitHub mobile,
+# and posts to ALERT_WEBHOOK_URL (Slack/Discord-compatible) when that secret
+# is set.
+#
+# GitHub's scheduler is best-effort (runs can be delayed or skipped under
+# load), so treat this as "eventually noticed", not sub-minute paging.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uptime
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BASE_URL: https://coeuscoeus.com
+      ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+    steps:
+      - name: Check /api/health
+        id: health
+        shell: bash
+        run: |
+          set +e
+          body=$(curl -sS --max-time 20 -w '\n%{http_code}' "$BASE_URL/api/health")
+          code=$(printf '%s' "$body" | tail -n1)
+          json=$(printf '%s' "$body" | sed '$d')
+          svc=$(printf '%s' "$json" | grep -o '"status":"[a-z]*"' | head -n1 | cut -d'"' -f4)
+          root=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "$BASE_URL/")
+          echo "health HTTP $code, status=$svc, root=$root"
+          echo "$json"
+          {
+            echo "code=$code"
+            echo "status=$svc"
+            echo "root=$root"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$code" = "200" ] && [ "$svc" = "ok" ] && [ "$root" = "200" ]; then
+            echo "healthy"
+            exit 0
+          fi
+          echo "::error::Production health check failed — HTTP $code, status=$svc, root=$root"
+          exit 1
+
+      - name: Notify webhook
+        if: failure() && env.ALERT_WEBHOOK_URL != ''
+        shell: bash
+        run: |
+          text="🔴 coeuscoeus.com health check FAILED — HTTP ${{ steps.health.outputs.code }}, status=${{ steps.health.outputs.status }}, root=${{ steps.health.outputs.root }}. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          payload=$(jq -Rn --arg t "$text" '{text: $t, content: $t}')
+          curl -sS --max-time 15 -X POST -H 'Content-Type: application/json' -d "$payload" "$ALERT_WEBHOOK_URL" || true

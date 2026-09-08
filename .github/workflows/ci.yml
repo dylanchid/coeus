@@ -16,19 +16,12 @@ concurrency:
 
 jobs:
   # Node quality gates: tests (unit + jsdom UI), TypeScript, ESLint, production
-  # build, and the dependency-audit policy. No production secrets are used or
-  # required here — the build only needs public, non-sensitive placeholders.
+  # build, and the dependency-audit policy. No production secrets are used.
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      # Public, non-secret placeholders. The BFF reads real Supabase config at
-      # request time; the production build only needs these to be present and
-      # well-formed. Never put SUPABASE_SECRET_KEY (or any secret) in CI.
-      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
-      NEXT_PUBLIC_SITE_URL: https://example.com
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +38,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Tests run with NO Supabase env: the unit/UI suites exercise the
+      # no-client fallback path and inject fakes elsewhere. Real values here
+      # would make SignInPanel construct a live client and break that test.
       - name: Tests (unit)
         run: npm run test:unit
 
@@ -52,6 +48,13 @@ jobs:
         run: npm run test:ui
 
       - name: Production build
+        # Public, non-secret placeholders — the build only needs these present
+        # and well-formed; the BFF reads real config at request time. Never put
+        # SUPABASE_SECRET_KEY (or any secret) in CI.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+          NEXT_PUBLIC_SITE_URL: https://example.com
         run: npm run build
 
       - name: Dependency audit policy

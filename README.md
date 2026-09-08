@@ -151,7 +151,17 @@ passes and `503` otherwise. The body is only names, booleans, and durations —
 no identifiers or error messages. Verify a running server with
 `npm run smoke:health` (honors `SMOKE_BASE_URL`).
 
-**Alert thresholds** (wire into your uptime/log platform):
+### Alerting
+
+**Uptime — in place now.** [`.github/workflows/uptime.yml`](.github/workflows/uptime.yml)
+probes `https://coeuscoeus.com/api/health` (and `/`) every ~15 min; a failure
+fails the run, which emails the repo owner and pushes to GitHub mobile. Set an
+`ALERT_WEBHOOK_URL` repo secret (Slack or Discord incoming webhook) to also get
+a chat message. GitHub's scheduler is best-effort — for sub-minute paging add a
+dedicated monitor (see `docs/deployment.md`).
+
+**Log-based thresholds** — wire these into whatever consumes the Vercel logs
+(the structured `*.error` lines from `serverLog.ts`):
 
 | Signal | Warning | Page |
 |---|---|---|

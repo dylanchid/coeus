@@ -65,8 +65,32 @@ promoting a build that depends on a new migration.
    SMOKE_BASE_URL=https://<origin> npm run smoke:security-headers
    SMOKE_BASE_URL=https://<origin> npm run smoke:health
    ```
-5. Point monitoring at `GET /api/health` (200 = ok, 503 = degraded). Alert
-   thresholds are in the README "Observability" section.
+5. Confirm monitoring (below) is green.
+
+## Monitoring
+
+**Uptime (active).** `.github/workflows/uptime.yml` polls `/api/health` and `/`
+every ~15 min. A failure fails the workflow run → GitHub emails the repo owner
+and sends a mobile push. Optional: add an `ALERT_WEBHOOK_URL` repo secret
+(Settings → Secrets and variables → Actions) pointing at a Slack or Discord
+incoming webhook to also post there.
+
+**For real paging, add a dedicated monitor** (2 minutes, free tier):
+
+- **BetterStack** (betterstack.com/uptime) or **UptimeRobot** (uptimerobot.com)
+- New monitor → HTTP → `https://coeuscoeus.com/api/health`
+- Check interval 1–3 min; expect HTTP `200`; add keyword match on `"status":"ok"`
+  so a `503 degraded` also alerts
+- Notify by email / SMS / Slack; set a 2-minute confirmation window so a single
+  blip doesn't page
+
+**Error-rate / latency alerts.** The `serverLog.ts` boundary emits one JSON line
+per critical operation (`route`, `operation`, `durationMs`, `statusClass`,
+`correlationId`) and `*.error` lines on failure. Route Vercel's runtime logs to
+a log platform (Vercel → Project → Observability, or a Log Drain to
+BetterStack/Datadog/Axiom) and build alerts from the thresholds in the README
+"Observability" section. Until a drain is set up, the uptime probe above is the
+only automated alert.
 
 ## Rollback
 

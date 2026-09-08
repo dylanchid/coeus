@@ -337,14 +337,27 @@ test("Sign-in panel hands each provider button off to Supabase OAuth with a call
 });
 
 test("Sign-in panel is inert when no auth client can be constructed", async () => {
-  render(
-    <AuthProvider>
-      <SignInPanel />
-    </AuthProvider>,
-  );
-  const github = await screen.findByRole("button", { name: "Continue with GitHub" });
-  assert.equal(github.hasAttribute("disabled"), true);
-  assert.ok(screen.getByText(/isn’t configured in this environment/));
+  // AuthProvider builds a real browser client when NEXT_PUBLIC_SUPABASE_* are
+  // present; clear them so this test is deterministic regardless of the
+  // ambient environment (a dev shell, or CI's build-step placeholders).
+  const saved = { url: process.env.NEXT_PUBLIC_SUPABASE_URL, key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY };
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  try {
+    render(
+      <AuthProvider>
+        <SignInPanel />
+      </AuthProvider>,
+    );
+    const github = await screen.findByRole("button", { name: "Continue with GitHub" });
+    assert.equal(github.hasAttribute("disabled"), true);
+    assert.ok(screen.getByText(/isn’t configured in this environment/));
+  } finally {
+    if (saved.url !== undefined) process.env.NEXT_PUBLIC_SUPABASE_URL = saved.url;
+    if (saved.key !== undefined) process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = saved.key;
+    if (saved.anon !== undefined) process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = saved.anon;
+  }
 });
 
 test("Welcome form shows the onboarding form for a signed-in account with no profile", async () => {
