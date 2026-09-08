@@ -20,6 +20,7 @@ jobs:
   # required here — the build only needs public, non-sensitive placeholders.
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       # Public, non-secret placeholders. The BFF reads real Supabase config at
@@ -44,8 +45,11 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Tests (unit + UI)
-        run: npm test
+      - name: Tests (unit)
+        run: npm run test:unit
+
+      - name: Tests (jsdom UI)
+        run: npm run test:ui
 
       - name: Production build
         run: npm run build
@@ -58,6 +62,7 @@ jobs:
   # pinned so migration/test behaviour matches local development.
   database:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
