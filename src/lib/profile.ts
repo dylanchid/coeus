@@ -126,8 +126,37 @@ export function normalizePinnedSlugs(raw: unknown): string[] {
   return out;
 }
 
-function normalizeBucketUrl(raw: unknown): string | null {
-  return typeof raw === "string" && raw.trim().length ? raw.trim() : null;
+const BUCKET_OBJECT_PREFIX = "/storage/v1/object/public/profile-media/";
+const UID_SEGMENT = /^[0-9a-fA-F-]{36}$/;
+
+/**
+ * Accept an avatar/cover URL only if it is an `https` URL on the configured
+ * Supabase Storage host, pointing inside the public `profile-media` bucket at a
+ * `<uid>/` prefix. Anything else — a third-party host, `http`, an SVG hosted
+ * elsewhere — is rejected, so a doctored `avatar_url` can never make a profile
+ * page fetch an attacker origin (F-25). The database CHECK enforces the same
+ * shape minus the host, which only this layer can see.
+ */
+export function normalizeBucketUrl(
+  raw: unknown,
+  supabaseUrl: string | undefined = process.env.NEXT_PUBLIC_SUPABASE_URL,
+): string | null {
+  if (typeof raw !== "string" || !raw.trim().length) return null;
+  const value = raw.trim();
+
+  let url: URL;
+  let expectedHost: string;
+  try {
+    url = new URL(value);
+    expectedHost = new URL(supabaseUrl ?? "").host;
+  } catch {
+    return null;
+  }
+  if (!expectedHost || url.protocol !== "https:" || url.host !== expectedHost) return null;
+  if (!url.pathname.startsWith(BUCKET_OBJECT_PREFIX)) return null;
+
+  const firstSegment = url.pathname.slice(BUCKET_OBJECT_PREFIX.length).split("/")[0];
+  return UID_SEGMENT.test(firstSegment) ? value : null;
 }
 
 export function validateProfileInput(raw: {
@@ -175,7 +204,13 @@ export function validateProfileInput(raw: {
   }
 
   const avatarUrl = normalizeBucketUrl(raw.avatarUrl);
+  if (typeof raw.avatarUrl === "string" && raw.avatarUrl.trim().length && avatarUrl === null) {
+    errors.avatarUrl = "That avatar image is not a profile-media upload.";
+  }
   const coverUrl = normalizeBucketUrl(raw.coverUrl);
+  if (typeof raw.coverUrl === "string" && raw.coverUrl.trim().length && coverUrl === null) {
+    errors.coverUrl = "That cover image is not a profile-media upload.";
+  }
   const pinnedCollectionSlugs = normalizePinnedSlugs(raw.pinnedCollectionSlugs);
 
   if (Object.keys(errors).length) return { ok: false, errors };

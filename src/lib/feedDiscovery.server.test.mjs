@@ -106,3 +106,26 @@ test("stops immediately when the pasted URL resolves to an unsafe address", asyn
   assert.equal(result.ok, false);
   assert.deepEqual(calls, []);
 });
+
+test("with no fetcher, never calls global fetch — the DNS-pinned path only (F-23)", async () => {
+  // Before the fix, `fetcher` defaulted to the global `fetch`, so an unpinned
+  // second lookup happened between validation and connection. Now the default
+  // is `undefined`, which routes fetchFeedText through fetchValidatedHttps.
+  // Resolve to an unsafe address so validation short-circuits before any
+  // transport and the test needs no network.
+  const originalFetch = globalThis.fetch;
+  let globalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    globalFetchCalls += 1;
+    throw new Error("global fetch must not be reached from resolveFeedUrl");
+  };
+  try {
+    const result = await resolveFeedUrl("https://rebind.example/", undefined, async () => [
+      { address: "169.254.169.254" },
+    ]);
+    assert.equal(result.ok, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.equal(globalFetchCalls, 0);
+});

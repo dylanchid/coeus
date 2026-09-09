@@ -11,12 +11,20 @@ export const dynamic = "force-dynamic";
  *
  * It is inert unless `E2E_TEST_LOGIN=1` is set in the environment. That flag is
  * only ever present for the e2e job and local Playwright runs; it is never set
- * on a deployed environment. The extra `VERCEL_ENV === "production"` guard is a
- * belt-and-braces refusal in case the flag ever leaks.
+ * on a deployed environment. The extra `VERCEL_ENV === "production"` and
+ * `NODE_ENV === "production"` guards are belt-and-braces refusals in case the
+ * flag ever leaks into a production build or runtime.
  */
 function testLoginEnabled(): boolean {
-  return process.env.E2E_TEST_LOGIN === "1" && process.env.VERCEL_ENV !== "production";
+  return (
+    process.env.E2E_TEST_LOGIN === "1" &&
+    process.env.VERCEL_ENV !== "production" &&
+    process.env.NODE_ENV !== "production"
+  );
 }
+
+/** Reserved test-account email domain — see e2e/support/testUsers.ts. */
+const TEST_EMAIL_DOMAIN = "@e2e.coeus.local";
 
 interface SessionRequest {
   email?: unknown;
@@ -39,6 +47,12 @@ export async function POST(request: Request): Promise<Response> {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!email) {
     return Response.json({ error: "An `email` is required" }, { status: 400 });
+  }
+  if (!email.endsWith(TEST_EMAIL_DOMAIN)) {
+    return Response.json(
+      { error: `\`email\` must be on the reserved ${TEST_EMAIL_DOMAIN} domain` },
+      { status: 400 },
+    );
   }
   const userMetadata =
     body.userMetadata && typeof body.userMetadata === "object"
@@ -90,9 +104,6 @@ export async function POST(request: Request): Promise<Response> {
 
   return Response.json({ userId, email });
 }
-
-/** Reserved test-account email domain — see e2e/support/testUsers.ts. */
-const TEST_EMAIL_DOMAIN = "@e2e.coeus.local";
 
 /**
  * `DELETE` clears the session cookies, so a spec can return a shared page to
