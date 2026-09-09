@@ -89,6 +89,12 @@ src/
     responsive.css             Cross-feature responsive overrides
 ```
 
+[`docs/lib-architecture.md`](docs/lib-architecture.md) defines the intended
+`src/lib` shape — the six domains (archive, publications, conversations,
+profiles, feeds, destinations), the five layers (route → API → store → core →
+primitives) and the allowed dependency direction, plus where new work goes.
+Modules move toward it in small slices, not a flag-day rewrite.
+
 The root provider is the only UI integration point for preferences, theme hydration, and archive persistence. Screens mutate archives through a typed repository boundary, allowing synced storage to replace `localStorage` without changing route components.
 
 The feed endpoint validates and deduplicates inputs, rejects unknown sources and topics, rate-limits forced refresh fan-out, and marks server-only RSS/provider modules explicitly. Ordinary responses expose short public cache headers; forced refreshes and errors are `no-store`.
