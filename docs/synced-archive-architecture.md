@@ -1,7 +1,8 @@
 # Synced archive architecture
 
-Status: accepted foundation (2026-09-04). This document defines the first slice of
-`coeus_web-6j1`; it does not enable accounts or network sync in the UI yet.
+Status: accepted foundation (2026-09-04); fully implemented. This document defines
+`bareaga_web-6j1` (closed 2026-09-04). Accounts and archive sync are now wired in
+the UI — `SyncedArchiveRepository` is the repository `AppProviders` configures.
 
 ## Decision
 
@@ -95,8 +96,9 @@ to the same array conflict instead of attempting a surprising set merge.
 - Snapshot capture and retrieval use dedicated authenticated endpoints; the server
   fetch path must apply the same SSRF controls as feed preview.
 
-The first two endpoints and their transactional Supabase store are implemented.
-The export and captured-content endpoints remain part of `coeus_web-6j1.4`.
+All of these are implemented: the transactional Supabase store, `GET
+/api/archive/export`, and the authenticated `/api/archive/snapshots` capture and
+retrieval endpoints (`bareaga_web-6j1`, closed 2026-09-04).
 
 The sync POST is non-cacheable and bounded by body size, operation count, and rate
 limits. Authentication, authorization, validation, and transaction boundaries are

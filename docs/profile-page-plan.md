@@ -1,6 +1,8 @@
 # Profile page at `/@handle` — implementation plan
 
-**Status:** Accepted plan (2026-09-06). No code written yet.
+**Status:** Historical design record. Phases 1–4 shipped (2026-09-07) — see the
+per-phase "Status: shipped" notes inline. Retained for the design rationale and
+the Beads id map; it is not a description of pending work.
 **Owner:** Dylan Chidambaram
 **Beads:** `bareaga_web-nfq` (epic) — see [Beads tree](#10-beads-tree) for the full id map
 **Related:** [`PRD.md`](./PRD.md), [`synced-archive-architecture.md`](./synced-archive-architecture.md), the mockup artifact *The Coeus Profile*

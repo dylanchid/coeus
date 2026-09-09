@@ -48,11 +48,14 @@ Node is pinned via `.nvmrc` and consumed by `actions/setup-node`
 | `/sources` | Search, filter, rate, add, and remove reading sources |
 | `/discover` | Shared collections, sourced articles, and links from people |
 | `/archive` | Saved articles, notes, tags, collections, search, and export |
+| `/u/[handle]` | Public profile (+ `/followers`, `/following`); owner-console affordances inline |
+| `/c`, `/c/[slug]` | Public collection listing and pages (+ `/c/[slug]/rss.xml`) |
+| `/signin`, `/welcome`, `/auth/callback` | Passwordless account flow (optional; anonymous use is unaffected) |
 | `/about` | Concise guide to the product and its core sections |
 | `/social`, `/product` | Legacy redirects to `/discover` and `/about` |
 | `/api/feeds` | Validated server-side RSS aggregation endpoint |
-| `/api/archive` | Authenticated archive initialization and retrieval |
-| `/api/archive/sync` | Authenticated, transactional archive synchronization |
+| `/api/archive`, `/api/archive/sync` | Authenticated archive retrieval and transactional synchronization |
+| `/api/collections/*`, `/api/posts/*`, `/api/profiles/*`, `/api/replies`, `/api/reposts`, `/api/likes`, `/api/account/*` | Authenticated JSON boundaries for publications, the person graph, and account management |
 | `/api/health` | Unauthenticated readiness (`GET`) and liveness (`HEAD`) probe |
 
 ## Architecture
@@ -61,7 +64,7 @@ Node is pinned via `.nvmrc` and consumed by `actions/setup-node`
 src/
   app/                         Next.js routes and the feed route handler
   components/                  Route applications and shared UI
-    AppProviders.tsx           Shared preference/theme and archive state
+    AppProviders.tsx           Composition shell: usePreferencesProvider + useArchiveProvider
     PrimaryNav.tsx             Shared application navigation
   hooks/
     useFeedQuery.ts            Reader feed lifecycle
@@ -95,7 +98,7 @@ profiles, feeds, destinations), the five layers (route → API → store → cor
 primitives) and the allowed dependency direction, plus where new work goes.
 Modules move toward it in small slices, not a flag-day rewrite.
 
-The root provider is the only UI integration point for preferences, theme hydration, and archive persistence. Screens mutate archives through a typed repository boundary, allowing synced storage to replace `localStorage` without changing route components.
+The root provider is the only UI integration point for preferences, theme hydration, and archive persistence. Screens mutate archives through a typed repository boundary; the wired repository is `SyncedArchiveRepository`, so a signed-in browser gets authenticated background sync on top of `localStorage` without any route component changing.
 
 The feed endpoint validates and deduplicates inputs, rejects unknown sources and topics, rate-limits forced refresh fan-out, and marks server-only RSS/provider modules explicitly. Ordinary responses expose short public cache headers; forced refreshes and errors are `no-store`.
 
@@ -115,9 +118,10 @@ never fails or delays the archive sync response.
 - Archive: `coeus.archive.v1`, with migration from `bareaga.archive.v1`; runtime-validated and migrated on read.
 - Feed responses: short browser-session cache plus a process-local server cache.
 
-Archive exports remain portable Markdown and CSV. The authenticated sync API and
-durable schema are implemented; the browser remains on local storage until the
-queued background-sync and first-account migration work lands.
+Archive exports remain portable Markdown and CSV. The authenticated sync API,
+durable schema, and the browser adapter (`SyncedArchiveRepository` — durable
+operation queue, background retry/rebase, first-account migration) are all
+implemented. Anonymous users stay entirely on local storage.
 
 ## Limits and retention
 
@@ -146,9 +150,8 @@ server operation and emits one JSON line with `route`, `operation`,
 `durationMs`, `statusClass` (`2xx`/`4xx`/`5xx`/`error`), and a `correlationId`
 (taken from `x-request-id` / `x-vercel-id` when present). A `redact()` pass and
 `scrubMessage()` keep secrets, tokens, JWTs, private notes, captured content,
-and raw personal data out of the logs; client responses are unchanged.
-Instrumented so far: archive GET/sync, account deletion, the Notion OAuth
-callback, feed fetch, source preview, and destination delivery.
+and raw personal data out of the logs; client responses are unchanged. Every
+API route handler is wrapped in `instrument()` (`bareaga_web-cnu`).
 
 `GET /api/health` is the readiness probe (`HEAD` is liveness, always 200). It
 checks required configuration and Supabase reachability and returns
