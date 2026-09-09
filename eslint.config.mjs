@@ -16,8 +16,7 @@ const eslintConfig = defineConfig([
 
   // --- src/lib layer + domain boundaries (bareaga_web-tpy / docs/lib-architecture.md) ---
   // Mechanical guard for the layer direction and the server/browser split.
-  // Runs in `warn` so it surfaces modules that already cross an edge; they get
-  // moved one slice at a time, then this ratchets to `error`. `no-restricted-
+  // Every current module now complies, so violations fail CI. `no-restricted-
   // imports` matches the import specifier (alias, bare, and relative forms) and
   // exempts `import type`, which is erased at build.
   {
@@ -33,7 +32,7 @@ const eslintConfig = defineConfig([
       "src/lib/**/*.test.ts",
     ],
     rules: {
-      "no-restricted-imports": ["warn", {
+      "no-restricted-imports": ["error", {
         patterns: [
           {
             group: ["server-only", "next", "next/*"],
@@ -61,7 +60,7 @@ const eslintConfig = defineConfig([
     files: ["src/components/**/*.{ts,tsx}", "src/hooks/**/*.{ts,tsx}"],
     ignores: ["src/**/*.test.{ts,tsx,mjs}"],
     rules: {
-      "no-restricted-imports": ["warn", {
+      "no-restricted-imports": ["error", {
         patterns: [
           {
             group: [

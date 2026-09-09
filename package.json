@@ -15,6 +15,7 @@
     "test": "npm run test:unit && npm run test:ui",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test --test-timeout=60000 --test-force-exit src/lib/*.test.mjs",
     "test:ui": "node --import tsx --test --test-timeout=60000 --test-force-exit src/components/*.test.tsx",
+    "test:e2e": "playwright test",
     "test:db": "supabase test db",
     "audit:ci": "npm audit --audit-level=high",
     "smoke:destinations": "node --import tsx scripts/destination-smoke.mts",
@@ -35,6 +36,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^20",

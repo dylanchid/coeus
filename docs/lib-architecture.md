@@ -83,8 +83,7 @@ need one, the thing you need is a core type — lift it.
   delete it in a follow-up.
 - Each slice must keep `npx tsc --noEmit`, `npm run lint`, and `npm test` green.
 - An ESLint import-boundary rule enforces the layer edges mechanically
-  (`bareaga_web-tpy`, landed in `warn` mode in `eslint.config.mjs`): domain-core
-  modules may not import `server-only` / `next` / a `*.server` / a `*Api`, and
-  shared component code may not value-import a `*.server` module. It currently
-  surfaces `src/lib/feeds.ts` (needs the `.server` suffix — `bareaga_web-56v`);
-  ratchet to `error` once the backlog is clear.
+  (`bareaga_web-tpy`, ratcheted to `error` in `eslint.config.mjs` after
+  `bareaga_web-56v`): domain-core modules may not import `server-only` / `next`
+  / a `*.server` / a `*Api`, and shared component code may not value-import a
+  `*.server` module.

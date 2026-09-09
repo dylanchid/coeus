@@ -2,7 +2,7 @@ import "server-only";
 
 import { createFeedGetHandler, createFeedPostHandler } from "@/lib/feedApi";
 import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
-import { fetchFeeds } from "@/lib/feeds";
+import { fetchFeeds } from "@/lib/feeds/feeds.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 
 export const dynamic = "force-dynamic";

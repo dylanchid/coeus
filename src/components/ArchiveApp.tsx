@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   type ArchiveCollection,
@@ -17,16 +17,15 @@ import { ProfileGate } from "./ProfileGate";
 import { AppShell } from "./AppShell";
 import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archiveRecovery";
 import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
-import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { DestinationsPanel } from "./DestinationsPanel";
 import { VisibilitySelect } from "./VisibilitySelect";
 import { PostPublishPanel, type PublishedPost } from "./PostPublishPanel";
+import { ArchivePublishPanel } from "./ArchivePublishPanel";
+import { useArchiveFilters, type ArchiveFilter, type ArchiveSort } from "./useArchiveFilters";
+import { usePublications } from "./usePublications";
 
-type Filter = "all" | "unread" | "starred" | "annotated";
-type Sort = "newest" | "oldest" | "title";
-
-const FILTERS: Filter[] = ["all", "unread", "starred", "annotated"];
+const FILTERS: ArchiveFilter[] = ["all", "unread", "starred", "annotated"];
 
 function relativeDate(iso: string): string {
   const days = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 86_400_000));
@@ -35,70 +34,9 @@ function relativeDate(iso: string): string {
   return `${days} days ago`;
 }
 
-function matches(item: ArchiveItem, query: string): boolean {
-  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  if (!terms.length) return true;
-  const haystack = [
-    item.title,
-    item.summary,
-    item.sourceName,
-    item.author,
-    item.topic,
-    item.note,
-    ...item.tags,
-  ].join(" ").toLowerCase();
-  return terms.every((term) => haystack.includes(term));
-}
-
-/** Keyed by collectionId in its parent so switching collections resets these drafts. */
-function PublishPanel({
-  collectionId,
-  publication,
-  busy,
-  onPublish,
-  onUnpublish,
-}: {
-  collectionId: string;
-  publication: CollectionPublication | undefined;
-  busy: boolean;
-  onPublish: (visibility: PublicationVisibility, curatorNote: string, attribution: string) => void;
-  onUnpublish: () => void;
-}) {
-  const [visibility, setVisibility] = useState<PublicationVisibility>(publication?.visibility ?? "unlisted");
-  const [curatorNote, setCuratorNote] = useState(publication?.curatorNote ?? "");
-  const [attribution, setAttribution] = useState(publication?.attribution ?? "");
-
-  return (
-    <details className="archive-portability">
-      <summary>Publish &amp; follow</summary>
-      <div className="archive-sidebar-actions" aria-label="Publish this collection">
-        <p className="archive-sync-state" role="status">
-          {publication
-            ? <>Published at <code>/c/{publication.slug}</code> · {publication.visibility}</>
-            : "Not published yet"}
-        </p>
-        <label htmlFor={`publish-visibility-${collectionId}`}>Visibility</label>
-        <VisibilitySelect id={`publish-visibility-${collectionId}`} value={visibility} onChange={setVisibility} />
-        <label htmlFor={`publish-curator-note-${collectionId}`}>Curator note</label>
-        <textarea id={`publish-curator-note-${collectionId}`} value={curatorNote} onChange={(event) => setCuratorNote(event.target.value)} placeholder="Why does this collection matter? What should followers expect?" />
-        <label htmlFor={`publish-attribution-${collectionId}`}>Attribution</label>
-        <input id={`publish-attribution-${collectionId}`} type="text" value={attribution} onChange={(event) => setAttribution(event.target.value)} placeholder="Curated by…" />
-        <button type="button" disabled={busy} onClick={() => onPublish(visibility, curatorNote, attribution)}>{publication ? "Update publication" : "Publish collection"}</button>
-        {publication ? (
-          <button type="button" className="archive-danger" disabled={busy} onClick={onUnpublish}>Unpublish</button>
-        ) : null}
-        <Link href="/c">Browse public collections ↗</Link>
-      </div>
-    </details>
-  );
-}
-
 export function ArchiveApp() {
   const { archive: data, updateArchive, sync, retrySync, replaceArchiveFromServer } = useArchive();
   const auth = useAuth();
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [sort, setSort] = useState<Sort>("newest");
   const [collectionId, setCollectionId] = useState("all");
   const [newCollection, setNewCollection] = useState("");
   const [newCollectionKind, setNewCollectionKind] = useState<CollectionKind>("personal");
@@ -108,8 +46,6 @@ export function ArchiveApp() {
   const [revisions, setRevisions] = useState<ArchiveRevisionSummary[]>([]);
   const [contentSnapshots, setContentSnapshots] = useState<ContentSnapshotSummary[]>([]);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
-  const [publications, setPublications] = useState<CollectionPublication[]>([]);
-  const [publishBusy, setPublishBusy] = useState(false);
   // itemLocalId -> the post published for it, so each row's PostPublishPanel
   // opens in the right state. Fetched once; the panels manage their own writes.
   const [postsByItem, setPostsByItem] = useState<ReadonlyMap<string, PublishedPost>>(new Map());
@@ -118,25 +54,20 @@ export function ArchiveApp() {
     updateArchive(recipe);
   };
 
+  const requestJson = async (url: string, init?: RequestInit) => {
+    const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(body?.error ?? `Request failed (${response.status})`);
+    }
+    return response;
+  };
+  const { publications, publishBusy, publishCollection, unpublishCollection } = usePublications(requestJson, setShareNotice);
+
   const selectedCollection = data?.collections.find((collection) => collection.id === collectionId);
   const currentPublication = selectedCollection
     ? publications.find((publication) => publication.collectionLocalId === selectedCollection.id && !publication.unpublishedAt)
     : undefined;
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const response = await fetch("/api/collections", { credentials: "same-origin", cache: "no-store" });
-        if (!response.ok) return;
-        const body = await response.json() as { publications: CollectionPublication[] };
-        if (!cancelled) setPublications(body.publications);
-      } catch {
-        // Not signed in, or publications are unavailable; publish status stays unknown until the next attempt.
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,34 +86,7 @@ export function ArchiveApp() {
     return () => { cancelled = true; };
   }, []);
 
-  const collectionItems = useMemo(() => {
-    const items = data?.items ?? [];
-    return collectionId === "all"
-      ? items
-      : items.filter((item) => item.collectionIds.includes(collectionId));
-  }, [data, collectionId]);
-
-  const counts = useMemo(() => ({
-    all: collectionItems.length,
-    unread: collectionItems.filter((item) => item.state === "unread").length,
-    starred: collectionItems.filter((item) => item.starred).length,
-    annotated: collectionItems.filter((item) => item.note.trim()).length,
-  }), [collectionItems]);
-
-  const visible = useMemo(() => {
-    const filtered = collectionItems.filter((item) => {
-      if (filter === "unread" && item.state !== "unread") return false;
-      if (filter === "starred" && !item.starred) return false;
-      if (filter === "annotated" && !item.note.trim()) return false;
-      return matches(item, query);
-    });
-
-    return [...filtered].sort((a, b) => {
-      if (sort === "title") return a.title.localeCompare(b.title);
-      const newestFirst = Date.parse(b.savedAt) - Date.parse(a.savedAt);
-      return sort === "oldest" ? -newestFirst : newestFirst;
-    });
-  }, [collectionItems, filter, query, sort]);
+  const { query, setQuery, filter, setFilter, sort, setSort, collectionItems, counts, visible } = useArchiveFilters(data?.items ?? [], collectionId);
 
   const patchItem = (id: string, patch: Partial<ArchiveItem>) => {
     update((current) => ({
@@ -233,15 +137,6 @@ export function ArchiveApp() {
     if (!data) return;
     download(archiveToCsv(exportItems, data.collections), `coeus-${selectedCollection?.id ?? "archive"}.csv`, "text/csv;charset=utf-8");
     setShareNotice("CSV exported for Notion");
-  };
-
-  const requestJson = async (url: string, init?: RequestInit) => {
-    const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
-    if (!response.ok) {
-      const body = await response.json().catch(() => null) as { error?: string } | null;
-      throw new Error(body?.error ?? `Request failed (${response.status})`);
-    }
-    return response;
   };
 
   const refreshRecovery = async () => {
@@ -303,41 +198,6 @@ export function ArchiveApp() {
     try { await requestJson("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: "DELETE" }) }); setShareNotice("Cloud account and private snapshots deleted. The local device copy was kept."); }
     catch (error) { setShareNotice(error instanceof Error ? error.message : "Account deletion failed"); }
     finally { setRecoveryBusy(false); }
-  };
-
-  const publishCollection = async (collectionLocalId: string, visibility: PublicationVisibility, curatorNote: string, attribution: string) => {
-    setPublishBusy(true);
-    try {
-      const response = await requestJson("/api/collections/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collectionLocalId, visibility, curatorNote, attribution }),
-      });
-      const publication = await response.json() as CollectionPublication;
-      setPublications((current) => [publication, ...current.filter((entry) => entry.id !== publication.id)]);
-      const link = `${window.location.origin}/c/${publication.slug}`;
-      try { await navigator.clipboard.writeText(link); setShareNotice(`Published at /c/${publication.slug} — link copied`); }
-      catch { setShareNotice(`Published at /c/${publication.slug}`); }
-    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Publishing failed"); }
-    finally { setPublishBusy(false); }
-  };
-
-  const unpublishCollection = async (collectionLocalId: string) => {
-    setPublishBusy(true);
-    try {
-      await requestJson("/api/collections/unpublish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collectionLocalId }),
-      });
-      setPublications((current) => current.map((entry) => (
-        entry.collectionLocalId === collectionLocalId
-          ? { ...entry, unpublishedAt: new Date().toISOString() }
-          : entry
-      )));
-      setShareNotice("Collection unpublished");
-    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Unpublishing failed"); }
-    finally { setPublishBusy(false); }
   };
 
   if (!data) return <p className="boot">Opening your archive…</p>;
@@ -425,7 +285,7 @@ export function ArchiveApp() {
               </div>
             </details>
             {selectedCollection && selectedCollection.id !== "inbox" ? (
-              <PublishPanel
+              <ArchivePublishPanel
                 key={selectedCollection.id}
                 collectionId={selectedCollection.id}
                 publication={currentPublication}
@@ -489,7 +349,7 @@ export function ArchiveApp() {
 
             <div className="archive-result-meta">
               <span>{visible.length} {visible.length === 1 ? "piece" : "pieces"}{query ? ` matching “${query}”` : ""}</span>
-              <label htmlFor="archive-sort">Sort <select id="archive-sort" value={sort} onChange={(event) => setSort(event.target.value as Sort)}><option value="newest">Newest saved</option><option value="oldest">Oldest saved</option><option value="title">Title A–Z</option></select></label>
+              <label htmlFor="archive-sort">Sort <select id="archive-sort" value={sort} onChange={(event) => setSort(event.target.value as ArchiveSort)}><option value="newest">Newest saved</option><option value="oldest">Oldest saved</option><option value="title">Title A–Z</option></select></label>
             </div>
 
             {visible.length ? (

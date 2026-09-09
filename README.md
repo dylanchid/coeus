@@ -36,6 +36,10 @@ branch protection):
 - **database** — pins the Supabase CLI (`2.75.0`), runs `supabase start` (Docker
   is preinstalled on GitHub-hosted `ubuntu-latest`; migrations apply on start),
   then `supabase test db` for the pgTAP suite.
+- **e2e** — installs Chromium and runs Playwright’s public, unauthenticated
+  browser journeys. Authenticated provider journeys remain deliberately out of
+  this job until CI has a disposable Supabase Auth seed and a Notion OAuth mock;
+  no real provider credentials are ever used in browser tests.
 
 Node is pinned via `.nvmrc` and consumed by `actions/setup-node`
 (`node-version-file`). To reproduce CI locally you need Docker Desktop running.
@@ -71,7 +75,7 @@ src/
   lib/
     feedContract.ts            Public API query validation
     feedApi.ts                 Testable HTTP response/cache policy
-    feeds.ts                   Server-only RSS cache and aggregation
+    feeds/feeds.server.ts      Server-only RSS cache and aggregation
     engagement.server.ts       Server-only provider enrichment
     feedQuery.ts               Browser batching and progressive merge
     prefs.ts                   Validated local preference store
