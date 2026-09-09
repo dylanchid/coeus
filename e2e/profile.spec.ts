@@ -7,7 +7,7 @@ type RemoteArchive = { archiveId: string; snapshot: { revision: number } };
 /** Put one collection and its source item into an account's real synced archive.
  * Publishing deliberately happens through the normal HTTP endpoint afterwards,
  * so this is setup rather than a second implementation of publishing. */
-async function seedCollection(page: Page, suffix: string) {
+async function seedCollection(page: Page, suffix: string, operationSuffix = suffix) {
   const collectionId = `e2e-collection-${suffix}`;
   const itemId = `e2e-item-${suffix}`;
   const name = `E2E collection ${suffix}`;
@@ -24,7 +24,7 @@ async function seedCollection(page: Page, suffix: string) {
       baseRevision: remote.snapshot.revision,
       operations: [
         {
-          operationId: `collection-${suffix}`,
+          operationId: `collection-${operationSuffix}`,
           action: "upsert",
           entityKind: "collection",
           entityId: collectionId,
@@ -32,7 +32,7 @@ async function seedCollection(page: Page, suffix: string) {
           value: { id: collectionId, name, description: "A browser-journey fixture.", visibility: "public", kind: "personal", createdAt: now },
         },
         {
-          operationId: `item-${suffix}`,
+          operationId: `item-${operationSuffix}`,
           action: "upsert",
           entityKind: "item",
           entityId: itemId,
@@ -52,7 +52,64 @@ async function seedCollection(page: Page, suffix: string) {
     data: { collectionLocalId: collectionId, visibility: "public", curatorNote: "", attribution: "" },
   });
   expect(published.status(), await published.text()).toBe(201);
-  return await published.json() as { id: string; slug: string; name: string };
+  return await published.json() as { id: string; slug: string; name: string; collectionLocalId: string };
+}
+
+async function inBatches<T>(values: readonly T[], size: number, action: (value: T) => Promise<void>): Promise<void> {
+  for (let index = 0; index < values.length; index += size) {
+    await Promise.all(values.slice(index, index + size).map(action));
+  }
+}
+
+/** Seed enough owned content to cross both profile-feed page boundaries in one
+ * archive revision. Publishing remains a real API request per object. */
+async function seedPaginatedProfile(page: Page, suffix: string) {
+  const initial = await page.request.get("/api/archive");
+  expect(initial.ok(), await initial.text()).toBeTruthy();
+  const remote = await initial.json() as RemoteArchive;
+  const now = new Date().toISOString();
+  const rows = Array.from({ length: 25 }, (_, index) => ({
+    index,
+    collectionId: `e2e-page-collection-${suffix}-${index}`,
+    itemId: `e2e-page-item-${suffix}-${index}`,
+  }));
+  const operations = rows.flatMap(({ index, collectionId, itemId }) => [
+    {
+      operationId: `page-collection-${suffix}-${index}`, action: "upsert", entityKind: "collection", entityId: collectionId,
+      changedFields: ["id", "name", "description", "visibility", "kind", "createdAt"],
+      value: { id: collectionId, name: `Collection fixture ${suffix}-${index}`, description: "Cursor fixture.", visibility: "public", kind: "personal", createdAt: now },
+    },
+    {
+      operationId: `page-item-${suffix}-${index}`, action: "upsert", entityKind: "item", entityId: itemId,
+      changedFields: ["id", "articleId", "title", "url", "sourceName", "topic", "summary", "author", "publishedAt", "savedAt", "state", "starred", "collectionIds", "tags", "note"],
+      value: {
+        id: itemId, articleId: `page-article-${suffix}-${index}`, title: `Post fixture ${suffix}-${index}`, url: `https://example.com/page-${suffix}-${index}`,
+        sourceName: "Example", topic: "Testing", summary: "A cursor-page fixture.", author: "E2E", publishedAt: now, savedAt: now,
+        state: "kept", starred: false, collectionIds: [collectionId], tags: [], note: "private fixture note",
+      },
+    },
+  ]);
+  const synced = await page.request.post("/api/archive/sync", {
+    data: { syncVersion: 1, archiveId: remote.archiveId, clientId: `page-${suffix}`, baseRevision: remote.snapshot.revision, operations },
+  });
+  expect(synced.ok(), await synced.text()).toBeTruthy();
+
+  await inBatches(rows, 5, async ({ collectionId, itemId }) => {
+    const [collection, post] = await Promise.all([
+      page.request.post("/api/collections/publish", { data: { collectionLocalId: collectionId, visibility: "public", curatorNote: "", attribution: "" } }),
+      page.request.post("/api/posts/publish", { data: { itemLocalId: itemId, visibility: "public", commentary: "" } }),
+    ]);
+    expect(collection.status(), await collection.text()).toBe(201);
+    expect(post.status(), await post.text()).toBe(201);
+  });
+}
+
+async function createReply(page: Page, targetId: string, body: string, parentId?: string): Promise<string> {
+  const response = await page.request.post("/api/replies", {
+    data: { targetType: "collection", targetId, ...(parentId ? { parentId } : {}), body },
+  });
+  expect(response.status(), await response.text()).toBe(201);
+  return (await response.json() as { replyId: string }).replyId;
 }
 
 test("a second signed-in user can follow a published collection", async ({ browser, establishedUser }) => {
@@ -83,5 +140,57 @@ test("a second signed-in user can follow a published collection", async ({ brows
   } finally {
     await signOut(followerPage);
     await followerContext.close();
+  }
+});
+
+test("profile feed and thread cursor links walk real page boundaries", async ({ browser, establishedUser }) => {
+  test.setTimeout(120_000);
+  const { page, handle } = establishedUser;
+  const suffix = Math.random().toString(36).slice(2, 8);
+  await seedPaginatedProfile(page, suffix);
+
+  for (const tab of ["collections", "posts"] as const) {
+    await page.goto(`/@${handle}?tab=${tab}`);
+    const older = page.getByRole("link", { name: "Older →" });
+    await expect(older).toBeVisible();
+    await older.click();
+    await expect(page).toHaveURL(new RegExp(`/@${handle}\\?tab=${tab}&cursor=`));
+    await expect(page.getByRole("link", { name: "← Newest" })).toBeVisible();
+  }
+
+  const publication = await seedCollection(page, `thread-${suffix}`);
+  const root = await createReply(page, publication.id, `Thread root ${suffix}`);
+  await inBatches(Array.from({ length: 201 }, (_, index) => index), 12, async (index) => {
+    await createReply(page, publication.id, `Thread reply ${suffix}-${index}`, root);
+  });
+
+  await page.goto(`/@${handle}?tab=replies`);
+  const threadLink = page.getByRole("link", { name: "View all 201 replies →" });
+  await expect(threadLink).toBeVisible();
+  await threadLink.click();
+  await expect(page).toHaveURL(new RegExp(`/@${handle}/replies/${root}$`));
+  await expect(page.getByRole("link", { name: "Older replies →" })).toBeVisible();
+  await page.getByRole("link", { name: "Older replies →" }).click();
+  await expect(page).toHaveURL(new RegExp(`/@${handle}/replies/${root}\\?cursor=`));
+  await expect(page.getByRole("link", { name: "← Start of thread" })).toBeVisible();
+
+  // AppShell's local-first archive can sync the fixture browser's default
+  // archive while this page is open. Restore the target collection using a new
+  // operation id, then verify republishing retains the target id the reply has.
+  const restored = await seedCollection(page, `thread-${suffix}`, `restore-thread-${suffix}`);
+  expect(restored.id).toBe(publication.id);
+
+  const revoked = await page.request.post("/api/collections/publish", {
+    data: { collectionLocalId: restored.collectionLocalId, visibility: "private", curatorNote: "", attribution: "" },
+  });
+  expect(revoked.status(), await revoked.text()).toBe(201);
+
+  const visitorContext = await browser.newContext();
+  try {
+    const visitorPage = await visitorContext.newPage();
+    await visitorPage.goto(`/@${handle}/replies/${root}`);
+    await expect(visitorPage.getByText("404")).toBeVisible();
+  } finally {
+    await visitorContext.close();
   }
 });
