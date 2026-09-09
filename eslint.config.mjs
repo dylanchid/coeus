@@ -14,6 +14,16 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
 
+  {
+    // Playwright specs and helpers. The `test.extend` fixture callback's second
+    // argument is named `use` by Playwright convention; react-hooks/rules-of-
+    // hooks mistakes it for a hook. No React runs here.
+    files: ["e2e/**/*.ts"],
+    rules: {
+      "react-hooks/rules-of-hooks": "off",
+    },
+  },
+
   // --- src/lib layer + domain boundaries (bareaga_web-tpy / docs/lib-architecture.md) ---
   // Mechanical guard for the layer direction and the server/browser split.
   // Every current module now complies, so violations fail CI. `no-restricted-

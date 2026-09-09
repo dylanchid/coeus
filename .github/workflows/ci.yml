@@ -85,14 +85,36 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.75.0
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Browser journeys (public, unauthenticated)
+
+      # A disposable Supabase stack for the authenticated journeys. Migrations
+      # are applied on start; no production data or secrets are involved.
+      - name: Start local Supabase stack (applies migrations)
+        run: supabase start -x studio,imgproxy,mailpit,realtime,storage-api,edge-runtime,logflare,vector,supavisor
+
+      - name: Wire the dev server to the disposable stack
+        run: |
+          eval "$(supabase status -o env)"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY"
+            echo "SUPABASE_SECRET_KEY=$SECRET_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Browser journeys (public + authenticated)
         run: npm run test:e2e
+
+      - name: Stop local Supabase stack
+        if: always()
+        run: supabase stop --no-backup
