@@ -36,6 +36,11 @@ function ipv6Groups(address: string): number[] | null {
   return parts.map((part) => Number.parseInt(part, 16));
 }
 
+/** Dotted-decimal IPv4 from two consecutive 16-bit IPv6 groups. */
+function ipv4FromGroups(hi: number, lo: number): string {
+  return `${hi >>> 8}.${hi & 255}.${lo >>> 8}.${lo & 255}`;
+}
+
 function ipv6IsUnsafe(address: string): boolean {
   const groups = ipv6Groups(address);
   if (!groups) return true;
@@ -50,7 +55,26 @@ function ipv6IsUnsafe(address: string): boolean {
   const compatible = groups.slice(0, 6).every((part) => part === 0);
   const mapped = groups.slice(0, 5).every((part) => part === 0) && groups[5] === 0xffff;
   if (compatible || mapped) {
-    return ipv4IsUnsafe(`${groups[6] >>> 8}.${groups[6] & 255}.${groups[7] >>> 8}.${groups[7] & 255}`);
+    return ipv4IsUnsafe(ipv4FromGroups(groups[6], groups[7]));
+  }
+
+  // Transition mechanisms embed an IPv4 address. On a host that actually routes
+  // the mechanism, that address can reach a private/loopback target — so
+  // extract it and apply the same IPv4 rules (F-30).
+  // NAT64 well-known prefix 64:ff9b::/96 (RFC 6052): IPv4 in the last 32 bits.
+  if (first === 0x0064 && second === 0xff9b && groups.slice(2, 6).every((part) => part === 0)) {
+    return ipv4IsUnsafe(ipv4FromGroups(groups[6], groups[7]));
+  }
+  // NAT64 local-use prefix 64:ff9b:1::/48 (RFC 8215): synthesised local traffic
+  // by definition — reject the whole prefix rather than guess the IPv4 offset.
+  if (first === 0x0064 && second === 0xff9b && groups[2] === 0x0001) return true;
+  // 6to4 2002::/16 (RFC 3056): the embedded IPv4 is the next 32 bits.
+  if (first === 0x2002) return ipv4IsUnsafe(ipv4FromGroups(groups[1], groups[2]));
+  // Teredo 2001::/32 (RFC 4380): server IPv4 at bits 32-63, client IPv4
+  // (one's-complement obfuscated) at bits 96-127.
+  if (first === 0x2001 && second === 0x0000) {
+    return ipv4IsUnsafe(ipv4FromGroups(groups[2], groups[3])) ||
+      ipv4IsUnsafe(ipv4FromGroups(groups[6] ^ 0xffff, groups[7] ^ 0xffff));
   }
   return false;
 }
