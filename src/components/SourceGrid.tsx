@@ -16,7 +16,7 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import type { Article, SourceFeed } from "@/lib/types";
+import type { Article, EmbedCompatibility, SourceFeed } from "@/lib/types";
 import { SourceColumn } from "./SourceColumn";
 
 type Props = {
@@ -32,6 +32,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => void;
 };
 
 function SourceGridInner({
@@ -47,6 +48,7 @@ function SourceGridInner({
   savedArticleIds,
   onSave,
   onShare,
+  onOpen,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -99,6 +101,7 @@ function SourceGridInner({
               savedArticleIds={savedArticleIds}
               onSave={onSave}
               onShare={onShare}
+              onOpen={onOpen}
             />
           ))}
         </div>

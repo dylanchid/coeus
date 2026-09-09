@@ -14,6 +14,12 @@ export type HomeViewId = "grid" | "top" | "focus" | "ranked";
 /** Amount of information shown for a story. */
 export type StoryRepresentationId = "compact" | "detailed";
 
+/** How Reader headlines should open after the reader makes an initial choice. */
+export type ArticlePreviewMode = "ask" | "preview" | "external";
+
+/** Live, conservative assessment of whether an article permits framing. */
+export type EmbedCompatibility = "allowed" | "blocked" | "unknown";
+
 export interface SourceDef {
   id: string;
   name: string;
@@ -69,6 +75,8 @@ export interface SourceFeed {
   topic: string;
   homeUrl?: string;
   articles: Article[];
+  /** Framing policy observed for a current article from this source. */
+  embedCompatibility?: EmbedCompatibility;
   error?: string;
 }
 
@@ -96,6 +104,8 @@ export interface UserPrefs {
   homeView: HomeViewId;
   /** Amount of information shown for each story. */
   storyRepresentation: StoryRepresentationId;
+  /** Whether Reader headlines open in Coeus or at the publisher's site. */
+  articlePreviewMode: ArticlePreviewMode;
   font: FontId;
   palette: PaletteId;
   density: DensityId;

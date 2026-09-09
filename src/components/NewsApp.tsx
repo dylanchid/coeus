@@ -11,7 +11,7 @@ import {
 import { TOPICS, type Topic } from "@/lib/sources";
 import { countMatches, filterSources } from "@/lib/search";
 import { visibleSourceIds } from "@/lib/feedQuery";
-import type { Article, UserPrefs } from "@/lib/types";
+import type { Article, EmbedCompatibility, UserPrefs } from "@/lib/types";
 import { archiveArticle } from "@/lib/archive";
 import { useFeedQuery } from "@/hooks/useFeedQuery";
 import { useArchive, usePreferences } from "./AppProviders";
@@ -21,6 +21,7 @@ import { SearchBar } from "./SearchBar";
 import { SourceGrid } from "./SourceGrid";
 import { StoryFeed } from "./StoryFeed";
 import { ShareSheet } from "./ShareSheet";
+import { ArticlePreview, ArticlePreviewChoice } from "./ArticlePreview";
 
 const EMPTY_SOURCE_IDS: string[] = [];
 
@@ -48,6 +49,7 @@ export function NewsApp() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ article: Article; sourceName: string; topic: string } | null>(null);
   const [shareStatus, setShareStatus] = useState("");
+  const [previewTarget, setPreviewTarget] = useState<{ article: Article; sourceName: string; sourceHomeUrl?: string } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchHydrated = useRef(false);
 
@@ -205,6 +207,18 @@ export function NewsApp() {
   const shareStory = useCallback((article: Article, sourceName: string, sourceTopic: string) => {
     setShareTarget({ article, sourceName, topic: sourceTopic });
   }, []);
+
+  const openOriginal = useCallback((url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const openStory = useCallback((article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => {
+    if (prefs?.articlePreviewMode === "external" || compatibility !== "allowed") {
+      openOriginal(article.url);
+      return;
+    }
+    setPreviewTarget({ article, sourceName, sourceHomeUrl });
+  }, [openOriginal, prefs?.articlePreviewMode]);
 
   const visible = useMemo(
     () => filterSources(currentSources, deferredSearch),
@@ -449,6 +463,7 @@ export function NewsApp() {
           savedArticleIds={savedArticleIds}
           onSave={saveStory}
           onShare={shareStory}
+          onOpen={openStory}
         />
       ) : (
         <StoryFeed
@@ -462,6 +477,7 @@ export function NewsApp() {
           savedArticleIds={savedArticleIds}
           onSave={saveStory}
           onShare={shareStory}
+          onOpen={openStory}
         />
       )}
 
@@ -474,6 +490,32 @@ export function NewsApp() {
           onDone={(message) => {
             setShareStatus(message);
             window.setTimeout(() => setShareStatus(""), 2800);
+          }}
+        />
+      ) : null}
+      {previewTarget && prefs.articlePreviewMode === "ask" ? (
+        <ArticlePreviewChoice
+          article={previewTarget.article}
+          sourceName={previewTarget.sourceName}
+          onClose={() => setPreviewTarget(null)}
+          onChoosePreview={() => persist({ articlePreviewMode: "preview" })}
+          onChooseExternal={() => {
+            persist({ articlePreviewMode: "external" });
+            openOriginal(previewTarget.article.url);
+            setPreviewTarget(null);
+          }}
+        />
+      ) : null}
+      {previewTarget && prefs.articlePreviewMode === "preview" ? (
+        <ArticlePreview
+          article={previewTarget.article}
+          sourceName={previewTarget.sourceName}
+          sourceHomeUrl={previewTarget.sourceHomeUrl}
+          onClose={() => setPreviewTarget(null)}
+          onOpenOriginal={() => openOriginal(previewTarget.article.url)}
+          onPreferExternal={() => {
+            persist({ articlePreviewMode: "external" });
+            setPreviewTarget(null);
           }}
         />
       ) : null}

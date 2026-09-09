@@ -1,5 +1,6 @@
 import type {
   ColumnCount,
+  ArticlePreviewMode,
   DensityId,
   FontId,
   HomeViewId,
@@ -29,6 +30,7 @@ const DENSITIES: DensityId[] = ["comfortable", "compact"];
 const COLUMNS: ColumnCount[] = [1, 2, 3, 4];
 const HOME_VIEWS: HomeViewId[] = ["grid", "top", "focus", "ranked"];
 const STORY_REPRESENTATIONS: StoryRepresentationId[] = ["compact", "detailed"];
+const ARTICLE_PREVIEW_MODES: ArticlePreviewMode[] = ["ask", "preview", "external"];
 
 export const DEFAULT_PREFS: UserPrefs = {
   version: 1,
@@ -46,6 +48,7 @@ export const DEFAULT_PREFS: UserPrefs = {
   columns: 3,
   homeView: "grid",
   storyRepresentation: "detailed",
+  articlePreviewMode: "ask",
   font: "mono",
   palette: "ink",
   density: "comfortable",
@@ -184,6 +187,11 @@ export function mergeWithDefaults(raw: Partial<UserPrefs> | null): UserPrefs {
       legacy.galleryObjectBar
         ? legacyRepresentation
         : DEFAULT_PREFS.storyRepresentation
+    ),
+    articlePreviewMode: pick(
+      raw.articlePreviewMode,
+      ARTICLE_PREVIEW_MODES,
+      DEFAULT_PREFS.articlePreviewMode
     ),
     font: pick(raw.font, FONTS, "mono"),
     palette: pick(raw.palette, PALETTES, "ink"),

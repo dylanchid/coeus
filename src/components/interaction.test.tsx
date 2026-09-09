@@ -39,6 +39,7 @@ const { SlashMenu } = await import("./SlashMenu");
 const { SettingsPanel } = await import("./SettingsPanel");
 const { AppProviders, useArchive } = await import("./AppProviders");
 const { ShareSheet } = await import("./ShareSheet");
+const { ArticlePreview, ArticlePreviewChoice } = await import("./ArticlePreview");
 const { AlreadyArchivedButton, PreviewFollowButton } = await import("./DiscoverPreviewControls");
 const { SourcesCategoryHub } = await import("./DiscoverSourcesApp");
 const { DestinationsPanel } = await import("./DestinationsPanel");
@@ -231,6 +232,27 @@ test("Discover preview controls describe their actual state", () => {
   view.unmount();
   render(<PreviewFollowButton />);
   assert.ok(screen.getByRole("button", { name: "Preview follow" }));
+});
+
+test("article preview lets a reader choose the familiar external-link behavior", (context) => {
+  const preview = context.mock.fn();
+  const external = context.mock.fn();
+  render(<ArticlePreviewChoice article={article} sourceName="Example" onClose={() => undefined} onChoosePreview={preview} onChooseExternal={external} />);
+  assert.ok(screen.getByRole("dialog", { name: /Preview.*Coeus/i }));
+  fireEvent.click(screen.getByRole("button", { name: "Always open original ↗" }));
+  assert.equal(external.mock.callCount(), 1);
+  assert.equal(preview.mock.callCount(), 0);
+});
+
+test("article preview retains a clear original-source exit and preference switch", (context) => {
+  const original = context.mock.fn();
+  const external = context.mock.fn();
+  render(<ArticlePreview article={article} sourceName="Example" onClose={() => undefined} onOpenOriginal={original} onPreferExternal={external} />);
+  assert.ok(screen.getByTitle("Preview of A durable link"));
+  fireEvent.click(screen.getByRole("button", { name: /Read at example.com/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Always open originals" }));
+  assert.equal(original.mock.callCount(), 1);
+  assert.equal(external.mock.callCount(), 1);
 });
 
 test("Destinations panel surfaces a Notion auth_error as a distinct Reconnect action", async () => {

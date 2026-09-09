@@ -45,6 +45,9 @@ export function securityHeaders(production: boolean, supabaseUrl = process.env.N
       `connect-src ${connectSrc}`,
       "font-src 'self' data:",
       "form-action 'self'",
+      // Reader previews are sandboxed remote documents. RSS publishers are a
+      // user-configurable, unbounded set, so an origin allowlist is not viable.
+      "frame-src https:",
       "frame-ancestors 'none'",
       `img-src ${imgSrc}`,
       "object-src 'none'",

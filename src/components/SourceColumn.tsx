@@ -4,7 +4,7 @@ import { memo, useMemo, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { formatEngagement } from "@/lib/engagement";
-import type { Article, SourceFeed } from "@/lib/types";
+import type { Article, EmbedCompatibility, SourceFeed } from "@/lib/types";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 
 type Props = {
@@ -18,6 +18,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => void;
 };
 
 function EngagementChip({
@@ -77,6 +78,7 @@ function SourceColumnInner({
   savedArticleIds,
   onSave,
   onShare,
+  onOpen,
 }: Props) {
   const {
     attributes,
@@ -174,7 +176,11 @@ function SourceColumnInner({
       <ul>
         {source.articles.map((a) => (
           <li key={a.id}>
-            <a href={a.url} target="_blank" rel="noreferrer">
+            <a href={a.url} target="_blank" rel="noreferrer" onClick={(event) => {
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              onOpen(a, source.name, source.homeUrl, source.embedCompatibility ?? "unknown");
+            }}>
               {q ? highlight(a.title, q) : a.title}<ExternalLinkHint />
             </a>
             {showAges && a.ageLabel ? (

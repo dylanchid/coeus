@@ -1,4 +1,4 @@
-import type { KeywordRule, SourceFeed } from "./types";
+import type { EmbedCompatibility, KeywordRule, SourceFeed } from "./types";
 
 export type RankingReason = {
   label: string;
@@ -12,6 +12,7 @@ export type RankedStory = {
   sourceName: string;
   sourceTopic: string;
   sourceHomeUrl?: string;
+  embedCompatibility: EmbedCompatibility;
   sourceIndex: number;
   articleIndex: number;
   score: number;
@@ -105,6 +106,7 @@ function flatten(sources: SourceFeed[]): RankedStory[] {
           sourceName: source.name,
           sourceTopic: source.topic,
           sourceHomeUrl: source.homeUrl,
+          embedCompatibility: source.embedCompatibility ?? "unknown",
           sourceIndex,
           articleIndex,
           score: 0,

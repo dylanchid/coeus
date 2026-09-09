@@ -15,6 +15,7 @@ import { AddSourceForm } from "./AddSourceForm";
 import { useFocusReturn, useMediaQuery, useModalDialog } from "@/hooks/useModalDialog";
 import type {
   ColumnCount,
+  ArticlePreviewMode,
   DensityId,
   HomeViewId,
   StoryRepresentationId,
@@ -362,6 +363,13 @@ export function SettingsPanel({
           options={["comfortable", "compact"] as DensityId[]}
           onPick={(density) => onChange({ density })}
           format={(d) => (d === "comfortable" ? "Comfort" : "Compact")}
+        />
+        <ChoiceRow
+          label="Headlines"
+          value={prefs.articlePreviewMode}
+          options={["ask", "preview", "external"] as ArticlePreviewMode[]}
+          onPick={(articlePreviewMode) => onChange({ articlePreviewMode })}
+          format={(mode) => mode === "ask" ? "Ask first" : mode === "preview" ? "Preview in Coeus" : "Open original"}
         />
         <dl className="mode-guide">
           <div><dt>Grid</dt><dd>Grouped by source</dd></div>

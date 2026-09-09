@@ -10,6 +10,7 @@ test("security headers enforce a same-origin CSP while allowing the configured S
   const csp = headers.get("content-security-policy");
   assert.match(csp, /default-src 'self'/);
   assert.match(csp, /frame-ancestors 'none'/);
+  assert.match(csp, /frame-src https:/);
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co https:\/\/project\.supabase\.co wss:\/\/project\.supabase\.co/);
   assert.match(csp, /img-src 'self' data: blob: https:\/\/\*\.supabase\.co https:\/\/project\.supabase\.co/);
