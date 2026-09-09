@@ -1,6 +1,9 @@
 import {
+  MEDIA_REQUEST_BYTE_CEILING,
+  MEDIA_SIZE_CAP,
   mediaObjectPath,
   objectPathFromPublicUrl,
+  parseContentLength,
   validateUpload,
   type AllowedMediaType,
   type MediaKind,
@@ -55,6 +58,14 @@ export async function handleUploadProfileMedia(
   const userId = await dependencies.authenticate();
   if (!userId) return error("Authentication required", 401);
 
+  // Reject an oversized request from its Content-Length before the body is
+  // buffered and multipart-parsed (F-28). A missing/garbled header falls
+  // through to the post-decode per-kind check.
+  const declaredLength = parseContentLength(request.headers.get("content-length"));
+  if (declaredLength !== null && declaredLength > MEDIA_REQUEST_BYTE_CEILING) {
+    return error("Keep cover images under 5 MB.", 413);
+  }
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -65,6 +76,12 @@ export async function handleUploadProfileMedia(
   const file = form.get("file");
   const kind = form.get("kind");
   if (!(file instanceof File)) return error("Attach one image in the \"file\" field", 422);
+
+  // The File carries its decoded byte length without a second read; a file
+  // past even the largest per-kind cap need never be copied into an ArrayBuffer.
+  if (file.size > MEDIA_SIZE_CAP.cover) {
+    return error("Keep cover images under 5 MB.", 413);
+  }
 
   const buffer = await file.arrayBuffer();
   const check = validateUpload({
