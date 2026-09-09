@@ -74,6 +74,22 @@ export async function validatedHttpsUrl(value: string, resolve: AddressResolver 
 }
 
 /**
+ * A `net`/`https` lookup hook that always resolves to one pre-validated
+ * address. Node's autoSelectFamily (default since Node 20) invokes the hook
+ * with `{ all: true }` and expects the callback to receive an array of
+ * `LookupAddress`; the legacy single-address callback shape then throws
+ * "Invalid IP address: undefined". Support both call styles.
+ */
+export function fixedAddressLookup(address: string, family: 4 | 6) {
+  return (_hostname: string, options: { all?: boolean } | ((...args: unknown[]) => void), maybeCallback?: (...args: unknown[]) => void) => {
+    const callback = (typeof options === "function" ? options : maybeCallback) as (...args: unknown[]) => void;
+    const all = typeof options === "object" && options?.all;
+    if (all) callback(null, [{ address, family }]);
+    else callback(null, address, family);
+  };
+}
+
+/**
  * Fetch through a DNS answer that was checked immediately beforehand. Passing
  * that answer to https.request's lookup hook prevents a second hostname lookup
  * between validation and connection (the DNS-rebinding window).
@@ -85,7 +101,7 @@ export async function fetchValidatedHttps(url: URL, address: string, family: 4 |
     const request = httpsRequest(url, {
       method: init.method ?? "GET",
       headers,
-      lookup: (_hostname, _options, callback) => callback(null, address, family),
+      lookup: fixedAddressLookup(address, family) as unknown as Parameters<typeof httpsRequest>[1]["lookup"],
       signal: init.signal as AbortSignal | undefined,
     }, (response) => {
       const chunks: Buffer[] = [];

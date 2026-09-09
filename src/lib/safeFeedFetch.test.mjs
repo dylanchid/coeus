@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { fetchFeedText, isUnsafeIp, UnsafeFeedUrlError } from "./safeFeedFetch.server.ts";
-import { validatedHttpsUrl } from "./safeOutboundFetch.server.ts";
+import { fixedAddressLookup, validatedHttpsUrl } from "./safeOutboundFetch.server.ts";
 
 test("rejects private, loopback, link-local, and multicast addresses", () => {
   for (const address of [
@@ -29,6 +29,24 @@ test("normal HTTPS feed responses remain readable", async () => {
   const fetcher = async () => new Response("<rss><channel /></rss>", { status: 200 });
   const resolve = async () => [{ address: "8.8.8.8" }];
   assert.equal(await fetchFeedText("https://example.com/feed.xml", fetcher, resolve), "<rss><channel /></rss>");
+});
+
+test("fixedAddressLookup answers both the legacy and { all: true } call styles", () => {
+  const lookup = fixedAddressLookup("8.8.8.8", 4);
+
+  let legacy;
+  lookup("example.com", {}, (err, address, family) => { legacy = { err, address, family }; });
+  assert.deepEqual(legacy, { err: null, address: "8.8.8.8", family: 4 });
+
+  // Node's autoSelectFamily path — must receive an array of LookupAddress
+  let all;
+  lookup("example.com", { all: true }, (err, addresses) => { all = { err, addresses }; });
+  assert.deepEqual(all, { err: null, addresses: [{ address: "8.8.8.8", family: 4 }] });
+
+  // Three-arg form where the options slot holds the callback
+  let noOpts;
+  lookup("example.com", (err, address) => { noOpts = { err, address }; });
+  assert.deepEqual(noOpts, { err: null, address: "8.8.8.8" });
 });
 
 test("the shared outbound primitive rejects a mixed public/private DNS response", async () => {
