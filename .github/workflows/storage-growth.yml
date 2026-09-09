@@ -1,0 +1,46 @@
+name: Storage growth
+
+# Free, in-repo backstop for the one README "Observability › Alerting" row the
+# log-threshold workflow can't cover: week-over-week growth of the
+# archive_storage_stats total snapshot_bytes (> 25%/week warn, > 100%/week
+# page). Needs persisted state, so it appends a weekly reading to
+# storage_growth_snapshots via capture_storage_growth() and diffs against the
+# previous one (src/lib/storageGrowth.ts). A page-level breach fails the run —
+# email + GitHub mobile, plus ALERT_WEBHOOK_URL when set.
+#
+# Required repo secrets to activate: SUPABASE_URL and SUPABASE_SECRET_KEY
+# (service-role key for the production project). Until they are set the run
+# prints a warning and stays green. Optional: ALERT_WEBHOOK_URL.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: storage-growth
+  cancel-in-progress: false
+
+jobs:
+  growth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Evaluate storage growth
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: npm run check:storage-growth

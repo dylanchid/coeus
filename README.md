@@ -185,6 +185,16 @@ can't read as 100%. Run it locally against a window with
 JSON-lines). Required repo secret: `VERCEL_TOKEN`; optional `VERCEL_PROJECT`,
 `VERCEL_TEAM_ID`.
 
+**Storage growth — backstop in place now.**
+[`.github/workflows/storage-growth.yml`](.github/workflows/storage-growth.yml)
+runs weekly: it appends an `archive_storage_stats()` byte total to
+`storage_growth_snapshots` via the `capture_storage_growth()` RPC, diffs it
+against the previous reading normalised to a 7-day rate
+([`src/lib/storageGrowth.ts`](src/lib/storageGrowth.ts)), and fails the run on a
+**Page** breach. Run it locally with `npm run check:storage-growth`. Activate it
+by setting the `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (production service-role
+key) repo secrets — until then the run prints a warning and stays green.
+
 This is a short-polling safety net — a real log platform (Vercel Observability,
 or a Log Drain to BetterStack / Axiom / Datadog) with sustained-window alerting
 on the same `serverLog.ts` events is still the recommended primary.
@@ -196,7 +206,7 @@ on the same `serverLog.ts` events is still the recommended primary.
 | `archive.sync` `5xx` rate | > 2% over 15 min | > 10% over 5 min | ✅ |
 | `archive.sync` p95 `durationMs` | > 2000 | > 5000 | ✅ |
 | `destination_delivery.*.error` | > 5 in 1 h | > 50 in 1 h | ✅ |
-| `archive_storage_stats` total `snapshot_bytes` growth | > 25%/week | > 100%/week | ⛔ needs week-over-week state (yg4 follow-up) |
+| `archive_storage_stats` total `snapshot_bytes` growth | > 25%/week | > 100%/week | ✅ |
 
 ## Local Supabase
 

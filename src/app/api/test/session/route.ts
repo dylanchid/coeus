@@ -61,10 +61,17 @@ export async function POST(request: Request): Promise<Response> {
       email_confirm: true,
       user_metadata: userMetadata,
     });
-    if (createError || !created.user) {
-      return Response.json({ error: createError?.message ?? "User creation failed" }, { status: 502 });
+    if (created?.user) {
+      userId = created.user.id;
+    } else {
+      // Two parallel Playwright workers can both create the same fixture user;
+      // the loser sees a duplicate-email error. Re-resolve before giving up.
+      const { data: retry } = await admin.auth.admin.listUsers({ perPage: 200 });
+      userId = retry?.users.find((user) => user.email?.toLowerCase() === email)?.id ?? null;
+      if (!userId) {
+        return Response.json({ error: createError?.message ?? "User creation failed" }, { status: 502 });
+      }
     }
-    userId = created.user.id;
   } else if (userMetadata) {
     await admin.auth.admin.updateUserById(userId, { user_metadata: userMetadata });
   }
@@ -84,15 +91,34 @@ export async function POST(request: Request): Promise<Response> {
   return Response.json({ userId, email });
 }
 
+/** Reserved test-account email domain — see e2e/support/testUsers.ts. */
+const TEST_EMAIL_DOMAIN = "@e2e.coeus.local";
+
 /**
- * Clears the session cookies, so a spec can return a shared page to the
- * signed-out state without waiting on the client sign-out flow.
+ * `DELETE` clears the session cookies, so a spec can return a shared page to
+ * the signed-out state without waiting on the client sign-out flow.
+ *
+ * `DELETE ?purge=1` additionally deletes every account on the reserved test
+ * email domain — the Playwright global teardown calls it so a local
+ * `npm run test:e2e` run does not leave rows in the shared dev database (which
+ * would then break the count-based pgTAP tests).
  */
-export async function DELETE(): Promise<Response> {
+export async function DELETE(request: Request): Promise<Response> {
   if (!testLoginEnabled()) {
     return new Response(null, { status: 404 });
   }
+
   const supabase = await createRequestSupabaseClient();
   await supabase.auth.signOut();
+
+  if (new URL(request.url).searchParams.get("purge") === "1") {
+    const admin = createAdminSupabaseClient();
+    const { data, error } = await admin.auth.admin.listUsers({ perPage: 200 });
+    if (error) return Response.json({ error: error.message }, { status: 502 });
+    const stale = data.users.filter((user) => user.email?.toLowerCase().endsWith(TEST_EMAIL_DOMAIN));
+    await Promise.all(stale.map((user) => admin.auth.admin.deleteUser(user.id)));
+    return Response.json({ purged: stale.length });
+  }
+
   return new Response(null, { status: 204 });
 }

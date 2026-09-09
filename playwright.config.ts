@@ -16,6 +16,7 @@ const passthrough = (name: string): Record<string, string> =>
 
 export default defineConfig({
   testDir: "./e2e",
+  globalTeardown: "./e2e/support/globalTeardown.ts",
   timeout: 30_000,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",

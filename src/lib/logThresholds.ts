@@ -10,7 +10,7 @@
  * real log platform (Vercel Observability, or a Log Drain to
  * BetterStack/Axiom/Datadog) with sustained-window alerting is still the
  * recommended primary. The `archive_storage_stats` growth row needs
- * week-over-week state and is tracked separately.
+ * week-over-week state and lives in its own evaluator ({@link ./storageGrowth}).
  */
 
 /** One structured line emitted by `serverLog.ts` (`instrument()` or `logEvent()`). */
