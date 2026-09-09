@@ -13,10 +13,18 @@ export interface TestUser {
   profile?: { handle: string; displayName: string; bio: string };
 }
 
-export const FRESH_USER: TestUser = {
-  email: "fresh@e2e.coeus.local",
-  userMetadata: { user_name: "fresh-tester", full_name: "Fresh Tester" },
-};
+/**
+ * A never-before-seen account, for the onboarding journey (which creates a
+ * profile row and so cannot be re-run against a fixed identity). Each call
+ * returns a unique email; the disposable database is thrown away after the run.
+ */
+export function newFreshUser(): TestUser {
+  const nonce = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return {
+    email: `fresh-${nonce}@e2e.coeus.local`,
+    userMetadata: { user_name: "fresh-tester", full_name: "Fresh Tester" },
+  };
+}
 
 export const ESTABLISHED_USER: TestUser = {
   email: "established@e2e.coeus.local",

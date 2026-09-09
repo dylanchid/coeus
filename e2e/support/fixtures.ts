@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { ESTABLISHED_USER, FRESH_USER, type TestUser } from "./testUsers";
+import { ESTABLISHED_USER, newFreshUser, type TestUser } from "./testUsers";
 
 /**
  * Signs `user` in on `page` by calling the test-only session route, which sets
@@ -35,7 +35,10 @@ interface AuthFixtures {
 
 export const test = base.extend<AuthFixtures>({
   freshUserPage: async ({ page }, use) => {
-    await signIn(page, FRESH_USER);
+    // A brand-new identity each run: the onboarding journey creates a profile
+    // row, so a fixed user would only be "fresh" on the first run against a
+    // given database.
+    await signIn(page, newFreshUser());
     await use(page);
     await signOut(page);
   },
