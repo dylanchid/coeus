@@ -682,6 +682,13 @@ pgTAP test that asserts no `public` function is executable by `anon` /
 
 #### F-30 · `isUnsafeIp` misses IPv6 transition ranges (NAT64 / 6to4 / Teredo)
 
+**Status:** fixed on the working tree (`bareaga_web-7vp`, not yet committed) —
+`ipv6IsUnsafe` now detects `64:ff9b::/96` (embedded IPv4), rejects the whole
+`64:ff9b:1::/48` local-use prefix, and decodes the embedded IPv4 of `2002::/16`
+(6to4) and `2001::/32` (Teredo — both the server field and the one's-complement
+client field). New dedicated test `safeOutboundFetch.server.test.mjs` (14 cases,
+closes the §5 "no test" gap for this module).
+
 **Tag:** scale/later (SSRF depth) · **Confidence:** confirmed (code); exploitability
 **inferred** — needs a runtime with the transition mechanism routed.
 
@@ -754,7 +761,7 @@ covered indirectly):
 
 | Module | Why it matters |
 |---|---|
-| `safeOutboundFetch.server.ts` | F-06; lookup hook already bit production once |
+| ~~`safeOutboundFetch.server.ts`~~ | F-06/F-30; now has `safeOutboundFetch.server.test.mjs` (`bareaga_web-7vp`) |
 | `safeContentFetch.server.ts` | capture path |
 | `destinationsStore.server.ts` | F-01 deliveries |
 | `collectionPublicationStore.server.ts` | F-15, getBySlug items |
