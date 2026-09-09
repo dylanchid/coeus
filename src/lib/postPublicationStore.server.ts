@@ -1,4 +1,8 @@
-import "server-only";
+// No `import "server-only"`: postPublicationStore.server.test.mjs imports this
+// module under `node --experimental-strip-types`, which loads server-only for
+// real and throws. The module holds only pure derive/parse logic plus a
+// Supabase-client wrapper — nothing that must not reach a client bundle — and
+// no route or component value-imports it. See the server-only-vs-node-test note.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseArchiveSyncSnapshot } from "./archiveSync.ts";

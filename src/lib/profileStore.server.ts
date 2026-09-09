@@ -1,4 +1,8 @@
-import "server-only";
+// No `import "server-only"`: profileStore.server.test.mjs imports this module
+// under `node --experimental-strip-types`, which loads server-only for real and
+// throws. The module holds profile-row mapping plus a Supabase-client wrapper —
+// nothing that must not reach a client bundle — and only routes and RSC pages
+// value-import it. See the server-only-vs-node-test note.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { HandleChangeRateLimitedError, HandleQuarantinedError, HandleTakenError } from "./profileErrors.ts";
@@ -80,7 +84,15 @@ export interface ProfileStore {
 }
 
 export class SupabaseProfileStore implements ProfileStore {
-  constructor(private readonly supabase: SupabaseClient) {}
+  // Declared explicitly rather than as a TS parameter property: the latter is
+  // unsupported syntax under `node --experimental-strip-types`, which
+  // profileStore.server.test.mjs runs this module through. See the
+  // ts-param-properties-break-node-strip-mode note.
+  private readonly supabase: SupabaseClient;
+
+  constructor(supabase: SupabaseClient) {
+    this.supabase = supabase;
+  }
 
   async get(userId: string): Promise<Profile | null> {
     const { data, error } = await this.supabase

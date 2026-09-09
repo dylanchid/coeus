@@ -1,7 +1,7 @@
 /**
- * Kept out of profileStore.server.ts (which imports "server-only" and
- * @supabase/supabase-js) so profileApi tests can import the error classes under
- * node --experimental-strip-types without pulling in a server-only module.
+ * Kept out of profileStore.server.ts (which pulls in @supabase/supabase-js) so
+ * profileApi tests can import the error classes under node
+ * --experimental-strip-types with the smallest possible dependency.
  */
 
 /** The requested handle is currently held by another account. */
