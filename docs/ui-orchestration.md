@@ -15,7 +15,11 @@ Rules for every slice:
   order, keyboard handling.
 - `npm test` (incl. `test:ui`), `npx tsc --noEmit`, `npm run lint` stay green.
 
-## `AppProviders.tsx` (177 → target ≤ 90 line shell)
+## `AppProviders.tsx` (177 → target ≤ 90 line shell) — **done (`bareaga_web-2ju`, 2026-09-09)**
+
+`usePreferencesProvider()` / `useArchiveProvider()` extracted to their own files
+(each memoizes its context value); `AppProviders` is now a ~30-line shell.
+Characterization tests: `src/components/appProviders.test.tsx`.
 
 Two independent concerns share one component: **preferences** state + persistence
 and **archive** state + persistence + sync (`PersistenceQueue`,
