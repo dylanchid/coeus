@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { decideProxyRedirect } from "@/lib/proxyRedirect";
 
 /**
  * Next 16 "proxy" (formerly middleware). Two jobs:
@@ -36,20 +37,14 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { data } = await supabase.auth.getClaims();
   const signedIn = typeof data?.claims?.sub === "string";
 
-  const path = request.nextUrl.pathname;
-
-  if (!signedIn && path === "/welcome") {
+  const redirect = decideProxyRedirect(request.nextUrl.pathname, signedIn);
+  if (redirect) {
     const to = request.nextUrl.clone();
-    to.pathname = "/signin";
+    to.pathname = redirect.pathname;
     to.search = "";
-    to.searchParams.set("next", "/welcome");
-    return NextResponse.redirect(to);
-  }
-
-  if (signedIn && path === "/signin") {
-    const to = request.nextUrl.clone();
-    to.pathname = "/welcome";
-    to.search = "";
+    for (const [name, value] of Object.entries(redirect.params ?? {})) {
+      to.searchParams.set(name, value);
+    }
     return NextResponse.redirect(to);
   }
 
