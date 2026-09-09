@@ -1,0 +1,56 @@
+name: Log thresholds
+
+# Free, in-repo backstop for the README "Observability › Alerting" log-based
+# thresholds. Pulls the last ~30 min of production runtime/request logs from
+# Vercel, evaluates the *.error rate / archive.sync 5xx + p95 / delivery-error
+# thresholds (src/lib/logThresholds.ts), and fails the run on any PAGE-level
+# breach — which emails the repo owner + pushes to GitHub mobile, and posts to
+# ALERT_WEBHOOK_URL when that secret is set. WARN-level breaches print but keep
+# the run green.
+#
+# A real log platform (Vercel Observability, or a Log Drain to
+# BetterStack/Axiom/Datadog) with sustained-window alerting is still the
+# recommended primary — this only sees what the polling window captured, and
+# GitHub's scheduler is best-effort.
+#
+# Required repo secret: VERCEL_TOKEN (an access token scoped to the project).
+# Optional: VERCEL_PROJECT, VERCEL_TEAM_ID, ALERT_WEBHOOK_URL.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      window:
+        description: "Lookback window in minutes"
+        default: "30"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: log-alerts
+  cancel-in-progress: true
+
+jobs:
+  thresholds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Evaluate log thresholds
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT: ${{ secrets.VERCEL_PROJECT }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          LOG_WINDOW_MINUTES: ${{ github.event.inputs.window || '30' }}
+        run: npm run check:log-thresholds

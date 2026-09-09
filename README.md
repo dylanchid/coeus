@@ -160,17 +160,30 @@ fails the run, which emails the repo owner and pushes to GitHub mobile. Set an
 a chat message. GitHub's scheduler is best-effort — for sub-minute paging add a
 dedicated monitor (see `docs/deployment.md`).
 
-**Log-based thresholds** — wire these into whatever consumes the Vercel logs
-(the structured `*.error` lines from `serverLog.ts`):
+**Log-based thresholds — backstop in place now.**
+[`.github/workflows/log-alerts.yml`](.github/workflows/log-alerts.yml) pulls the
+last ~30 min of production runtime/request logs from Vercel every ~30 min,
+evaluates the table below with [`src/lib/logThresholds.ts`](src/lib/logThresholds.ts),
+and fails the run on any **Page** breach (email + GitHub mobile, plus
+`ALERT_WEBHOOK_URL` when set); **Warning** breaches print but keep the run
+green. Rate signals have a minimum-sample floor so one error on a quiet route
+can't read as 100%. Run it locally against a window with
+`npm run check:log-thresholds` (`VERCEL_TOKEN` env, or `--input <file>` of
+JSON-lines). Required repo secret: `VERCEL_TOKEN`; optional `VERCEL_PROJECT`,
+`VERCEL_TEAM_ID`.
 
-| Signal | Warning | Page |
-|---|---|---|
-| `GET /api/health` non-200 | any, 1 sample | sustained > 2 min |
-| `*.error` log rate (any route) | > 1% of that route's requests over 15 min | > 5% over 5 min |
-| `archive.sync` `5xx` rate | > 2% over 15 min | > 10% over 5 min |
-| `archive.sync` p95 `durationMs` | > 2000 | > 5000 |
-| `destination_delivery.*.error` | > 5 in 1 h | > 50 in 1 h |
-| `archive_storage_stats` total `snapshot_bytes` growth | > 25%/week | > 100%/week |
+This is a short-polling safety net — a real log platform (Vercel Observability,
+or a Log Drain to BetterStack / Axiom / Datadog) with sustained-window alerting
+on the same `serverLog.ts` events is still the recommended primary.
+
+| Signal | Warning | Page | Backstopped |
+|---|---|---|---|
+| `GET /api/health` non-200 | any, 1 sample | sustained > 2 min | ✅ |
+| `*.error` log rate (any route) | > 1% of that route's requests over 15 min | > 5% over 5 min | ✅ |
+| `archive.sync` `5xx` rate | > 2% over 15 min | > 10% over 5 min | ✅ |
+| `archive.sync` p95 `durationMs` | > 2000 | > 5000 | ✅ |
+| `destination_delivery.*.error` | > 5 in 1 h | > 50 in 1 h | ✅ |
+| `archive_storage_stats` total `snapshot_bytes` growth | > 25%/week | > 100%/week | ⛔ needs week-over-week state (yg4 follow-up) |
 
 ## Local Supabase
 

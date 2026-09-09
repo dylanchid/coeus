@@ -19,7 +19,8 @@
     "audit:ci": "npm audit --audit-level=high",
     "smoke:destinations": "node --import tsx scripts/destination-smoke.mts",
     "smoke:security-headers": "node --import tsx scripts/security-headers-smoke.mts",
-    "smoke:health": "node --import tsx scripts/health-smoke.mts"
+    "smoke:health": "node --import tsx scripts/health-smoke.mts",
+    "check:log-thresholds": "node --import tsx scripts/log-thresholds.mts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
