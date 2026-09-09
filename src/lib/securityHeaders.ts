@@ -19,8 +19,25 @@ function supabaseConnectSources(supabaseUrl: string | undefined): string[] {
  * service, Supabase Auth/Storage. `unsafe-inline` is intentionally retained
  * for Next's inline bootstrap/style tags; script execution remains same-origin.
  */
+/**
+ * The only remote origin the app renders <img> from is the Supabase Storage
+ * host (uploaded avatars/covers, pinned to that host in profile.ts). Narrowing
+ * img-src from a blanket `https:` to that origin is defence-in-depth for F-25
+ * and F-20 — a doctored profile URL at a third-party host will not load.
+ */
+function supabaseImgSources(supabaseUrl: string | undefined): string[] {
+  const sources = ["https://*.supabase.co"];
+  try {
+    if (supabaseUrl) sources.push(new URL(supabaseUrl).origin);
+  } catch {
+    // Keep the policy valid while the misconfiguration surfaces elsewhere.
+  }
+  return [...new Set(sources)];
+}
+
 export function securityHeaders(production: boolean, supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL): Header[] {
   const connectSrc = ["'self'", ...supabaseConnectSources(supabaseUrl)].join(" ");
+  const imgSrc = ["'self'", "data:", "blob:", ...supabaseImgSources(supabaseUrl)].join(" ");
   const headers: Header[] = [
     { key: "Content-Security-Policy", value: [
       "default-src 'self'",
@@ -29,7 +46,7 @@ export function securityHeaders(production: boolean, supabaseUrl = process.env.N
       "font-src 'self' data:",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      "img-src 'self' data: blob: https:",
+      `img-src ${imgSrc}`,
       "object-src 'none'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",

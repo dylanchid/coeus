@@ -1,12 +1,7 @@
+import { safeInternalPath } from "@/lib/safeRedirect";
 import { createRequestSupabaseClient } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
-
-/** Only allow same-origin relative paths as the post-sign-in destination. */
-function safeNext(raw: string | null): string {
-  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
-  return "/welcome";
-}
 
 /**
  * OAuth landing route. Supabase (after the GitHub/Google round trip) redirects
@@ -15,7 +10,7 @@ function safeNext(raw: string | null): string {
  */
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const next = safeNext(url.searchParams.get("next"));
+  const next = safeInternalPath(url.searchParams.get("next"), "/welcome");
   const providerError = url.searchParams.get("error_description") ?? url.searchParams.get("error");
 
   if (providerError) {

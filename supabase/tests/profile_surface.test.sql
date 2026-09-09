@@ -1,6 +1,6 @@
 begin;
 
-select plan(24);
+select plan(27);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -74,11 +74,23 @@ select throws_ok(
      where id = '11111111-1111-1111-1111-111111111111' $$,
   '23514', null, 'rejects an avatar_url outside the profile-media bucket'
 );
+select throws_ok(
+  $$ update public.profiles
+     set avatar_url = 'http://project.supabase.co/storage/v1/object/public/profile-media/11111111-1111-1111-1111-111111111111/avatar-abc.png'
+     where id = '11111111-1111-1111-1111-111111111111' $$,
+  '23514', null, 'rejects a plaintext http avatar_url (F-25)'
+);
+select throws_ok(
+  $$ update public.profiles
+     set avatar_url = 'https://project.supabase.co/storage/v1/object/public/profile-media/avatar-abc.png'
+     where id = '11111111-1111-1111-1111-111111111111' $$,
+  '23514', null, 'rejects an avatar_url with no <uid>/ path segment (F-25)'
+);
 select lives_ok(
   $$ update public.profiles
-     set avatar_url = 'http://localhost:54321/storage/v1/object/public/profile-media/11111111-1111-1111-1111-111111111111/avatar-abc.png'
+     set avatar_url = 'https://project.supabase.co/storage/v1/object/public/profile-media/11111111-1111-1111-1111-111111111111/avatar-abc.png'
      where id = '11111111-1111-1111-1111-111111111111' $$,
-  'accepts an avatar_url inside the profile-media bucket'
+  'accepts an https avatar_url inside the profile-media bucket at a <uid>/ prefix'
 );
 
 -- B. collection_publications.owner_id -----------------------------------
@@ -136,21 +148,37 @@ select is(
   'the profile-media bucket exists and is public'
 );
 
+-- F-24: the bucket carries its own MIME + size ceiling, independent of any
+-- policy or the app-layer check in profileUpload.ts.
+select is(
+  (select allowed_mime_types from storage.buckets where id = 'profile-media'),
+  array['image/png', 'image/jpeg', 'image/webp'],
+  'the profile-media bucket restricts uploads to PNG/JPEG/WebP'
+);
+select is(
+  (select file_size_limit from storage.buckets where id = 'profile-media'),
+  (5 * 1024 * 1024)::bigint,
+  'the profile-media bucket caps object size at 5 MB'
+);
+
+-- F-24: profile-media is BFF-only for writes — the client insert/update
+-- policies are gone, so an authenticated PostgREST caller cannot write it even
+-- under its own uid prefix. (The BFF media route uses the service-role client.)
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 
-select lives_ok(
-  $$ insert into storage.objects (bucket_id, name)
-     values ('profile-media', '11111111-1111-1111-1111-111111111111/avatar-self.png') $$,
-  'an account can write under its own uid prefix'
-);
 select throws_ok(
   $$ insert into storage.objects (bucket_id, name)
-     values ('profile-media', '22222222-2222-2222-2222-222222222222/avatar-other.png') $$,
-  '42501', null, 'an account cannot write under another account''s uid prefix'
+     values ('profile-media', '11111111-1111-1111-1111-111111111111/avatar-self.png') $$,
+  '42501', null, 'an authenticated client cannot write profile-media directly (BFF-only)'
 );
 
 reset role;
+
+-- Seed one object as superuser (RLS bypassed) so the anon read below has a row.
+insert into storage.objects (bucket_id, name)
+values ('profile-media', '11111111-1111-1111-1111-111111111111/avatar-seed.png');
+
 set local role anon;
 select set_config('request.jwt.claim.sub', null, true);
 

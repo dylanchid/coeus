@@ -5,11 +5,15 @@ import {
   BIO_MAX,
   DISPLAY_NAME_MAX,
   LOCATION_MAX,
+  normalizeBucketUrl,
   normalizeHandle,
   normalizePinnedSlugs,
   validateProfileInput,
   validateProfileLinks,
 } from "./profile.ts";
+
+const SUPA = "https://project.supabase.co";
+const OK_AVATAR = `${SUPA}/storage/v1/object/public/profile-media/11111111-1111-1111-1111-111111111111/avatar-abc.png`;
 
 const EMPTY_SURFACE = {
   location: null,
@@ -107,6 +111,51 @@ test("reports every invalid field at once", () => {
   const result = validateProfileInput({ handle: "!", displayName: "", bio: "x".repeat(BIO_MAX + 1) });
   assert.equal(result.ok, false);
   assert.deepEqual(Object.keys(result.errors).sort(), ["bio", "displayName", "handle"]);
+});
+
+test("normalizeBucketUrl only accepts an https profile-media URL on the configured Supabase host at a <uid>/ prefix", () => {
+  assert.equal(normalizeBucketUrl(OK_AVATAR, SUPA), OK_AVATAR);
+  assert.equal(normalizeBucketUrl(`  ${OK_AVATAR}  `, SUPA), OK_AVATAR);
+  // wrong host
+  assert.equal(
+    normalizeBucketUrl(OK_AVATAR.replace("project.supabase.co", "evil.example"), SUPA),
+    null,
+  );
+  // plaintext http
+  assert.equal(normalizeBucketUrl(OK_AVATAR.replace("https://", "http://"), SUPA), null);
+  // right host + bucket but no <uid>/ segment
+  assert.equal(
+    normalizeBucketUrl(`${SUPA}/storage/v1/object/public/profile-media/avatar-abc.png`, SUPA),
+    null,
+  );
+  // a different bucket
+  assert.equal(
+    normalizeBucketUrl(`${SUPA}/storage/v1/object/public/archive-snapshots/x/y.png`, SUPA),
+    null,
+  );
+  assert.equal(normalizeBucketUrl("", SUPA), null);
+  assert.equal(normalizeBucketUrl(42, SUPA), null);
+  assert.equal(normalizeBucketUrl(OK_AVATAR, undefined), null);
+});
+
+test("validateProfileInput rejects an avatar/cover URL that is not a profile-media upload", () => {
+  const prev = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  process.env.NEXT_PUBLIC_SUPABASE_URL = SUPA;
+  try {
+    const ok = validateProfileInput({ handle: "ada", displayName: "Ada", avatarUrl: OK_AVATAR });
+    assert.equal(ok.ok, true);
+    assert.equal(ok.value.avatarUrl, OK_AVATAR);
+
+    const bad = validateProfileInput({
+      handle: "ada",
+      displayName: "Ada",
+      avatarUrl: "https://evil.example/storage/v1/object/public/profile-media/x/y.svg",
+    });
+    assert.equal(bad.ok, false);
+    assert.ok(bad.errors.avatarUrl);
+  } finally {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = prev;
+  }
 });
 
 test("ignores non-string input without throwing", () => {

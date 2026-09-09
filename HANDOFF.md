@@ -21,6 +21,7 @@ as such.
 - **Profiles + person graph + posts/replies/reposts/likes** — shipped (`bareaga_web-nfq` phases 1–4, 2026-09-07). Public profile at `/u/[handle]` with `followers`/`following` pages; owner-console affordances inline via an `isOwner` flag.
 - **Observability** — structured `serverLog` boundary on every API route; `/api/health` probe; uptime + log-threshold GitHub Actions alerting (`bareaga_web-yg4`).
 - **Open near-term work** — see `bd ready`. UI-orchestration extraction (`bareaga_web-cqi`), `src/lib` domain-folder moves (`bareaga_web-a2n`), Playwright E2E (`bareaga_web-ubj`), notifications (`bareaga_web-80m`).
+- **Living research** — [`docs/codebase-findings.md`](docs/codebase-findings.md) indexes bottleneck and risk findings (F-01…). It is not a task list and not yet a plan; HANDOFF still wins on what ships.
 
 Before changing Next.js code, read the relevant installed guide under `node_modules/next/dist/docs/`; this repository’s framework version may differ from remembered APIs.
 

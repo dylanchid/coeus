@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { SignInPanel } from "@/components/SignInPanel";
+import { safeInternalPath } from "@/lib/safeRedirect";
 
 export const metadata: Metadata = {
   title: "Sign in — Coeus",
@@ -9,10 +10,6 @@ export const metadata: Metadata = {
 
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function safeNext(raw: string | undefined): string {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/welcome";
 }
 
 export default async function SignInPage({
@@ -24,7 +21,7 @@ export default async function SignInPage({
   return (
     <AppShell section="account">
       <div className="signin-page">
-        <SignInPanel next={safeNext(firstValue(params.next))} errorMessage={firstValue(params.error) ?? null} />
+        <SignInPanel next={safeInternalPath(firstValue(params.next), "/welcome")} errorMessage={firstValue(params.error) ?? null} />
       </div>
     </AppShell>
   );

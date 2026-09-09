@@ -3,13 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BIO_MAX, DISPLAY_NAME_MAX, validateProfileInput, type Profile, type ProfileField } from "@/lib/profile";
+import { safeInternalPath } from "@/lib/safeRedirect";
 import { useAuth } from "./AuthProvider";
 
 type FieldErrors = Partial<Record<ProfileField, string>>;
-
-function safeNext(raw: string | undefined): string {
-  return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/archive";
-}
 
 /**
  * Onboarding + profile editing on one route. A signed-in account with no
@@ -18,7 +15,7 @@ function safeNext(raw: string | undefined): string {
  * visitors are bounced to /signin.
  */
 export function WelcomeForm({ next: rawNext }: { next?: string }) {
-  const next = safeNext(rawNext);
+  const next = safeInternalPath(rawNext, "/archive");
   const router = useRouter();
   const { status, profile, applyProfile } = useAuth();
 

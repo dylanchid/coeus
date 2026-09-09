@@ -41,10 +41,15 @@ async function tryParseAsFeed(text: string): Promise<ParsedFeed | null> {
  * already fetched in step one — covering WordPress, Ghost, and most
  * static-site blogs. Every candidate goes through the SSRF-hardened fetch
  * since these URLs are visitor-controlled.
+ *
+ * `fetcher` defaults to `undefined`, not the global `fetch`: `fetchFeedText`
+ * only takes its DNS-pinned `fetchValidatedHttps` path when it receives no
+ * fetcher, and an unpinned `fetch()` here would resolve the hostname a second
+ * time — the exact rebinding window the pin closes. Tests inject a fetcher.
  */
 export async function resolveFeedUrl(
   rawUrl: string,
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch | undefined = undefined,
   resolve = lookup
 ): Promise<ResolveFeedResult> {
   let base: URL;
