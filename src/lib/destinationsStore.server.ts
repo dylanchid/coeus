@@ -94,7 +94,8 @@ export interface DestinationWorkerStore {
   activeDestinations(ownerId?: string): Promise<WorkerDestination[]>;
   /** Current per-item watermarks, so the worker only pushes items dirty since their last delivered revision. */
   deliveries(ownerId: string, kind: DestinationKind): Promise<DestinationDelivery[]>;
-  recordOutcome(ownerId: string, kind: DestinationKind, outcome: DeliveryOutcomeInput): Promise<void>;
+  /** Persist a tick's outcomes atomically, avoiding one RPC round-trip per item. */
+  recordOutcomes(ownerId: string, kind: DestinationKind, outcomes: DeliveryOutcomeInput[]): Promise<void>;
   markStatus(ownerId: string, kind: DestinationKind, status: DestinationStatus): Promise<void>;
   /**
    * Atomically take the delivery lease for one destination. Returns false when
@@ -223,18 +224,21 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
       }));
   }
 
-  async recordOutcome(ownerId: string, kind: DestinationKind, outcome: DeliveryOutcomeInput): Promise<void> {
+  async recordOutcomes(ownerId: string, kind: DestinationKind, outcomes: DeliveryOutcomeInput[]): Promise<void> {
+    if (!outcomes.length) return;
     const archiveId = await this.archiveId(ownerId);
-    const { error } = await this.supabase.rpc("record_delivery_outcome", {
+    const { error } = await this.supabase.rpc("record_delivery_outcomes", {
       p_owner_id: ownerId,
       p_archive_id: archiveId,
       p_kind: kind,
-      p_item_id: outcome.itemId,
-      p_external_ref: outcome.externalRef,
-      p_delivered_revision: outcome.deliveredRevision,
-      p_status: outcome.status,
-      p_http_status: outcome.httpStatus,
-      p_error: outcome.error,
+      p_outcomes: outcomes.map((outcome) => ({
+        item_id: outcome.itemId,
+        external_ref: outcome.externalRef,
+        delivered_revision: outcome.deliveredRevision,
+        status: outcome.status,
+        http_status: outcome.httpStatus,
+        error: outcome.error,
+      })),
     });
     if (error) throw error;
   }

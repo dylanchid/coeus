@@ -8,6 +8,7 @@ import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = createAdminSupabaseClient();

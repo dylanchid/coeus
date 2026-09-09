@@ -74,10 +74,11 @@ export interface DeliveryOutcome {
 export async function runDestinationDelivery(
   snapshot: ArchiveSyncSnapshot,
   deliveries: readonly DestinationDelivery[],
-  adapter: DestinationAdapter
+  adapter: DestinationAdapter,
+  maxItems = Infinity
 ): Promise<DeliveryOutcome[]> {
   const outcomes: DeliveryOutcome[] = [];
-  for (const action of computeDirtyItems(snapshot, deliveries)) {
+  for (const action of computeDirtyItems(snapshot, deliveries).slice(0, maxItems)) {
     const result = action.kind === "upsert"
       ? await adapter.pushUpsert(action.item, action.existingExternalRef)
       : await adapter.pushDelete(action.itemId, action.existingExternalRef);

@@ -20,6 +20,8 @@ interface GitHubTreeEntry {
 }
 
 const GITHUB_API = "https://api.github.com";
+/** GitHub accepts much larger trees, but smaller commits keep retries bounded. */
+export const GITHUB_TREE_CHUNK_SIZE = 500;
 
 function githubHeaders(token: string): HeadersInit {
   return {
@@ -64,6 +66,26 @@ export class GitHubGitAdapter {
 
   async pushBatch(actions: GitBatchAction[]): Promise<Map<string, DestinationPushResult>> {
     if (!actions.length) return new Map();
+
+    const outcomes = new Map<string, DestinationPushResult>();
+    for (let start = 0; start < actions.length; start += GITHUB_TREE_CHUNK_SIZE) {
+      const chunk = actions.slice(start, start + GITHUB_TREE_CHUNK_SIZE);
+      const chunkOutcomes = await this.pushChunk(chunk);
+      for (const [itemId, outcome] of chunkOutcomes) outcomes.set(itemId, outcome);
+
+      // A failed ref update means later chunks cannot safely build on the
+      // expected parent. Report the remainder as retryable without attempting
+      // further external writes; successful earlier chunks remain watermarked.
+      if ([...chunkOutcomes.values()].some((outcome) => !outcome.ok)) {
+        const failure = [...chunkOutcomes.values()].find((outcome) => !outcome.ok)!;
+        for (const action of actions.slice(start + chunk.length)) outcomes.set(action.itemId, failure);
+        break;
+      }
+    }
+    return outcomes;
+  }
+
+  private async pushChunk(actions: GitBatchAction[]): Promise<Map<string, DestinationPushResult>> {
 
     const refResponse = await this.request(
       `${GITHUB_API}/repos/${this.config.repo}/git/ref/heads/${encodeURIComponent(this.config.branch)}`,

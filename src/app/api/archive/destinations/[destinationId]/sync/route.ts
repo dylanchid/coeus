@@ -6,6 +6,7 @@ import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(request: Request, context: { params: Promise<{ destinationId: string }> }): Promise<Response> {
   const { destinationId } = await context.params;

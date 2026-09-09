@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { GitHubGitAdapter } from "./obsidianGitAdapter.server.ts";
+import { GITHUB_TREE_CHUNK_SIZE, GitHubGitAdapter } from "./obsidianGitAdapter.server.ts";
 
 const CONFIG = { repo: "acme/vault", branch: "main", pathPrefix: "coeus" };
 
@@ -110,4 +110,23 @@ test("a mid-batch 5xx surfaces the GitHub error message without an auth flag", a
   const adapter = new GitHubGitAdapter(CONFIG, "token", fetcher);
   const outcomes = await adapter.pushBatch([{ itemId: "item-1", kind: "upsert", path: "coeus/item-1.md", content: "hi" }]);
   assert.deepEqual(outcomes.get("item-1"), { ok: false, httpStatus: 500, error: "Internal Server Error" });
+});
+
+test("pushBatch chunks GitHub trees into commits of at most 500 actions", async () => {
+  const actions = Array.from({ length: GITHUB_TREE_CHUNK_SIZE + 1 }, (_, index) => ({
+    itemId: `item-${index}`,
+    kind: "upsert",
+    path: `coeus/item-${index}.md`,
+    content: "hi",
+  }));
+  const { fetcher, calls } = fetcherFromScript([
+    jsonResponse({ object: { sha: "parent-1" } }), jsonResponse({ tree: { sha: "tree-1" } }), jsonResponse({ sha: "new-tree-1" }), jsonResponse({ sha: "commit-1" }), new Response(null, { status: 200 }),
+    jsonResponse({ object: { sha: "commit-1" } }), jsonResponse({ tree: { sha: "new-tree-1" } }), jsonResponse({ sha: "new-tree-2" }), jsonResponse({ sha: "commit-2" }), new Response(null, { status: 200 }),
+  ]);
+  const outcomes = await new GitHubGitAdapter(CONFIG, "token", fetcher).pushBatch(actions);
+
+  assert.equal(calls.length, 10);
+  assert.equal(calls[2].body.tree.length, GITHUB_TREE_CHUNK_SIZE);
+  assert.equal(calls[7].body.tree.length, 1);
+  assert.equal(outcomes.size, actions.length);
 });

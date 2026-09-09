@@ -6,7 +6,7 @@ import { NotionAdapter } from "./notionAdapter.server.ts";
 import { itemToObsidianNote } from "./archiveExport.ts";
 import type { ArchiveSyncSnapshot } from "./archiveSync.ts";
 import type { DestinationKind } from "./destinations.ts";
-import type { DestinationWorkerStore, WorkerDestination } from "./destinationsStore.server.ts";
+import type { DeliveryOutcomeInput, DestinationWorkerStore, WorkerDestination } from "./destinationsStore.server.ts";
 import type { NotionConfig, ObsidianGitConfig } from "./destinations.ts";
 
 export interface ArchiveSnapshotReader {
@@ -21,6 +21,8 @@ export interface DeliveryCounts {
 }
 
 const EMPTY_COUNTS: DeliveryCounts = { delivered: 0, failed: 0, authError: false };
+/** Bound an invocation so a first-connect cannot outlive its serverless budget. */
+export const MAX_ITEMS_PER_TICK = 100;
 
 async function deliverObsidianGit(
   target: WorkerDestination,
@@ -31,7 +33,7 @@ async function deliverObsidianGit(
 ): Promise<DeliveryCounts> {
   const config = target.config as ObsidianGitConfig;
   const deliveries = await store.deliveries(target.ownerId, target.kind);
-  const actions = computeDirtyItems(snapshot, deliveries);
+  const actions = computeDirtyItems(snapshot, deliveries).slice(0, MAX_ITEMS_PER_TICK);
   if (!actions.length) return { ...EMPTY_COUNTS };
 
   const adapter = new GitHubGitAdapter(config, target.secret, fetcher, retryOptions);
@@ -43,13 +45,14 @@ async function deliverObsidianGit(
   const outcomes = await adapter.pushBatch(batch);
 
   const counts: DeliveryCounts = { delivered: 0, failed: 0, authError: false };
+  const outcomeInputs: DeliveryOutcomeInput[] = [];
   for (const action of actions) {
     const result = outcomes.get(action.itemId);
     if (!result) continue;
     if (result.authError) counts.authError = true;
     if (result.ok) counts.delivered += 1;
     else counts.failed += 1;
-    await store.recordOutcome(target.ownerId, target.kind, {
+    outcomeInputs.push({
       itemId: action.itemId,
       externalRef: result.externalRef ?? null,
       deliveredRevision: action.targetRevision,
@@ -58,6 +61,7 @@ async function deliverObsidianGit(
       error: result.error ?? null,
     });
   }
+  await store.recordOutcomes(target.ownerId, target.kind, outcomeInputs);
   if (counts.authError) await store.markStatus(target.ownerId, target.kind, "auth_error");
   return counts;
 }
@@ -76,14 +80,15 @@ async function deliverNotion(
 ): Promise<DeliveryCounts> {
   const deliveries = await store.deliveries(target.ownerId, target.kind);
   const adapter = new NotionAdapter(target.config as NotionConfig, target.secret, fetcher, retryOptions);
-  const outcomes = await runDestinationDelivery(snapshot, deliveries, adapter);
+  const outcomes = await runDestinationDelivery(snapshot, deliveries, adapter, MAX_ITEMS_PER_TICK);
 
   const counts: DeliveryCounts = { delivered: 0, failed: 0, authError: false };
+  const outcomeInputs: DeliveryOutcomeInput[] = [];
   for (const outcome of outcomes) {
     if (outcome.result.authError) counts.authError = true;
     if (outcome.result.ok) counts.delivered += 1;
     else counts.failed += 1;
-    await store.recordOutcome(target.ownerId, target.kind, {
+    outcomeInputs.push({
       itemId: outcome.itemId,
       externalRef: outcome.result.externalRef ?? null,
       deliveredRevision: outcome.targetRevision,
@@ -92,6 +97,7 @@ async function deliverNotion(
       error: outcome.result.error ?? null,
     });
   }
+  await store.recordOutcomes(target.ownerId, target.kind, outcomeInputs);
   if (counts.authError) await store.markStatus(target.ownerId, target.kind, "auth_error");
   return counts;
 }
@@ -165,7 +171,7 @@ export async function runDestinationWorkerTick(
   options: WorkerTickOptions = {}
 ): Promise<WorkerTickResult> {
   const correlationId = options.correlationId ?? newCorrelationId();
-  const leaseTtlSeconds = options.leaseTtlSeconds ?? 120;
+  const leaseTtlSeconds = options.leaseTtlSeconds ?? 300;
   const minIntervalSeconds = options.minIntervalSeconds ?? 30;
   const result: WorkerTickResult = { correlationId, processed: 0, skipped: 0, failures: [], results: [] };
 

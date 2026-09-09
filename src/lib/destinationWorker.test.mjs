@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createInitialSyncSnapshot } from "./archiveSync.ts";
 import { createDemoArchive } from "./archiveFixtures.ts";
-import { runDestinationWorkerTick } from "./destinationWorker.server.ts";
+import { MAX_ITEMS_PER_TICK, runDestinationWorkerTick } from "./destinationWorker.server.ts";
 
 const SNAPSHOT = createInitialSyncSnapshot(createDemoArchive());
 const ITEM_COUNT = SNAPSHOT.archive.items.length;
@@ -33,8 +33,8 @@ function fakeStore(overrides = {}) {
     async deliveries() {
       return [];
     },
-    async recordOutcome(ownerId, kind, outcome) {
-      calls.outcomes.push({ ownerId, kind, outcome });
+    async recordOutcomes(ownerId, kind, outcomes) {
+      calls.outcomes.push({ ownerId, kind, outcomes });
     },
     async markStatus(ownerId, kind, status) {
       calls.status.push({ ownerId, kind, status });
@@ -82,7 +82,8 @@ test("a successful run records every item and releases the lease with an outcome
   assert.equal(result.processed, 1);
   assert.equal(result.results[0].status, "delivered");
   assert.equal(result.results[0].delivered, ITEM_COUNT);
-  assert.equal(store.calls.outcomes.length, ITEM_COUNT);
+  assert.equal(store.calls.outcomes.length, 1, "outcomes are written in one batch RPC");
+  assert.equal(store.calls.outcomes[0].outcomes.length, ITEM_COUNT);
   assert.equal(store.calls.release.length, 1);
   assert.equal(store.calls.release[0].token, store.calls.acquire[0].token);
   assert.equal(store.calls.release[0].outcome.status, "delivered");
@@ -93,6 +94,24 @@ test("a manual sync passes minIntervalSeconds:0 through to the lease", async () 
   const store = fakeStore();
   await runDestinationWorkerTick(okReader, store, { fetcher: notionOkFetcher, minIntervalSeconds: 0 });
   assert.equal(store.calls.acquire[0].minInterval, 0);
+});
+
+test("a default lease covers the route budget and a tick sends no more than 100 items", async () => {
+  const manyItems = Array.from({ length: MAX_ITEMS_PER_TICK + 1 }, (_, index) => ({
+    ...SNAPSHOT.archive.items[index % ITEM_COUNT],
+    id: `item-${index}`,
+  }));
+  const snapshot = {
+    ...SNAPSHOT,
+    archive: { ...SNAPSHOT.archive, items: manyItems },
+    entityVersions: Object.fromEntries(manyItems.map((item) => [`item:${item.id}`, { fields: { title: 1 } }])),
+  };
+  const store = fakeStore();
+  const result = await runDestinationWorkerTick({ async snapshot() { return snapshot; } }, store, { fetcher: notionOkFetcher });
+
+  assert.equal(store.calls.acquire[0].ttl, 300);
+  assert.equal(result.results[0].delivered, MAX_ITEMS_PER_TICK);
+  assert.equal(store.calls.outcomes[0].outcomes.length, MAX_ITEMS_PER_TICK);
 });
 
 test("a delivery that throws is captured, the lease is released, and the tick never throws", async () => {

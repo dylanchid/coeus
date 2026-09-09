@@ -1,6 +1,6 @@
 begin;
 
-select plan(36);
+select plan(39);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -78,6 +78,21 @@ select is((select last_delivered_revision from public.destination_deliveries whe
 select is((select external_ref from public.destination_deliveries where item_id = 'item-1'), 'articles/item-1.md', 'a failed attempt preserves the prior external ref');
 select is((select status::text from public.destination_deliveries where item_id = 'item-1'), 'failed_retryable', 'records the failure status');
 select is((select count(*) from public.destination_delivery_attempts), 2::bigint, 'logs a second delivery attempt');
+
+select lives_ok(
+  $$ select public.record_delivery_outcomes(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+    'obsidian_git'::public.destination_kind,
+    '[
+      {"item_id":"item-2","external_ref":"articles/item-2.md","delivered_revision":4,"status":"delivered","http_status":200,"error":null},
+      {"item_id":"item-3","external_ref":null,"delivered_revision":5,"status":"failed_retryable","http_status":500,"error":"boom"}
+    ]'::jsonb
+  ) $$,
+  'records a batch of delivery outcomes atomically'
+);
+select is((select count(*) from public.destination_deliveries), 3::bigint, 'batch records every delivery watermark');
+select is((select count(*) from public.destination_delivery_attempts), 4::bigint, 'batch logs every delivery attempt');
 
 select is((select public.mark_destination_status(
   '11111111-1111-1111-1111-111111111111',
