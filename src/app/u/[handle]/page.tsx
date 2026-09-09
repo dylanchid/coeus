@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ProfileView } from "@/components/ProfileView";
-import { deriveProfileView } from "@/lib/publicProfile";
+import { deriveProfileView, deriveCollectionCards, derivePostCards } from "@/lib/publicProfile";
 import { resolveProfileTab } from "@/lib/profileTabs";
+import { decodeProfileFeedCursor, PROFILE_FEED_PAGE_SIZE } from "@/lib/profileFeedCursor";
 import { loadProfileIdentity } from "@/lib/profilePageLoader.server";
 import { SupabaseProfileStore } from "@/lib/profileStore.server";
 import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
@@ -64,17 +65,41 @@ export default async function ProfilePage({
   const postReader = new SupabasePostPublicationStore(admin);
   const conversationReader = new SupabaseConversationProfileReader(admin);
 
-  const [publications, posts, followers, following, initialFollowing, reposts, likes, replies] =
-    await Promise.all([
-      profileStore.listOwnedPublications(profile.id),
-      postReader.listByAuthor(profile.id),
-      followStore.countFollowers(profile.id),
-      followStore.countFollowing(profile.id),
-      viewerId && !isOwner ? followStore.isFollowing(viewerId, profile.id) : Promise.resolve(false),
-      conversationReader.listRepostsByActor(profile.id),
-      conversationReader.listLikesByActor(profile.id),
-      conversationReader.listRepliesByActor(profile.id),
-    ]);
+  // The dedicated Collections / Posts tabs page through a keyset cursor beyond
+  // the bt0 load cap (bareaga_web-p5o). Overview and every other tab render
+  // from the capped full loads below, unchanged. Only one of the two page
+  // loads is ever issued, and only when its tab is the active one.
+  const activeParam = resolveProfileTab(query.tab);
+  const feedCursor = decodeProfileFeedCursor(query.cursor);
+  const feedRequest = { cursor: feedCursor, limit: PROFILE_FEED_PAGE_SIZE };
+
+  const [
+    publications,
+    posts,
+    followers,
+    following,
+    initialFollowing,
+    reposts,
+    likes,
+    replies,
+    collectionsPage,
+    postsPage,
+  ] = await Promise.all([
+    profileStore.listOwnedPublications(profile.id),
+    postReader.listByAuthor(profile.id),
+    followStore.countFollowers(profile.id),
+    followStore.countFollowing(profile.id),
+    viewerId && !isOwner ? followStore.isFollowing(viewerId, profile.id) : Promise.resolve(false),
+    conversationReader.listRepostsByActor(profile.id),
+    conversationReader.listLikesByActor(profile.id),
+    conversationReader.listRepliesByActor(profile.id),
+    activeParam === "collections"
+      ? profileStore.pageOwnedPublications(profile.id, feedRequest)
+      : Promise.resolve(null),
+    activeParam === "posts"
+      ? postReader.pageByAuthor(profile.id, feedRequest)
+      : Promise.resolve(null),
+  ]);
 
   const viewer: Viewer = isOwner
     ? { kind: "owner", id: viewerId! }
@@ -126,6 +151,22 @@ export default async function ProfilePage({
   }
   const openEditor = isOwner && (query.edit === "1" || query.edit === "true");
 
+  // Apply the SAME viewer cut deriveProfileView uses, on the cursor page only.
+  const paginatedCollections = collectionsPage
+    ? {
+        cards: deriveCollectionCards(collectionsPage.items, viewer, profile.pinnedCollectionSlugs),
+        hasMore: collectionsPage.hasMore,
+        nextCursor: collectionsPage.nextCursor,
+      }
+    : null;
+  const paginatedPosts = postsPage
+    ? {
+        cards: derivePostCards(postsPage.items, viewer),
+        hasMore: postsPage.hasMore,
+        nextCursor: postsPage.nextCursor,
+      }
+    : null;
+
   return (
     <AppShell section="account">
       <ProfileView
@@ -135,6 +176,9 @@ export default async function ProfilePage({
         sectionSwitches={isOwner ? profile.sections : null}
         openEditor={openEditor}
         replyComposeTargets={replyComposeTargets}
+        paginatedCollections={paginatedCollections}
+        paginatedPosts={paginatedPosts}
+        onCursor={feedCursor !== null}
       />
     </AppShell>
   );

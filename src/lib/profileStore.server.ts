@@ -10,12 +10,40 @@ import { HANDLE_PATTERN, normalizeHandle, validateProfileLinks, type Profile, ty
 import { isPublicationVisibility } from "./collectionPublication.ts";
 import type { ProfileSectionsPatch, ProfileSectionSwitches } from "./profileSections.ts";
 import type { OwnedPublication } from "./publicProfile.ts";
+import {
+  encodeProfileFeedCursor,
+  type ProfileFeedPage,
+  type ProfileFeedPageRequest,
+} from "./profileFeedCursor.ts";
 
 const SECTION_COLUMNS =
   "show_followers,show_following,show_reposts,show_replies,show_likes,likes_visibility";
 
 /** Hard cap on owned publications loaded for one profile render — see bt0. */
 const PUBLICATION_LIMIT = 500;
+
+/** Hard clamp on a single Collections-tab page (bareaga_web-p5o). */
+const MAX_PUBLICATION_PAGE_SIZE = 100;
+
+const PUBLICATION_SELECT =
+  "id,slug,name,description,curator_note,visibility,published_at,updated_at,unpublished_at," +
+  "collection_publication_items(count),collection_follows(count)";
+
+function ownedPublication(row: Record<string, unknown>): OwnedPublication {
+  return {
+    id: String(row.id),
+    slug: String(row.slug),
+    name: String(row.name),
+    description: String(row.description ?? ""),
+    curatorNote: String(row.curator_note ?? ""),
+    visibility: row.visibility as OwnedPublication["visibility"],
+    publishedAt: String(row.published_at),
+    updatedAt: String(row.updated_at),
+    unpublishedAt: typeof row.unpublished_at === "string" ? row.unpublished_at : null,
+    itemCount: embeddedCount(row.collection_publication_items),
+    followerCount: embeddedCount(row.collection_follows),
+  };
+}
 
 function sectionSwitches(row: Record<string, unknown>): ProfileSectionSwitches {
   return {
@@ -289,19 +317,48 @@ export class SupabaseProfileStore implements ProfileStore {
       // Collections tab grows its own pagination as a follow-up.
       .limit(PUBLICATION_LIMIT);
     if (error) throw error;
-    return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
-      id: String(row.id),
-      slug: String(row.slug),
-      name: String(row.name),
-      description: String(row.description ?? ""),
-      curatorNote: String(row.curator_note ?? ""),
-      visibility: row.visibility as OwnedPublication["visibility"],
-      publishedAt: String(row.published_at),
-      updatedAt: String(row.updated_at),
-      unpublishedAt: typeof row.unpublished_at === "string" ? row.unpublished_at : null,
-      itemCount: embeddedCount(row.collection_publication_items),
-      followerCount: embeddedCount(row.collection_follows),
-    }));
+    return ((data ?? []) as unknown as Record<string, unknown>[]).map(ownedPublication);
+  }
+
+  /**
+   * One forward-only page of an owner's publications, newest first, including
+   * since-unpublished rows (the derive layer greys them for the owner, drops
+   * them for a visitor) — the cursor equivalent of {@link listOwnedPublications}
+   * for the dedicated Collections tab (bareaga_web-p5o). One indexed query on
+   * collection_publications_owner_page_idx (owner_id, published_at desc, id desc).
+   * The isListable cut still happens in deriveProfileView, so a page may render
+   * shorter than `limit`.
+   */
+  async pageOwnedPublications(
+    profileId: string,
+    page: ProfileFeedPageRequest,
+  ): Promise<ProfileFeedPage<OwnedPublication>> {
+    const limit = Math.min(Math.max(Math.trunc(page.limit), 1), MAX_PUBLICATION_PAGE_SIZE);
+    let query = this.supabase
+      .from("collection_publications")
+      .select(PUBLICATION_SELECT)
+      .eq("owner_id", profileId)
+      .order("published_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1);
+    if (page.cursor) {
+      const { ts, id } = page.cursor;
+      query = query.or(`published_at.lt.${ts},and(published_at.eq.${ts},id.lt.${id})`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const rows = (data ?? []) as unknown as Record<string, unknown>[];
+    const hasMore = rows.length > limit;
+    const pageRows = rows.slice(0, limit);
+    const last = pageRows[pageRows.length - 1];
+    const nextCursor =
+      hasMore && last
+        ? encodeProfileFeedCursor({ ts: String(last.published_at), id: String(last.id) })
+        : null;
+
+    return { items: pageRows.map(ownedPublication), hasMore, nextCursor };
   }
 }
 

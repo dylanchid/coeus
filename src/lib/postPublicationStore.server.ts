@@ -9,6 +9,11 @@ import { parseArchiveSyncSnapshot } from "./archiveSync.ts";
 import { derivePostSnapshot, parsePostSnapshot, type Post, type PublishPostRequest } from "./post.ts";
 import { PostItemNotFoundError } from "./postErrors.ts";
 import type { OwnedPost } from "./publicProfile.ts";
+import {
+  encodeProfileFeedCursor,
+  type ProfileFeedPage,
+  type ProfileFeedPageRequest,
+} from "./profileFeedCursor.ts";
 import type { Visibility } from "./visibility.ts";
 
 export { PostItemNotFoundError };
@@ -21,6 +26,28 @@ export { PostItemNotFoundError };
  */
 const POST_LIMIT = 500;
 
+/** Hard clamp on a single Posts-tab page. A caller asking for more than this
+ * gets this many; the bt0 ceiling still applies per request. */
+const MAX_POST_PAGE_SIZE = 100;
+
+const PAGE_COLUMNS =
+  "id,item_local_id,title,url,source_name,author,excerpt,commentary,visibility,created_at,updated_at";
+
+function ownedPost(row: Record<string, unknown>): OwnedPost {
+  return {
+    itemLocalId: String(row.item_local_id),
+    title: String(row.title),
+    url: String(row.url),
+    sourceName: String(row.source_name ?? ""),
+    author: String(row.author ?? ""),
+    excerpt: String(row.excerpt ?? ""),
+    commentary: String(row.commentary ?? ""),
+    visibility: row.visibility as Visibility,
+    publishedAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
 /**
  * The read path for an author's published posts, feeding the profile Posts tab
  * and the Discover "Following" view. Mirrors how PublicCollectionReader lives
@@ -30,6 +57,14 @@ const POST_LIMIT = 500;
  */
 export interface PublicPostReader {
   listByAuthor(authorId: string): Promise<OwnedPost[]>;
+  /**
+   * One forward-only page of an author's posts, newest first, all tiers — the
+   * cursor equivalent of {@link listByAuthor} for the dedicated Posts tab
+   * (bareaga_web-p5o). One indexed query on posts_author_live_idx
+   * (author_id, created_at desc, id desc); the isListable cut still happens in
+   * deriveProfileView, so a page may render shorter than `limit`.
+   */
+  pageByAuthor(authorId: string, page: ProfileFeedPageRequest): Promise<ProfileFeedPage<OwnedPost>>;
 }
 
 /**
@@ -67,18 +102,37 @@ export class SupabasePostPublicationStore implements PostPublicationStore, Publi
       .order("created_at", { ascending: false })
       .limit(POST_LIMIT);
     if (error) throw error;
-    return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
-      itemLocalId: String(row.item_local_id),
-      title: String(row.title),
-      url: String(row.url),
-      sourceName: String(row.source_name ?? ""),
-      author: String(row.author ?? ""),
-      excerpt: String(row.excerpt ?? ""),
-      commentary: String(row.commentary ?? ""),
-      visibility: row.visibility as Visibility,
-      publishedAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
-    }));
+    return ((data ?? []) as Record<string, unknown>[]).map(ownedPost);
+  }
+
+  async pageByAuthor(authorId: string, page: ProfileFeedPageRequest): Promise<ProfileFeedPage<OwnedPost>> {
+    const limit = Math.min(Math.max(Math.trunc(page.limit), 1), MAX_POST_PAGE_SIZE);
+    let query = this.supabase
+      .from("posts")
+      .select(PAGE_COLUMNS)
+      .eq("author_id", authorId)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1);
+    if (page.cursor) {
+      // Keyset: rows strictly after (ts, id) under `created_at desc, id desc`.
+      const { ts, id } = page.cursor;
+      query = query.or(`created_at.lt.${ts},and(created_at.eq.${ts},id.lt.${id})`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const hasMore = rows.length > limit;
+    const pageRows = rows.slice(0, limit);
+    const last = pageRows[pageRows.length - 1];
+    const nextCursor =
+      hasMore && last
+        ? encodeProfileFeedCursor({ ts: String(last.created_at), id: String(last.id) })
+        : null;
+
+    return { items: pageRows.map(ownedPost), hasMore, nextCursor };
   }
 
   async publish(ownerId: string, request: PublishPostRequest): Promise<Post> {

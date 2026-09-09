@@ -410,6 +410,13 @@
 }
 .follow-list-pagination a { color: var(--link); font-size: var(--text-meta); }
 
+.profile-feed-pagination {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-md);
+}
+.profile-feed-pagination a { color: var(--link); font-size: var(--text-meta); }
+
 /* —— Sidebar ——————————————————————————————————————————— */
 .profile-sidebar {
   align-self: start;

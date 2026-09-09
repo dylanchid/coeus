@@ -188,15 +188,19 @@ function collectionCrosses(publication: OwnedPublication, viewer: Viewer): boole
   return isLive(publication) && isListable(publication.visibility, viewer);
 }
 
-export function deriveProfileView(
-  profile: Profile,
+/**
+ * The collection-card boundary: filter a loaded publication list to what
+ * crosses to `viewer`, map to cards, and float the owner's pinned slugs to the
+ * front in their declared order. Shared by {@link deriveProfileView} (the whole
+ * page) and the paginated Collections tab loader, so both apply the exact same
+ * visibility cut.
+ */
+export function deriveCollectionCards(
   publications: readonly OwnedPublication[],
   viewer: Viewer,
-  options: DeriveProfileOptions
-): PublicProfileView {
-  const isOwner = viewer.kind === "owner";
-  const pinned = new Set(profile.pinnedCollectionSlugs);
-
+  pinnedSlugs: readonly string[]
+): ProfileCollectionCard[] {
+  const pinned = new Set(pinnedSlugs);
   const cards: ProfileCollectionCard[] = publications
     .filter((publication) => collectionCrosses(publication, viewer))
     .map((publication) => ({
@@ -213,14 +217,47 @@ export function deriveProfileView(
     }));
 
   // Pinned cards first, in the owner's declared pin order; then the rest in
-  // the incoming (newest-first) order.
-  const pinOrder = new Map(profile.pinnedCollectionSlugs.map((slug, index) => [slug, index]));
-  const collections = cards.slice().sort((a, b) => {
+  // the incoming (newest-first) order. A stable sort keeps the tail intact.
+  const pinOrder = new Map(pinnedSlugs.map((slug, index) => [slug, index]));
+  return cards.slice().sort((a, b) => {
     const ai = a.isPinned ? pinOrder.get(a.slug) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
     const bi = b.isPinned ? pinOrder.get(b.slug) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
     if (ai !== bi) return ai - bi;
     return 0;
   });
+}
+
+/** The post-card boundary: filter a loaded post list to what is listable for
+ * `viewer` and map to cards. Shared by the whole page and the paginated Posts
+ * tab loader. */
+export function derivePostCards(
+  posts: readonly OwnedPost[],
+  viewer: Viewer
+): ProfilePostCard[] {
+  return posts
+    .filter((post) => isListable(post.visibility, viewer))
+    .map((post) => ({
+      title: post.title,
+      url: post.url,
+      sourceName: post.sourceName,
+      author: post.author,
+      excerpt: post.excerpt,
+      commentary: post.commentary,
+      visibility: post.visibility,
+      publishedAt: post.publishedAt,
+      updatedAt: post.updatedAt,
+    }));
+}
+
+export function deriveProfileView(
+  profile: Profile,
+  publications: readonly OwnedPublication[],
+  viewer: Viewer,
+  options: DeriveProfileOptions
+): PublicProfileView {
+  const isOwner = viewer.kind === "owner";
+
+  const collections = deriveCollectionCards(publications, viewer, profile.pinnedCollectionSlugs);
 
   const switches = options.sections;
   const follows = options.viewerFollowsTargetOwners ?? new Set<string>();
@@ -237,19 +274,7 @@ export function deriveProfileView(
     ? deriveReplyThreads(options.replies ?? [], viewer, followsOwner)
     : [];
 
-  const posts: ProfilePostCard[] = (options.posts ?? [])
-    .filter((post) => isListable(post.visibility, viewer))
-    .map((post) => ({
-      title: post.title,
-      url: post.url,
-      sourceName: post.sourceName,
-      author: post.author,
-      excerpt: post.excerpt,
-      commentary: post.commentary,
-      visibility: post.visibility,
-      publishedAt: post.publishedAt,
-      updatedAt: post.updatedAt,
-    }));
+  const posts = derivePostCards(options.posts ?? [], viewer);
 
   return {
     handle: profile.handle,

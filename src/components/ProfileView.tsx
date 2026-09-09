@@ -6,9 +6,18 @@ import { ProfilePosts } from "./ProfilePosts";
 import { ProfileReplies, type ReplyComposeTarget } from "./ProfileReplies";
 import { ProfileSidebar } from "./ProfileSidebar";
 import { ProfileTabs } from "./ProfileTabs";
+import { ProfileFeedPagination } from "./ProfileFeedPagination";
 import type { ProfileTabId, ProfileTabStates, TabState } from "@/lib/profileTabs";
 import type { ProfileSectionSwitches } from "@/lib/profileSections";
-import type { PublicProfileView } from "@/lib/publicProfile";
+import type { ProfileCollectionCard, ProfilePostCard, PublicProfileView } from "@/lib/publicProfile";
+
+/** One cursor page of a paginated tab feed, resolved by the page for the
+ * active Collections / Posts tab. `cards` is already viewer-filtered. */
+export interface ProfileFeedSlice<Card> {
+  cards: Card[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
 
 const OVERVIEW_LIMIT = 4;
 
@@ -44,6 +53,9 @@ export function ProfileView({
   sectionSwitches = null,
   openEditor = false,
   replyComposeTargets = {},
+  paginatedCollections = null,
+  paginatedPosts = null,
+  onCursor = false,
 }: {
   view: PublicProfileView;
   tab: ProfileTabId;
@@ -54,6 +66,12 @@ export function ProfileView({
   openEditor?: boolean;
   /** Owner-only: per-thread compose targets, keyed by thread-root reply id. */
   replyComposeTargets?: Record<string, ReplyComposeTarget>;
+  /** Cursor page for the Collections tab. Null ⇒ render the unpaginated list. */
+  paginatedCollections?: ProfileFeedSlice<ProfileCollectionCard> | null;
+  /** Cursor page for the Posts tab. */
+  paginatedPosts?: ProfileFeedSlice<ProfilePostCard> | null;
+  /** True when the active tab is showing a cursor page, not its first page. */
+  onCursor?: boolean;
 }) {
   const { isOwner } = view;
   const emptyMessage = isOwner
@@ -101,7 +119,22 @@ export function ProfileView({
       <div className="profile-body">
         <div className="profile-feed">
           {activeTab === "posts" ? (
-            <ProfilePosts posts={view.posts} isOwner={isOwner} handle={view.handle} />
+            <>
+              <ProfilePosts
+                posts={paginatedPosts ? paginatedPosts.cards : view.posts}
+                isOwner={isOwner}
+                handle={view.handle}
+              />
+              {paginatedPosts ? (
+                <ProfileFeedPagination
+                  tab="posts"
+                  handle={view.handle}
+                  hasMore={paginatedPosts.hasMore}
+                  nextCursor={paginatedPosts.nextCursor}
+                  onCursor={onCursor}
+                />
+              ) : null}
+            </>
           ) : activeTab === "reposts" ? (
             <ProfileInteractions
               cards={view.reposts}
@@ -124,7 +157,21 @@ export function ProfileView({
               composeTargets={replyComposeTargets}
             />
           ) : activeTab === "collections" ? (
-            <ProfileCollections cards={view.collections} emptyMessage={emptyMessage} />
+            <>
+              <ProfileCollections
+                cards={paginatedCollections ? paginatedCollections.cards : view.collections}
+                emptyMessage={emptyMessage}
+              />
+              {paginatedCollections ? (
+                <ProfileFeedPagination
+                  tab="collections"
+                  handle={view.handle}
+                  hasMore={paginatedCollections.hasMore}
+                  nextCursor={paginatedCollections.nextCursor}
+                  onCursor={onCursor}
+                />
+              ) : null}
+            </>
           ) : (
             <ProfileCollections
               cards={view.collections}
