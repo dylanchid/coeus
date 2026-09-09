@@ -1,4 +1,7 @@
-import "server-only";
+// No "server-only": conversationProfileStore.server.test.mjs exercises the
+// query-budget contract below through a fake Supabase client, so this module
+// must stay importable under `node --experimental-strip-types`. It holds no
+// secret — the admin client is injected by the caller.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoadedInteraction, LoadedReply, LoadedTarget } from "./conversationProfile.ts";
@@ -6,6 +9,15 @@ import type { Visibility } from "./visibility.ts";
 
 const REPLY_ROOT_LIMIT = 50;
 const INTERACTION_LIMIT = 100;
+/**
+ * The fan-out cap on each descendant level of a reply thread. Without it a
+ * single popular thread root could pull thousands of child rows into one
+ * PostgREST payload (bt0). 200 per level, two levels deep, is a hard ceiling
+ * on the descendants any one profile render can load; a thread busier than
+ * that shows its first 200 replies per level in thread order and the rest
+ * lives on the dedicated thread page.
+ */
+const REPLY_DESCENDANT_LIMIT = 200;
 
 interface InteractionRow {
   created_at: string;
@@ -112,7 +124,8 @@ export class SupabaseConversationProfileReader implements ConversationProfileRea
       .from("replies")
       .select("id,parent_id,author_id,target_type,target_id,body,visibility,created_at,updated_at")
       .in("parent_id", parentIds)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(REPLY_DESCENDANT_LIMIT);
     if (error) throw error;
     return (data ?? []) as ReplyRow[];
   }

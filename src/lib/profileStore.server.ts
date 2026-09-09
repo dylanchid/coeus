@@ -10,6 +10,9 @@ import type { OwnedPublication } from "./publicProfile.ts";
 const SECTION_COLUMNS =
   "show_followers,show_following,show_reposts,show_replies,show_likes,likes_visibility";
 
+/** Hard cap on owned publications loaded for one profile render — see bt0. */
+const PUBLICATION_LIMIT = 500;
+
 function sectionSwitches(row: Record<string, unknown>): ProfileSectionSwitches {
   return {
     showFollowers: row.show_followers !== false,
@@ -268,7 +271,11 @@ export class SupabaseProfileStore implements ProfileStore {
           "collection_publication_items(count),collection_follows(count)"
       )
       .eq("owner_id", profileId)
-      .order("published_at", { ascending: false });
+      .order("published_at", { ascending: false })
+      // Bounded so a curator with a very large back catalogue cannot unbound
+      // the profile render (bt0). Well above any plausible early count; the
+      // Collections tab grows its own pagination as a follow-up.
+      .limit(PUBLICATION_LIMIT);
     if (error) throw error;
     return ((data ?? []) as unknown as Record<string, unknown>[]).map((row) => ({
       id: String(row.id),

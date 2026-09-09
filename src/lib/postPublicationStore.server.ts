@@ -10,6 +10,14 @@ import type { Visibility } from "./visibility.ts";
 export { PostItemNotFoundError };
 
 /**
+ * Hard cap on how many of an author's posts one profile render loads (bt0).
+ * The Posts tab shows the most recent slice; older posts are reachable once
+ * the tab grows its own pagination (follow-up). Chosen well above any
+ * plausible early-adopter post count so it never bites in practice.
+ */
+const POST_LIMIT = 500;
+
+/**
  * The read path for an author's published posts, feeding the profile Posts tab
  * and the Discover "Following" view. Mirrors how PublicCollectionReader lives
  * beside CollectionPublicationStore: every tier comes back, and the
@@ -44,14 +52,16 @@ export class SupabasePostPublicationStore implements PostPublicationStore, Publi
   /**
    * Every post this author has published, newest first — all tiers. The admin
    * client bypasses RLS; the visibility cut is deriveProfileView's job. One
-   * index-only scan on posts_author_live_idx (author_id, created_at desc).
+   * index-only scan on posts_author_live_idx (author_id, created_at desc),
+   * bounded to POST_LIMIT rows so a prolific author cannot unbound the render.
    */
   async listByAuthor(authorId: string): Promise<OwnedPost[]> {
     const { data, error } = await this.supabase
       .from("posts")
       .select("item_local_id,title,url,source_name,author,excerpt,commentary,visibility,created_at,updated_at")
       .eq("author_id", authorId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(POST_LIMIT);
     if (error) throw error;
     return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
       itemLocalId: String(row.item_local_id),
