@@ -1,6 +1,7 @@
 import { handleDeleteReply, handleUpdateReply } from "@/lib/conversationApi";
 import { SupabaseConversationStore } from "@/lib/conversationStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
+import { instrument, requestCorrelationId } from "@/lib/serverLog";
 
 export const dynamic = "force-dynamic";
 
@@ -16,13 +17,19 @@ export async function PATCH(
   context: { params: Promise<{ replyId: string }> },
 ): Promise<Response> {
   const { replyId } = await context.params;
-  return handleUpdateReply(replyId, request, dependencies());
+  return instrument(
+    { route: "replies.byId", operation: "handleUpdateReply", correlationId: requestCorrelationId(request) },
+    () => handleUpdateReply(replyId, request, dependencies()),
+  );
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ replyId: string }> },
 ): Promise<Response> {
   const { replyId } = await context.params;
-  return handleDeleteReply(replyId, dependencies());
+  return instrument(
+    { route: "replies.byId", operation: "handleDeleteReply", correlationId: requestCorrelationId(request) },
+    () => handleDeleteReply(replyId, dependencies()),
+  );
 }

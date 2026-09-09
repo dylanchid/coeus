@@ -1,6 +1,7 @@
 import { handleConnectDestination, handleListDestinations } from "@/lib/destinationsApi";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
+import { instrument, newCorrelationId, requestCorrelationId } from "@/lib/serverLog";
 
 export const dynamic = "force-dynamic";
 
@@ -9,9 +10,15 @@ function store() {
 }
 
 export async function GET(): Promise<Response> {
-  return handleListDestinations({ authenticate: authenticateArchiveRequest, store: store() });
+  return instrument(
+    { route: "archive.destinations", operation: "handleListDestinations", correlationId: newCorrelationId() },
+    () => handleListDestinations({ authenticate: authenticateArchiveRequest, store: store() }),
+  );
 }
 
 export async function POST(request: Request): Promise<Response> {
-  return handleConnectDestination(request, { authenticate: authenticateArchiveRequest, store: store() });
+  return instrument(
+    { route: "archive.destinations", operation: "handleConnectDestination", correlationId: requestCorrelationId(request) },
+    () => handleConnectDestination(request, { authenticate: authenticateArchiveRequest, store: store() }),
+  );
 }

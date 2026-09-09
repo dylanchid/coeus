@@ -1,5 +1,6 @@
 import { handleUploadProfileMedia } from "@/lib/profileMediaApi";
 import { SupabaseProfileStore } from "@/lib/profileStore.server";
+import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import {
   authenticateArchiveRequest,
   createAdminSupabaseClient,
@@ -14,7 +15,9 @@ export async function POST(request: Request): Promise<Response> {
   const session = await createRequestSupabaseClient();
   const bucket = session.storage.from("profile-media");
 
-  return handleUploadProfileMedia(request, {
+  return instrument(
+    { route: "account.profile.media", operation: "handleUploadProfileMedia", correlationId: requestCorrelationId(request) },
+    () => handleUploadProfileMedia(request, {
     authenticate: authenticateArchiveRequest,
     storage: {
       async upload(path, body, contentType) {
@@ -32,5 +35,6 @@ export async function POST(request: Request): Promise<Response> {
       const profile = await new SupabaseProfileStore(createAdminSupabaseClient()).get(userId);
       return profile ? { avatarUrl: profile.avatarUrl, coverUrl: profile.coverUrl } : null;
     },
-  });
+    }),
+  );
 }

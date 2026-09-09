@@ -3,6 +3,7 @@ import { ARCHIVE_BUDGET } from "@/lib/archiveBudget";
 import { SupabaseArchiveSyncStore } from "@/lib/archiveSyncStore.server";
 import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
+import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,13 @@ export async function GET(request: Request): Promise<Response> {
   if (!isAuthorized(request, requiredEnvironment("CRON_SECRET"))) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return instrument(
+    { route: "archive.destinations.worker", operation: "cronTick", correlationId: requestCorrelationId(request) },
+    () => runWorkerTick(),
+  );
+}
+
+async function runWorkerTick(): Promise<Response> {
   const supabase = createAdminSupabaseClient();
   const store = new SupabaseDestinationsStore(supabase, requiredEnvironment("DESTINATION_TOKEN_ENCRYPTION_KEY"));
   const result = await runDestinationWorkerTick(new SupabaseArchiveSyncStore(supabase), store);
