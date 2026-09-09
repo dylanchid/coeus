@@ -15,8 +15,6 @@ import { useArchive } from "./AppProviders";
 import { useAuth } from "./AuthProvider";
 import { ProfileGate } from "./ProfileGate";
 import { AppShell } from "./AppShell";
-import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archiveRecovery";
-import { parseArchiveSyncSnapshot } from "@/lib/archiveSync";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { DestinationsPanel } from "./DestinationsPanel";
 import { VisibilitySelect } from "./VisibilitySelect";
@@ -24,6 +22,7 @@ import { PostPublishPanel, type PublishedPost } from "./PostPublishPanel";
 import { ArchivePublishPanel } from "./ArchivePublishPanel";
 import { useArchiveFilters, type ArchiveFilter, type ArchiveSort } from "./useArchiveFilters";
 import { usePublications } from "./usePublications";
+import { useArchiveRecovery } from "./useArchiveRecovery";
 
 const FILTERS: ArchiveFilter[] = ["all", "unread", "starred", "annotated"];
 
@@ -43,9 +42,7 @@ export function ArchiveApp() {
   const [newCollectionVisibility, setNewCollectionVisibility] = useState<CollectionVisibility>("private");
   const [composerOpen, setComposerOpen] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
-  const [revisions, setRevisions] = useState<ArchiveRevisionSummary[]>([]);
-  const [contentSnapshots, setContentSnapshots] = useState<ContentSnapshotSummary[]>([]);
-  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [accountBusy, setAccountBusy] = useState(false);
   // itemLocalId -> the post published for it, so each row's PostPublishPanel
   // opens in the right state. Fetched once; the panels manage their own writes.
   const [postsByItem, setPostsByItem] = useState<ReadonlyMap<string, PublishedPost>>(new Map());
@@ -63,6 +60,7 @@ export function ArchiveApp() {
     return response;
   };
   const { publications, publishBusy, publishCollection, unpublishCollection } = usePublications(requestJson, setShareNotice);
+  const { revisions, contentSnapshots, recoveryBusy, refreshRecovery, captureContent, restoreRevision } = useArchiveRecovery({ requestJson, replaceArchiveFromServer, onNotice: setShareNotice });
 
   const selectedCollection = data?.collections.find((collection) => collection.id === collectionId);
   const currentPublication = selectedCollection
@@ -139,52 +137,12 @@ export function ArchiveApp() {
     setShareNotice("CSV exported for Notion");
   };
 
-  const refreshRecovery = async () => {
-    setRecoveryBusy(true);
-    try {
-      const response = await requestJson("/api/archive/revisions");
-      const body = await response.json() as { revisions: ArchiveRevisionSummary[] };
-      setRevisions(body.revisions);
-      const exportResponse = await requestJson("/api/archive/export");
-      const exported = await exportResponse.json() as { contentSnapshots: ContentSnapshotSummary[] };
-      setContentSnapshots(exported.contentSnapshots);
-      setShareNotice("Recovery history refreshed");
-    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Recovery history is unavailable"); }
-    finally { setRecoveryBusy(false); }
-  };
-
   const exportArchiveJson = async () => {
     try {
       const response = await requestJson("/api/archive/export");
       download(await response.text(), "coeus-archive.json", "application/json;charset=utf-8");
       setShareNotice("Lossless archive export downloaded");
     } catch (error) { setShareNotice(error instanceof Error ? error.message : "Archive export failed"); }
-  };
-
-  const captureContent = async (itemId: string) => {
-    setRecoveryBusy(true);
-    try {
-      const response = await requestJson("/api/archive/snapshots", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId }) });
-      const captured = await response.json() as ContentSnapshotSummary;
-      setContentSnapshots((current) => [captured, ...current.filter((snapshot) => snapshot.id !== captured.id)]);
-      setShareNotice("Private reading snapshot captured");
-    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Content capture failed"); }
-    finally { setRecoveryBusy(false); }
-  };
-
-  const restoreRevision = async (revision: number) => {
-    if (!window.confirm(`Restore revision ${revision}? This creates a new recovery revision; existing history remains.`)) return;
-    setRecoveryBusy(true);
-    try {
-      const response = await requestJson("/api/archive/revisions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ revision }) });
-      const body = await response.json() as { archiveId: string; snapshot: unknown };
-      const parsed = parseArchiveSyncSnapshot(body.snapshot);
-      if (!parsed.ok) throw new Error("The recovered archive is invalid");
-      await replaceArchiveFromServer(body.archiveId, parsed.value);
-      setShareNotice(`Restored revision ${revision}; a new immutable revision was created`);
-      await refreshRecovery();
-    } catch (error) { setShareNotice(error instanceof Error ? error.message : "Archive recovery failed"); }
-    finally { setRecoveryBusy(false); }
   };
 
   const signOut = async () => {
@@ -194,10 +152,10 @@ export function ArchiveApp() {
 
   const deleteAccount = async () => {
     if (window.prompt('Type DELETE to permanently delete your cloud archive and account. This does not erase the labeled local copy on this device.') !== "DELETE") return;
-    setRecoveryBusy(true);
+    setAccountBusy(true);
     try { await requestJson("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: "DELETE" }) }); setShareNotice("Cloud account and private snapshots deleted. The local device copy was kept."); }
     catch (error) { setShareNotice(error instanceof Error ? error.message : "Account deletion failed"); }
-    finally { setRecoveryBusy(false); }
+    finally { setAccountBusy(false); }
   };
 
   if (!data) return <p className="boot">Opening your archive…</p>;
@@ -319,7 +277,7 @@ export function ArchiveApp() {
                     </p>
                     {auth.profile ? <Link href="/welcome?next=/archive">Edit profile</Link> : <Link href="/welcome?next=/archive">Finish setting up your profile ↗</Link>}
                     <button type="button" onClick={() => void signOut()}>Sign out — keep local copy</button>
-                    <button type="button" className="archive-danger" disabled={recoveryBusy} onClick={() => void deleteAccount()}>Delete cloud account…</button>
+                    <button type="button" className="archive-danger" disabled={recoveryBusy || accountBusy} onClick={() => void deleteAccount()}>Delete cloud account…</button>
                   </>
                 )}
               </div>
