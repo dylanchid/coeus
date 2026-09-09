@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { ESTABLISHED_USER, newFreshUser, type TestUser } from "./testUsers";
+import { newEstablishedUser, newFreshUser, type TestUser } from "./testUsers";
 
 /**
  * Signs `user` in on `page` by calling the test-only session route, which sets
@@ -15,10 +15,7 @@ export async function signIn(page: Page, user: TestUser): Promise<void> {
 
   if (user.profile) {
     const saved = await page.request.put("/api/account/profile", { data: user.profile });
-    expect(
-      saved.ok() || saved.status() === 409,
-      `profile upsert for ${user.email}: ${saved.status()} ${await saved.text()}`,
-    ).toBeTruthy();
+    expect(saved.ok(), `profile upsert for ${user.email}: ${saved.status()} ${await saved.text()}`).toBeTruthy();
   }
 }
 
@@ -29,22 +26,24 @@ export async function signOut(page: Page): Promise<void> {
 interface AuthFixtures {
   /** A signed-in account with no profile row — sitting at onboarding. */
   freshUserPage: Page;
-  /** A signed-in account with a completed profile — full app access. */
-  establishedUserPage: Page;
+  /** A signed-in account with a completed profile, plus its chosen handle. */
+  establishedUser: { page: Page; handle: string };
 }
 
 export const test = base.extend<AuthFixtures>({
   freshUserPage: async ({ page }, use) => {
-    // A brand-new identity each run: the onboarding journey creates a profile
-    // row, so a fixed user would only be "fresh" on the first run against a
-    // given database.
+    // A brand-new identity each test: the onboarding journey creates a profile
+    // row, so a fixed user would only be "fresh" on the first run.
     await signIn(page, newFreshUser());
     await use(page);
     await signOut(page);
   },
-  establishedUserPage: async ({ page }, use) => {
-    await signIn(page, ESTABLISHED_USER);
-    await use(page);
+  establishedUser: async ({ page }, use) => {
+    // Also unique per test — parallel workers would otherwise race on one
+    // profile row and one handle.
+    const user = newEstablishedUser();
+    await signIn(page, user);
+    await use({ page, handle: user.profile.handle });
     await signOut(page);
   },
 });

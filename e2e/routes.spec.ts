@@ -51,20 +51,21 @@ test.describe("force-dynamic cache headers", () => {
 
 test.describe("authenticated wiring", () => {
   test("context.params reaches the handler: editing an unknown replyId is a 404, not a 500", async ({
-    establishedUserPage: page,
+    establishedUser,
   }) => {
-    const response = await page.request.patch("/api/replies/11111111-1111-1111-1111-111111111111", {
-      data: { body: "an edit to a reply that does not exist" },
-    });
+    const response = await establishedUser.page.request.patch(
+      "/api/replies/11111111-1111-1111-1111-111111111111",
+      { data: { body: "an edit to a reply that does not exist" } },
+    );
     expect(response.status()).toBe(404);
     expect((await response.json()).error).toMatch(/not found/i);
   });
 
-  test("Next's JSON parsing surfaces as a 400 through the wrapper", async ({ establishedUserPage: page }) => {
-    const response = await page.request.patch("/api/replies/11111111-1111-1111-1111-111111111111", {
-      headers: { "content-type": "application/json" },
-      data: "{ broken",
-    });
+  test("Next's JSON parsing surfaces as a 400 through the wrapper", async ({ establishedUser }) => {
+    const response = await establishedUser.page.request.patch(
+      "/api/replies/11111111-1111-1111-1111-111111111111",
+      { headers: { "content-type": "application/json" }, data: "{ broken" },
+    );
     expect(response.status()).toBe(400);
   });
 });

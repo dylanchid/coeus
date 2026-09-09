@@ -26,12 +26,20 @@ export function newFreshUser(): TestUser {
   };
 }
 
-export const ESTABLISHED_USER: TestUser = {
-  email: "established@e2e.coeus.local",
-  userMetadata: { user_name: "established-tester", full_name: "Established Tester" },
-  profile: {
-    handle: "established_e2e",
-    displayName: "Established Tester",
-    bio: "Fixture account for authenticated Playwright journeys.",
-  },
-};
+/**
+ * A signed-in account that has finished onboarding. Unique per call — a fixed
+ * identity would have every parallel worker racing on the same profile row and
+ * handle. The handle is <= 20 chars and matches HANDLE_PATTERN.
+ */
+export function newEstablishedUser(): TestUser & { profile: NonNullable<TestUser["profile"]> } {
+  const nonce = Math.random().toString(36).slice(2, 8);
+  return {
+    email: `established-${nonce}@e2e.coeus.local`,
+    userMetadata: { user_name: "established-tester", full_name: "Established Tester" },
+    profile: {
+      handle: `est_${nonce}`,
+      displayName: "Established Tester",
+      bio: "Fixture account for authenticated Playwright journeys.",
+    },
+  };
+}

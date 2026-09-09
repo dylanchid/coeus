@@ -1,15 +1,13 @@
-import { ESTABLISHED_USER } from "./support/testUsers";
 import { expect, signOut, test } from "./support/fixtures";
 
 test.describe("authenticated shell", () => {
-  test("a signed-in account with a profile reaches the archive as itself", async ({ establishedUserPage: page }) => {
+  test("a signed-in account with a profile reaches the archive as itself", async ({ establishedUser }) => {
+    const { page, handle } = establishedUser;
     await page.goto("/archive");
 
     // ProfileGate must NOT bounce a completed account to onboarding.
     await expect(page).toHaveURL(/\/archive$/);
-    await expect(page.getByRole("button", { name: `@${ESTABLISHED_USER.profile!.handle}` })).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(page.getByRole("button", { name: `@${handle}` })).toBeVisible({ timeout: 20_000 });
 
     const health = await page.request.get("/api/health");
     expect(health.status(), await health.text()).toBe(200);
@@ -37,11 +35,10 @@ test.describe("authenticated shell", () => {
     expect((await profile.json()).profile).toMatchObject({ handle });
   });
 
-  test("signing out returns the shell to the anonymous state", async ({ establishedUserPage: page }) => {
+  test("signing out returns the shell to the anonymous state", async ({ establishedUser }) => {
+    const { page, handle } = establishedUser;
     await page.goto("/archive");
-    await expect(page.getByRole("button", { name: `@${ESTABLISHED_USER.profile!.handle}` })).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(page.getByRole("button", { name: `@${handle}` })).toBeVisible({ timeout: 20_000 });
 
     await signOut(page);
     await page.reload();
