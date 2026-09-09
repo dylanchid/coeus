@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  MEDIA_REQUEST_BYTE_CEILING,
+  MEDIA_SIZE_CAP,
   mediaObjectPath,
   objectPathFromPublicUrl,
+  parseContentLength,
   sniffImageType,
   validateUpload,
 } from "./profileUpload.ts";
@@ -60,6 +63,22 @@ test("validateUpload enforces the per-kind size cap", () => {
 
 test("validateUpload rejects an empty upload", () => {
   assert.equal(validateUpload({ kind: "avatar", declaredType: "image/png", size: 0, bytesHead: PNG }).ok, false);
+});
+
+test("parseContentLength accepts a clean integer and rejects everything else", () => {
+  assert.equal(parseContentLength("0"), 0);
+  assert.equal(parseContentLength("  1048576  "), 1048576);
+  assert.equal(parseContentLength(null), null);
+  assert.equal(parseContentLength(""), null);
+  assert.equal(parseContentLength("12.5"), null);
+  assert.equal(parseContentLength("-1"), null);
+  assert.equal(parseContentLength("1e6"), null);
+  assert.equal(parseContentLength("not a number"), null);
+});
+
+test("MEDIA_REQUEST_BYTE_CEILING sits just above the largest per-kind cap", () => {
+  assert.ok(MEDIA_REQUEST_BYTE_CEILING > MEDIA_SIZE_CAP.cover);
+  assert.ok(MEDIA_REQUEST_BYTE_CEILING < MEDIA_SIZE_CAP.cover * 2);
 });
 
 test("mediaObjectPath writes under the uid prefix with a random token and the right extension", () => {

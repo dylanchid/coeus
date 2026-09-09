@@ -602,6 +602,14 @@ cookie-free admin client inside the hook.
 
 **Tag:** later (availability), same class as F-06 · **Confidence:** confirmed.
 
+**Status:** fixed on the working tree (`chore/test-glob-and-upload-cap`, not yet
+committed). `handleUploadProfileMedia` rejects `413` on a `Content-Length` over
+`MEDIA_REQUEST_BYTE_CEILING` (5 MB + framing headroom) **before**
+`request.formData()`, and on `file.size > MEDIA_SIZE_CAP.cover` before
+`file.arrayBuffer()`. `validateUpload` still applies the precise per-kind cap on
+the decoded bytes. `request.formData()` still buffers to parse — a true
+streaming multipart cap needs the platform; this closes the pre-read gap.
+
 `profileMediaApi.ts` `file.arrayBuffer()` then `validateUpload` size cap.
 No `Content-Length` reject first. Product caps are 2 MB/5 MB but only after
 buffering.
@@ -738,10 +746,12 @@ production build with placeholder public env, `npm audit --audit-level=high`,
 pgTAP via `supabase start` + `supabase test db`. E2E is a separate concern
 (`bareaga_web-ubj.*` still open).
 
-**Glob hole:** `test:unit` is `src/lib/*.test.mjs` — nested
-`src/lib/feeds/*.test.mjs` would never run (and `src/lib/feeds/feeds.server.ts`
-has no test today). `src/hooks/` is not collected. Fix: widen to
-`src/lib/**/*.test.mjs` and add `src/hooks/**/*.test.*`. (§7.14)
+**Glob hole:** ~~`test:unit` is `src/lib/*.test.mjs` — nested
+`src/lib/feeds/*.test.mjs` would never run.~~ **Fixed** on the working tree
+(`chore/test-glob-and-upload-cap`): `test:unit` now globs
+`"src/lib/**/*.test.mjs" "src/hooks/**/*.test.mjs"` and `test:ui`
+`"src/components/**/*.test.tsx" "src/hooks/**/*.test.tsx"` (Node 26 expands the
+quoted `**`). `src/lib/feeds/feeds.server.ts` still has no test. (§7.14)
 
 **Unit/UI that exist and matter:** archive sync/validation/budget/API,
 destination delivery/worker/secrets/OAuth state, conversation derive + API,

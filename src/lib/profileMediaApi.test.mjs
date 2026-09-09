@@ -82,6 +82,25 @@ test("rejects an over-size avatar (cap is 2 MB)", async () => {
   assert.equal(response.status, 413);
 });
 
+test("rejects an over-size cover before decoding the body (cap is 5 MB) — F-28", async () => {
+  const d = deps();
+  const response = await handleUploadProfileMedia(upload(form({ file: pngFile(5 * 1024 * 1024 + 1), kind: "cover" })), d);
+  assert.equal(response.status, 413);
+  assert.deepEqual(d.storage.uploaded, []);
+});
+
+test("rejects on an oversized Content-Length before the body is parsed — F-28", async () => {
+  const request = new Request("https://coeus.test/api/account/profile/media", {
+    method: "POST",
+    body: "not even multipart",
+    headers: { "content-type": "multipart/form-data; boundary=x", "content-length": String(50 * 1024 * 1024) },
+  });
+  const d = deps();
+  const response = await handleUploadProfileMedia(request, d);
+  assert.equal(response.status, 413);
+  assert.deepEqual(d.storage.uploaded, []);
+});
+
 test("rejects an unknown kind", async () => {
   const response = await handleUploadProfileMedia(upload(form({ file: pngFile(), kind: "banner" })), deps());
   assert.equal(response.status, 422);

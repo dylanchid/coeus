@@ -18,6 +18,24 @@ export const MEDIA_SIZE_CAP: Record<MediaKind, number> = {
   cover: 5 * 1024 * 1024,
 };
 
+/**
+ * Absolute ceiling for the whole multipart request, checked against
+ * `Content-Length` *before* the body is parsed — the largest per-kind cap plus
+ * headroom for multipart framing (F-28). The precise per-kind check still runs
+ * on the decoded file.
+ */
+export const MEDIA_REQUEST_BYTE_CEILING = MEDIA_SIZE_CAP.cover + 64 * 1024;
+
+/**
+ * Parse a `Content-Length` header to a byte count, or null if it is absent or
+ * not a clean non-negative integer.
+ */
+export function parseContentLength(value: string | null): number | null {
+  if (value === null || !/^\d+$/.test(value.trim())) return null;
+  const n = Number.parseInt(value.trim(), 10);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
 export type AllowedMediaType = "image/png" | "image/jpeg" | "image/webp";
 
 const EXTENSION: Record<AllowedMediaType, string> = {
