@@ -143,6 +143,51 @@ test("a second signed-in user can follow a published collection", async ({ brows
   }
 });
 
+test("a retired handle returns a 308 to its canonical profile", async ({ establishedUser }) => {
+  const { page, handle: retiredHandle } = establishedUser;
+  const canonicalHandle = `ren_${Math.random().toString(36).slice(2, 8)}`;
+  const saved = await page.request.put("/api/account/profile", {
+    data: { handle: canonicalHandle, displayName: "Established Tester", bio: "Fixture account for authenticated Playwright journeys." },
+  });
+  expect(saved.ok(), await saved.text()).toBeTruthy();
+
+  const redirect = await page.request.get(`/@${retiredHandle}`, { maxRedirects: 0 });
+  expect(redirect.status()).toBe(308);
+  expect(redirect.headers().location).toBe(`/@${canonicalHandle}`);
+
+  await page.goto(`/@${retiredHandle}`);
+  await expect(page).toHaveURL(new RegExp(`/@${canonicalHandle}$`));
+});
+
+test("a profile follower loses a private collection after revocation", async ({ browser, establishedUser }) => {
+  const { page: ownerPage, handle } = establishedUser;
+  const suffix = `revoke-${Math.random().toString(36).slice(2, 8)}`;
+  const publication = await seedCollection(ownerPage, suffix);
+
+  const followerContext = await browser.newContext();
+  const followerPage = await followerContext.newPage();
+  try {
+    await signIn(followerPage, newEstablishedUser());
+    await followerPage.goto(`/@${handle}`);
+    await followerPage.getByRole("button", { name: "Follow" }).click();
+    await expect(followerPage.getByRole("button", { name: "Following ✓" })).toBeVisible();
+
+    await followerPage.goto(`/c/${publication.slug}`);
+    await expect(followerPage.getByRole("heading", { name: publication.name })).toBeVisible();
+
+    const privatePublication = await ownerPage.request.post("/api/collections/publish", {
+      data: { collectionLocalId: publication.collectionLocalId, visibility: "private", curatorNote: "", attribution: "" },
+    });
+    expect(privatePublication.status(), await privatePublication.text()).toBe(201);
+
+    await followerPage.goto(`/c/${publication.slug}`);
+    await expect(followerPage.getByText("404")).toBeVisible();
+  } finally {
+    await signOut(followerPage);
+    await followerContext.close();
+  }
+});
+
 test("profile feed and thread cursor links walk real page boundaries", async ({ browser, establishedUser }) => {
   test.setTimeout(120_000);
   const { page, handle } = establishedUser;
