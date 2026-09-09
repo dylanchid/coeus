@@ -5,10 +5,15 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoadedInteraction, LoadedReply, LoadedTarget } from "./conversationProfile.ts";
+import type { LoadedThreadReply } from "./threadPage.ts";
+import { encodeProfileFeedCursor, type ProfileFeedCursor } from "./profileFeedCursor.ts";
 import type { Visibility } from "./visibility.ts";
 
 const REPLY_ROOT_LIMIT = 50;
 const INTERACTION_LIMIT = 100;
+
+/** Rows per thread-page request (bareaga_web-kxe). The RPC clamps to 200. */
+export const THREAD_PAGE_SIZE = 40;
 /**
  * The fan-out cap on each descendant level of a reply thread. Without it a
  * single popular thread root could pull thousands of child rows into one
@@ -43,6 +48,26 @@ export interface ConversationProfileReader {
   /** Which of `ownerIds` does `viewerId` follow? For the `followers`-tier
    * target check, resolved once across every distinct target owner. */
   followsAmong(viewerId: string, ownerIds: readonly string[]): Promise<Set<string>>;
+  /** Total nested descendants per root reply id, for the "View all N replies"
+   * link on a truncated Replies-tab thread. Absent key ⇒ zero. */
+  threadDescendantCounts(rootIds: readonly string[]): Promise<Map<string, number>>;
+  /** One keyset page of a thread: the root, its author handle, and a page of
+   * descendants (any depth) oldest-first. Null when `rootId` is not a root
+   * reply. The visibility cut is threadPage.ts's job. */
+  loadThreadPage(rootId: string, page: ThreadPageRequest): Promise<LoadedThreadPage | null>;
+}
+
+export interface ThreadPageRequest {
+  cursor: ProfileFeedCursor | null;
+  limit: number;
+}
+
+export interface LoadedThreadPage {
+  root: LoadedReply;
+  rootAuthorHandle: string;
+  descendants: LoadedThreadReply[];
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 export class SupabaseConversationProfileReader implements ConversationProfileReader {
@@ -128,6 +153,103 @@ export class SupabaseConversationProfileReader implements ConversationProfileRea
       .limit(REPLY_DESCENDANT_LIMIT);
     if (error) throw error;
     return (data ?? []) as ReplyRow[];
+  }
+
+  async threadDescendantCounts(rootIds: readonly string[]): Promise<Map<string, number>> {
+    const distinct = [...new Set(rootIds)].filter(Boolean);
+    if (!distinct.length) return new Map();
+    const { data, error } = await this.supabase.rpc("thread_descendant_counts", {
+      p_root_ids: distinct,
+    });
+    if (error) throw error;
+    return new Map(
+      ((data ?? []) as { root_id: string; total: number | string }[]).map((row) => [
+        row.root_id,
+        Number(row.total),
+      ]),
+    );
+  }
+
+  async loadThreadPage(rootId: string, page: ThreadPageRequest): Promise<LoadedThreadPage | null> {
+    const limit = Math.max(1, Math.trunc(page.limit));
+
+    const { data: rootData, error: rootError } = await this.supabase
+      .from("replies")
+      .select("id,parent_id,author_id,target_type,target_id,body,visibility,created_at,updated_at")
+      .eq("id", rootId)
+      .is("parent_id", null)
+      .maybeSingle();
+    if (rootError) throw rootError;
+    if (!rootData) return null;
+    const rootRow = rootData as ReplyRow;
+
+    const { data: descData, error: descError } = await this.supabase.rpc("thread_descendants", {
+      p_root_id: rootId,
+      p_after_created_at: page.cursor?.ts ?? null,
+      p_after_id: page.cursor?.id ?? null,
+      p_limit: limit + 1,
+    });
+    if (descError) throw descError;
+    const descRows = (descData ?? []) as ReplyRow[];
+    const hasMore = descRows.length > limit;
+    const pageRows = descRows.slice(0, limit);
+
+    const all = [rootRow, ...pageRows];
+    const targets = await this.resolveTargets(all);
+
+    // Author handles for every row on the page, its parent, and the root. A
+    // parent can sit on an earlier page, so resolve any parent id not already
+    // in hand with one extra bounded lookup.
+    const authorByReplyId = new Map<string, string>(all.map((r) => [r.id, r.author_id]));
+    const missingParentIds = [
+      ...new Set(pageRows.map((r) => r.parent_id).filter((id): id is string => Boolean(id) && !authorByReplyId.has(id!))),
+    ];
+    if (missingParentIds.length) {
+      const { data, error } = await this.supabase
+        .from("replies")
+        .select("id,author_id")
+        .in("id", missingParentIds);
+      if (error) throw error;
+      for (const row of (data ?? []) as { id: string; author_id: string }[]) {
+        authorByReplyId.set(row.id, row.author_id);
+      }
+    }
+    const handles = await this.handlesFor([...authorByReplyId.values()]);
+
+    const descendants: LoadedThreadReply[] = pageRows.map((row) => ({
+      id: row.id,
+      parentId: row.parent_id,
+      body: row.body,
+      visibility: row.visibility,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      targetType: row.target_type,
+      targetId: row.target_id,
+      target: targets.get(`${row.target_type}:${row.target_id}`) ?? null,
+      authorHandle: handles.get(row.author_id) ?? "",
+      parentAuthorHandle: row.parent_id ? handles.get(authorByReplyId.get(row.parent_id) ?? "") ?? null : null,
+    }));
+
+    const root: LoadedReply = {
+      id: rootRow.id,
+      parentId: null,
+      body: rootRow.body,
+      visibility: rootRow.visibility,
+      createdAt: rootRow.created_at,
+      updatedAt: rootRow.updated_at,
+      targetType: rootRow.target_type,
+      targetId: rootRow.target_id,
+      target: targets.get(`${rootRow.target_type}:${rootRow.target_id}`) ?? null,
+    };
+
+    const last = pageRows[pageRows.length - 1];
+    return {
+      root,
+      rootAuthorHandle: handles.get(rootRow.author_id) ?? "",
+      descendants,
+      hasMore,
+      nextCursor: hasMore && last ? encodeProfileFeedCursor({ ts: last.created_at, id: last.id }) : null,
+    };
   }
 
   async followsAmong(viewerId: string, ownerIds: readonly string[]): Promise<Set<string>> {

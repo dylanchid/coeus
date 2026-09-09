@@ -124,6 +124,18 @@ export default async function ProfilePage({
     viewerFollowsTargetOwners = await conversationReader.followsAmong(viewerId, targetOwnerIds);
   }
 
+  // Per-root descendant totals, so a thread that runs past what the tab loads
+  // links to the dedicated thread page ("View all N replies"). One query,
+  // bounded by REPLY_ROOT_LIMIT roots; skipped when the Replies section will
+  // not render for this viewer anyway.
+  let replyDescendantCounts = new Map<string, number>();
+  if (profile.sections.showReplies || isOwner) {
+    const replyRootIds = replies.filter((row) => row.parentId === null).map((row) => row.id);
+    if (replyRootIds.length) {
+      replyDescendantCounts = await conversationReader.threadDescendantCounts(replyRootIds);
+    }
+  }
+
   const view = deriveProfileView(profile, publications, viewer, {
     posts,
     sections: profile.sections,
@@ -133,6 +145,7 @@ export default async function ProfilePage({
     likes,
     replies,
     viewerFollowsTargetOwners,
+    replyDescendantCounts,
   });
 
   // Owner-only: the ids each reply thread needs so the composer can post into

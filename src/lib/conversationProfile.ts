@@ -107,11 +107,19 @@ export interface ProfileReplyCard {
 export interface ProfileReplyThread {
   reply: ProfileReplyCard;
   responses: ProfileReplyCard[];
+  /**
+   * Total replies nested beneath this root at any depth, from
+   * thread_descendant_counts (bareaga_web-kxe). When it exceeds
+   * `responses.length` the thread ran past what the tab loads and the UI links
+   * to the dedicated thread page. Undefined when the loader did not resolve a
+   * count (e.g. a caller that never truncates).
+   */
+  totalResponses?: number;
 }
 
 // ── shared helpers ────────────────────────────────────────────────────────
 
-function toCardTarget(target: LoadedTarget): CardTarget {
+export function toCardTarget(target: LoadedTarget): CardTarget {
   return target.kind === "collection"
     ? {
         kind: "collection",
@@ -131,7 +139,7 @@ function toCardTarget(target: LoadedTarget): CardTarget {
       };
 }
 
-function indirectlyVisible(
+export function indirectlyVisible(
   rowVisibility: Visibility,
   target: LoadedTarget | null,
   viewer: Viewer,
@@ -188,6 +196,7 @@ export function deriveReplyThreads(
   rows: readonly LoadedReply[],
   viewer: Viewer,
   viewerFollowsTargetOwner: (ownerId: string) => boolean,
+  descendantCounts?: ReadonlyMap<string, number>,
 ): ProfileReplyThread[] {
   const visible = rows.filter((row) =>
     indirectlyVisible(row.visibility, row.target, viewer, viewerFollowsTargetOwner),
@@ -228,12 +237,19 @@ export function deriveReplyThreads(
     responsesByRoot.set(root, list);
   }
 
-  return roots.map((root) => ({
-    reply: card(root, { target: root.target ? toCardTarget(root.target) : undefined }),
-    responses: (responsesByRoot.get(root.id) ?? [])
+  return roots.map((root) => {
+    const responses = (responsesByRoot.get(root.id) ?? [])
       .slice()
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)), // oldest response first
-  }));
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)); // oldest response first
+    const total = descendantCounts?.get(root.id);
+    return {
+      reply: card(root, { target: root.target ? toCardTarget(root.target) : undefined }),
+      responses,
+      // Never report fewer than what rendered: a count that lags a fresh reply
+      // must not make the thread look shorter than it is on screen.
+      ...(total === undefined ? {} : { totalResponses: Math.max(total, responses.length) }),
+    };
+  });
 }
 
 // ── the Likes surface gate (tab + sidebar strip together) ─────────────────

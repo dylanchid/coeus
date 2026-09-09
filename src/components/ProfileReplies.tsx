@@ -113,6 +113,14 @@ export function ProfileReplies({
               </ol>
             ) : null}
 
+            {thread.totalResponses !== undefined && thread.totalResponses > thread.responses.length ? (
+              <p className="profile-reply-more">
+                <a href={`/@${handle}/replies/${thread.reply.id}`}>
+                  View all {thread.totalResponses} replies →
+                </a>
+              </p>
+            ) : null}
+
             {compose ? (
               <div className="profile-reply-compose">
                 <ReplyComposer

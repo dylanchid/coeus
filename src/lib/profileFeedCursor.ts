@@ -1,7 +1,8 @@
 /**
- * The keyset cursor for the profile Collections and Posts tabs. A page boundary
- * is the last row's (timestamp, id) pair: the next page is every row ordered
- * strictly after it under `<timestamp> desc, <id> desc`.
+ * The keyset cursor for the profile feed surfaces — the Collections and Posts
+ * tabs (desc) and the dedicated thread page (asc). A page boundary is the last
+ * row's (timestamp, id) pair; the next page is every row ordered strictly after
+ * it under `<timestamp>, <id>` in whichever direction that surface walks.
  *
  * Pure by contract — no server-only, no Supabase, no next import — so the
  * encode/decode round-trip is testable under `node --test`. The wire form is a

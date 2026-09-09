@@ -291,6 +291,20 @@
   .profile-reply-responses { padding-left: 0.5rem; }
 }
 
+.profile-reply-more { margin: 0.4rem 0 0; font-size: var(--text-meta); }
+.profile-reply-more a { color: var(--link); }
+
+/* —— Dedicated thread page —————————————————————————————— */
+.profile-thread { padding: clamp(1rem, 3vw, 2rem); display: grid; gap: var(--space-lg); }
+.profile-thread-root { border-bottom: 1px solid var(--line); padding-bottom: var(--space-md); }
+.profile-thread-replies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-lg);
+}
+
 .profile-reply-compose { margin-top: 0.5rem; }
 
 /* —— Reply composer island ———————————————————————————————— */

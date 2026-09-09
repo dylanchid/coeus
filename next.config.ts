@@ -13,9 +13,11 @@ const nextConfig: NextConfig = {
     // that renders it. A plain array applies at the afterFiles position, so
     // real files and static routes still win over /@something.
     //
-    // The :section rule (followers / following) is listed first so it matches
-    // before the bare-handle rule; path-to-regexp is greedy left to right.
+    // More path segments first: the two-segment thread rule before the
+    // one-segment :section rule (followers / following) before the bare handle.
+    // path-to-regexp is greedy left to right.
     return [
+      { source: "/@:handle/replies/:replyId", destination: "/u/:handle/replies/:replyId" },
       { source: "/@:handle/:section", destination: "/u/:handle/:section" },
       { source: "/@:handle", destination: "/u/:handle" },
     ];

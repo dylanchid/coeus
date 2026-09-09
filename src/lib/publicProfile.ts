@@ -163,6 +163,9 @@ export interface DeriveProfileOptions {
   likes?: readonly LoadedInteraction[];
   /** This profile's reply rows (roots + two levels of descendants). */
   replies?: readonly LoadedReply[];
+  /** rootReplyId → total nested descendant count (thread_descendant_counts).
+   * Lets a truncated thread link to the dedicated thread page. */
+  replyDescendantCounts?: ReadonlyMap<string, number>;
   /**
    * The set of target-owner ids that THIS viewer follows — resolved once by the
    * loader across every distinct target owner in reposts/likes/replies, so the
@@ -271,7 +274,7 @@ export function deriveProfileView(
     ? deriveInteractionFeed(options.likes ?? [], viewer, followsOwner)
     : [];
   const replies = switches.showReplies || isOwner
-    ? deriveReplyThreads(options.replies ?? [], viewer, followsOwner)
+    ? deriveReplyThreads(options.replies ?? [], viewer, followsOwner, options.replyDescendantCounts)
     : [];
 
   const posts = derivePostCards(options.posts ?? [], viewer);
