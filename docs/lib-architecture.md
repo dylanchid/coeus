@@ -82,5 +82,9 @@ need one, the thing you need is a core type — lift it.
 - Keep a re-export shim at the old path only if the import fan-in is large;
   delete it in a follow-up.
 - Each slice must keep `npx tsc --noEmit`, `npm run lint`, and `npm test` green.
-- An ESLint import-boundary rule to enforce the layer/domain edges mechanically
-  is a follow-up (`bareaga_web` — see 4po follow-ups).
+- An ESLint import-boundary rule enforces the layer edges mechanically
+  (`bareaga_web-tpy`, landed in `warn` mode in `eslint.config.mjs`): domain-core
+  modules may not import `server-only` / `next` / a `*.server` / a `*Api`, and
+  shared component code may not value-import a `*.server` module. It currently
+  surfaces `src/lib/feeds.ts` (needs the `.server` suffix — `bareaga_web-56v`);
+  ratchet to `error` once the backlog is clear.
