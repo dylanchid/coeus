@@ -19,7 +19,6 @@ import type { SourceFeed } from "@/lib/types";
  */
 export type ReaderSlashContext = {
   topic: Topic;
-  search: string;
   sources: SourceFeed[];
   busy: boolean;
   onTopic: (topic: Topic) => void;

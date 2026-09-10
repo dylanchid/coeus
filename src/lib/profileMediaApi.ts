@@ -66,14 +66,19 @@ export async function handleUploadProfileMedia(
   const kind = form.get("kind");
   if (!(file instanceof File)) return error("Attach one image in the \"file\" field", 422);
 
-  const buffer = await file.arrayBuffer();
+  // File.size is available after multipart parsing without copying the image
+  // into a second ArrayBuffer. Reject invalid/oversized uploads before that
+  // allocation; only the bounded, accepted image is materialized for storage.
+  const bytesHead = new Uint8Array(await file.slice(0, MAGIC_BYTES_HEAD).arrayBuffer());
   const check = validateUpload({
     kind,
     declaredType: file.type,
-    size: buffer.byteLength,
-    bytesHead: new Uint8Array(buffer.slice(0, MAGIC_BYTES_HEAD)),
+    size: file.size,
+    bytesHead,
   });
   if (!check.ok) return error(check.error, check.status);
+
+  const buffer = await file.arrayBuffer();
 
   const token = (dependencies.randomToken ?? defaultToken)();
   const path = mediaObjectPath(userId, check.kind as MediaKind, check.type as AllowedMediaType, token);

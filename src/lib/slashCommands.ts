@@ -48,7 +48,6 @@ export type SlashItem = {
 /** Feed-specific slash commands, present only while the Reader is mounted. */
 export type ReaderSlashContext = {
   topic: Topic;
-  search: string;
   sources: SourceFeed[];
   busy: boolean;
   onTopic: (t: Topic) => void;
@@ -144,9 +143,7 @@ export function buildSlashItems(ctx: SlashBuildContext): SlashItem[] {
     });
     items.push({
       id: "action:clear-search",
-      label: reader.search.trim()
-        ? `Clear search (“${reader.search.trim().slice(0, 24)}”)`
-        : "Clear search",
+      label: "Clear keyword search",
       group: "Actions",
       keywords: "reset filter empty",
       primary: true,
@@ -374,7 +371,14 @@ export function buildSlashItems(ctx: SlashBuildContext): SlashItem[] {
     });
   }
 
-  // —— Articles (reader only, loaded headlines) ——
+  return items;
+}
+
+/** Avoid building one command per loaded headline until the query needs them. */
+export function buildArticleSlashItems(reader: ReaderSlashContext | undefined, query: string): SlashItem[] {
+  const normalized = query.trim();
+  if (normalized.length < 3 || !/[a-z]/i.test(normalized)) return [];
+  const items: SlashItem[] = [];
   for (const src of reader?.sources ?? []) {
     for (const a of src.articles) {
       items.push({
@@ -399,7 +403,6 @@ export function buildSlashItems(ctx: SlashBuildContext): SlashItem[] {
       });
     }
   }
-
   return items;
 }
 

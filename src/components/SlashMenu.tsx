@@ -11,6 +11,7 @@ import {
 import { useModalDialog } from "@/hooks/useModalDialog";
 import {
   buildSlashItems,
+  buildArticleSlashItems,
   filterSlashItems,
   groupRankedItems,
   type SlashBuildContext,
@@ -37,11 +38,16 @@ export function SlashMenu({ open, onClose, context }: Props) {
 
   useModalDialog({ active: open, containerRef: dialogRef, initialFocusRef: inputRef, onClose });
 
-  // Build every open render so command handlers always see latest prefs/actions
-  const items = useMemo(
+  // Article commands are deferred: feed results can contain hundreds of headlines.
+  const baseItems = useMemo(
     () => (open ? buildSlashItems(context) : EMPTY_SLASH_ITEMS),
     [open, context]
   );
+  const articleItems = useMemo(
+    () => (open ? buildArticleSlashItems(context.reader, query) : EMPTY_SLASH_ITEMS),
+    [open, context.reader, query]
+  );
+  const items = useMemo(() => [...baseItems, ...articleItems], [baseItems, articleItems]);
   const ranked = useMemo(
     () => filterSlashItems(items, query),
     [items, query]

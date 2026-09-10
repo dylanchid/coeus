@@ -12,6 +12,7 @@ export interface PreferencesContextValue {
   updatePrefs(update: PrefsUpdate): void;
   persistence: PersistenceState;
   retryPersistence(): void;
+  flushPersistence(): void;
 }
 
 const prefsStore = getPrefsStore();
@@ -26,11 +27,24 @@ export function usePreferencesProvider(): PreferencesContextValue {
   const [prefs, setPrefs] = useState<UserPrefs | null>(null);
   const [persistence, setPersistence] = useState<PersistenceState>({ status: "idle" });
   const skipInitialSave = useRef(true);
+  const prefsRef = useRef<UserPrefs | null>(null);
+  const saveTimeout = useRef<number | null>(null);
+
+  const savePrefs = useCallback((next: UserPrefs, errorMessage: string) => {
+    setPersistence({ status: "saving" });
+    void prefsStore.save(next)
+      .then(() => setPersistence({ status: "saved" }))
+      .catch(() => setPersistence({ status: "error", message: errorMessage }));
+  }, []);
 
   useEffect(() => {
     let active = true;
     void prefsStore.load()
-      .then((loaded) => active && setPrefs(loaded))
+      .then((loaded) => {
+        if (!active) return;
+        prefsRef.current = loaded;
+        setPrefs(loaded);
+      })
       .catch(() => active && setPersistence({ status: "error", message: "Preferences could not be loaded." }));
     return () => { active = false; };
   }, []);
@@ -50,31 +64,41 @@ export function usePreferencesProvider(): PreferencesContextValue {
       return;
     }
     setPersistence({ status: "saving" });
-    const timeout = window.setTimeout(() => {
-      void prefsStore.save(prefs)
-        .then(() => setPersistence({ status: "saved" }))
-        .catch(() => setPersistence({ status: "error", message: "Preferences were not saved. Your previous choices remain on disk." }));
+    saveTimeout.current = window.setTimeout(() => {
+      saveTimeout.current = null;
+      savePrefs(prefs, "Preferences were not saved. Your previous choices remain on disk.");
     }, 200);
-    return () => window.clearTimeout(timeout);
-  }, [prefs]);
+    return () => {
+      if (saveTimeout.current !== null) window.clearTimeout(saveTimeout.current);
+    };
+  }, [prefs, savePrefs]);
 
   const updatePrefs = useCallback((update: PrefsUpdate) => {
     setPrefs((current) => {
       if (!current) return current;
-      return typeof update === "function" ? update(current) : { ...current, ...update };
+      const next = typeof update === "function" ? update(current) : { ...current, ...update };
+      prefsRef.current = next;
+      return next;
     });
   }, []);
 
+  const flushPersistence = useCallback(() => {
+    if (saveTimeout.current !== null) {
+      window.clearTimeout(saveTimeout.current);
+      saveTimeout.current = null;
+    }
+    if (prefsRef.current) {
+      savePrefs(prefsRef.current, "Preferences were not saved. Your previous choices remain on disk.");
+    }
+  }, [savePrefs]);
+
   const retryPersistence = useCallback(() => {
     if (!prefs) return;
-    setPersistence({ status: "saving" });
-    void prefsStore.save(prefs)
-      .then(() => setPersistence({ status: "saved" }))
-      .catch(() => setPersistence({ status: "error", message: "Preferences still could not be saved." }));
-  }, [prefs]);
+    savePrefs(prefs, "Preferences still could not be saved.");
+  }, [prefs, savePrefs]);
 
   return useMemo(
-    () => ({ prefs, updatePrefs, persistence, retryPersistence }),
-    [prefs, updatePrefs, persistence, retryPersistence],
+    () => ({ prefs, updatePrefs, persistence, retryPersistence, flushPersistence }),
+    [prefs, updatePrefs, persistence, retryPersistence, flushPersistence],
   );
 }

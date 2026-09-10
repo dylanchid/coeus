@@ -23,7 +23,7 @@ test("persistence failures are reported and the latest value can be retried", as
   assert.deepEqual(states.at(-1), { status: "saved" });
 });
 
-test("queued saves remain ordered and only the latest completion publishes saved", async () => {
+test("synchronous updates coalesce before persistence begins", async () => {
   const states = [];
   const saved = [];
   const queue = new PersistenceQueue(
@@ -34,7 +34,34 @@ test("queued saves remain ordered and only the latest completion publishes saved
 
   const first = queue.enqueue(1);
   const second = queue.enqueue(2);
-  assert.deepEqual(await Promise.all([first, second]), [true, true]);
-  assert.deepEqual(saved, [1, 2]);
+  const third = queue.enqueue(3);
+  assert.deepEqual(await Promise.all([first, second, third]), [true, true, true]);
+  assert.deepEqual(saved, [3]);
   assert.equal(states.filter(({ status }) => status === "saved").length, 1);
+});
+
+test("updates arriving during a save replace the pending archive snapshot", async () => {
+  const saved = [];
+  let releaseFirst;
+  const firstStarted = Promise.withResolvers();
+  const queue = new PersistenceQueue(
+    async (value) => {
+      saved.push(value);
+      if (value === 1) {
+        firstStarted.resolve();
+        await new Promise((resolve) => { releaseFirst = resolve; });
+      }
+    },
+    () => undefined,
+    "Not saved"
+  );
+
+  const first = queue.enqueue(1);
+  await firstStarted.promise;
+  const second = queue.enqueue(2);
+  const third = queue.enqueue(3);
+  releaseFirst();
+
+  assert.deepEqual(await Promise.all([first, second, third]), [true, true, true]);
+  assert.deepEqual(saved, [1, 3]);
 });

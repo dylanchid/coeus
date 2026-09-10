@@ -69,7 +69,7 @@ function validItem(id: string) {
 const emptyArchive = { version: 1, collections: [], items: [] as ReturnType<typeof validItem>[], socialPosts: [] };
 
 function Harness({ onArchiveResult }: { onArchiveResult?: (ok: boolean) => void } = {}) {
-  const { prefs, updatePrefs, persistence: prefsPersistence, retryPersistence } = usePreferences();
+  const { prefs, updatePrefs, persistence: prefsPersistence, retryPersistence, flushPersistence } = usePreferences();
   const { archive, updateArchive, sync, replaceArchiveFromServer } = useArchive();
   if (!prefs || !archive) return <p>Loading</p>;
   return (
@@ -80,6 +80,7 @@ function Harness({ onArchiveResult }: { onArchiveResult?: (ok: boolean) => void 
       <p data-testid="sync">{sync.status}</p>
       <button type="button" onClick={() => updatePrefs({ palette: "copper" })}>set palette</button>
       <button type="button" onClick={retryPersistence}>retry prefs</button>
+      <button type="button" onClick={flushPersistence}>flush prefs</button>
       <button
         type="button"
         onClick={async () => {
@@ -130,6 +131,17 @@ test("preferences: a user edit persists to the prefs store", async () => {
     assert.equal(saved?.palette, "copper");
   });
   await waitFor(() => assert.equal(screen.getByTestId("prefs-status").textContent, "saved"));
+});
+
+test("preferences: flushPersistence writes a pending edit without waiting for the debounce", async () => {
+  render(<AppProviders><Harness /></AppProviders>);
+  await screen.findByTestId("palette");
+  fireEvent.click(screen.getByRole("button", { name: "set palette" }));
+  fireEvent.click(screen.getByRole("button", { name: "flush prefs" }));
+  await waitFor(() => {
+    const saved = JSON.parse(localStorage.getItem(PREFS_STORAGE_KEY) ?? "null");
+    assert.equal(saved?.palette, "copper");
+  });
 });
 
 test("archive: an update is applied optimistically and enqueued to local persistence", async () => {

@@ -8,11 +8,12 @@ type Props = {
   matchSourceCount: number;
   totalCount: number;
   onChange: (value: string) => void;
+  onBlur: () => void;
 };
 
 export const SearchBar = forwardRef<HTMLInputElement, Props>(
   function SearchBar(
-    { value, matchCount, matchSourceCount, totalCount, onChange },
+    { value, matchCount, matchSourceCount, totalCount, onChange, onBlur },
     ref
   ) {
     const [focused, setFocused] = useState(false);
@@ -30,7 +31,7 @@ export const SearchBar = forwardRef<HTMLInputElement, Props>(
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => { setFocused(false); onBlur(); }}
           autoComplete="off"
           spellCheck={false}
         />
