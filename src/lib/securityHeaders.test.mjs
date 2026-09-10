@@ -12,6 +12,7 @@ test("security headers enforce a same-origin CSP while allowing the configured S
   assert.match(csp, /frame-ancestors 'none'/);
   assert.match(csp, /frame-src https:/);
   assert.match(csp, /object-src 'none'/);
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-eval'/);
   assert.match(csp, /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co https:\/\/project\.supabase\.co wss:\/\/project\.supabase\.co/);
   assert.match(csp, /img-src 'self' data: blob: https:\/\/\*\.supabase\.co https:\/\/project\.supabase\.co/);
   assert.doesNotMatch(csp, /img-src[^;]*\bhttps:(?!\/\/)/);
@@ -23,5 +24,7 @@ test("security headers enforce a same-origin CSP while allowing the configured S
 test("HSTS is production-only and malformed Supabase config cannot invalidate CSP", () => {
   const headers = asMap(securityHeaders(false, "not a URL"));
   assert.equal(headers.has("strict-transport-security"), false);
-  assert.match(headers.get("content-security-policy"), /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co/);
+  const csp = headers.get("content-security-policy");
+  assert.match(csp, /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co/);
+  assert.match(csp, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/);
 });

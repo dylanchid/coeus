@@ -18,6 +18,8 @@ function supabaseConnectSources(supabaseUrl: string | undefined): string[] {
  * An enforced CSP that permits the app's Next runtime plus its only browser
  * service, Supabase Auth/Storage. `unsafe-inline` is intentionally retained
  * for Next's inline bootstrap/style tags; script execution remains same-origin.
+ * React's development error overlay additionally needs `unsafe-eval` to map
+ * server errors back to their source. It is never sent in production.
  */
 /**
  * The only remote origin the app renders <img> from is the Supabase Storage
@@ -51,7 +53,7 @@ export function securityHeaders(production: boolean, supabaseUrl = process.env.N
       "frame-ancestors 'none'",
       `img-src ${imgSrc}`,
       "object-src 'none'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${production ? "" : " 'unsafe-eval'"}`,
       "style-src 'self' 'unsafe-inline'",
       "worker-src 'self' blob:",
     ].join("; ") },
