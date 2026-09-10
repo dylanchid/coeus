@@ -423,6 +423,36 @@ test("Sign-in panel hands each provider button off to Supabase OAuth with a call
   assert.match(calls[0].options?.redirectTo ?? "", /\/auth\/callback\?next=%2Farchive$/);
 });
 
+test("Sign-in panel hides the dev shortcut by default and mints a session through /api/test/session when enabled", async () => {
+  render(
+    <AuthProvider client={fakeAuthClient(null, []) as never}>
+      <SignInPanel next="/archive" />
+    </AuthProvider>,
+  );
+  assert.equal(screen.queryByRole("button", { name: "Dev sign in" }), null);
+
+  const requests: { url: string; body: unknown }[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    requests.push({ url: input.toString(), body: init?.body ? JSON.parse(String(init.body)) : null });
+    return new Response(JSON.stringify({ userId: "u1", email: "ada@e2e.coeus.local" }), { status: 200 });
+  }) as typeof fetch;
+
+  cleanup();
+  render(
+    <AuthProvider client={fakeAuthClient(null, []) as never}>
+      <SignInPanel next="/archive" devSignIn />
+    </AuthProvider>,
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: /Test account name/ }), { target: { value: "Ada L" } });
+  fireEvent.click(screen.getByRole("button", { name: "Dev sign in" }));
+
+  // A hard nav to `next` follows on success (like the OAuth callback) — not
+  // asserted here because jsdom's window.location is non-configurable.
+  await waitFor(() => assert.equal(requests.length, 1));
+  assert.equal(requests[0].url, "/api/test/session");
+  assert.deepEqual(requests[0].body, { email: "ada-l@e2e.coeus.local", userMetadata: { user_name: "Ada L", full_name: "Ada L" } });
+});
+
 test("Sign-in panel is inert when no auth client can be constructed", async () => {
   // AuthProvider builds a real browser client when NEXT_PUBLIC_SUPABASE_* are
   // present; clear them so this test is deterministic regardless of the

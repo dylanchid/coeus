@@ -1,30 +1,20 @@
+import { devSignInEnabled, TEST_EMAIL_DOMAIN } from "@/lib/devAuth.server";
 import { createAdminSupabaseClient, createRequestSupabaseClient } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Test-only sign-in. Playwright's authenticated journeys need a deterministic
- * signed-in session without a real OAuth round trip, so this route mints one:
- * it upserts the requested user with the service key, generates a magic-link
- * token, and verifies it against a request-scoped client — which writes the
- * same `sb-*` cookies the OAuth callback would.
+ * Test-only sign-in. Playwright's authenticated journeys — and local profile
+ * work when OAuth redirect URIs aren't configured for localhost — need a
+ * deterministic signed-in session without a real OAuth round trip, so this
+ * route mints one: it upserts the requested user with the service key,
+ * generates a magic-link token, and verifies it against a request-scoped
+ * client — which writes the same `sb-*` cookies the OAuth callback would.
  *
- * It is inert unless `E2E_TEST_LOGIN=1` is set in the environment. That flag is
- * only ever present for the e2e job and local Playwright runs; it is never set
- * on a deployed environment. The extra `VERCEL_ENV === "production"` and
- * `NODE_ENV === "production"` guards are belt-and-braces refusals in case the
- * flag ever leaks into a production build or runtime.
+ * Armed only when `devSignInEnabled()` (E2E_TEST_LOGIN=1, non-production).
  */
-function testLoginEnabled(): boolean {
-  return (
-    process.env.E2E_TEST_LOGIN === "1" &&
-    process.env.VERCEL_ENV !== "production" &&
-    process.env.NODE_ENV !== "production"
-  );
-}
 
-/** Reserved test-account email domain — see e2e/support/testUsers.ts. */
-const TEST_EMAIL_DOMAIN = "@e2e.coeus.local";
+const testLoginEnabled = devSignInEnabled;
 
 interface SessionRequest {
   email?: unknown;

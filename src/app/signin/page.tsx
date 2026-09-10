@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
 import { SignInPanel } from "@/components/SignInPanel";
+import { devSignInEnabled } from "@/lib/devAuth.server";
 import { safeInternalPath } from "@/lib/safeRedirect";
 
 export const metadata: Metadata = {
@@ -21,7 +22,11 @@ export default async function SignInPage({
   return (
     <AppShell section="account">
       <div className="signin-page">
-        <SignInPanel next={safeInternalPath(firstValue(params.next), "/welcome")} errorMessage={firstValue(params.error) ?? null} />
+        <SignInPanel
+          next={safeInternalPath(firstValue(params.next), "/welcome")}
+          errorMessage={firstValue(params.error) ?? null}
+          devSignIn={devSignInEnabled()}
+        />
       </div>
     </AppShell>
   );
