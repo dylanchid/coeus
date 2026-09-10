@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(14);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at)
 values ('cccccccc-cccc-cccc-cccc-cccccccccccc', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'quota@example.test', '', now());
@@ -65,14 +65,14 @@ where archive_id = (select id from public.archives where owner_id = 'cccccccc-cc
 select is(
   public.prune_archive_revisions(
     (select id from public.archives where owner_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'), 2, 30),
-  3,
-  'prune removes the 3 revisions that are both outside the recent-2 window and older than 30 days'
+  4,
+  'prune removes revisions outside the recent-2 count window even when they are new'
 );
 select is(
   (select count(*) from public.archive_revisions
    where archive_id = (select id from public.archives where owner_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc')),
-  3::bigint,
-  'revisions 3, 4, and the current 5 are retained'
+  2::bigint,
+  'the two newest revisions are retained'
 );
 select is(
   (select count(*) from public.archive_revisions
@@ -82,13 +82,30 @@ select is(
   'the current revision is never pruned'
 );
 
+update public.archive_revisions set created_at = now() - interval '60 days'
+where archive_id = (select id from public.archives where owner_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc')
+  and revision = 4;
+
+select is(
+  public.prune_archive_revisions(
+    (select id from public.archives where owner_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'), 2, 30),
+  1,
+  'prune removes an old revision even inside the count window'
+);
+select is(
+  (select count(*) from public.archive_revisions
+   where archive_id = (select id from public.archives where owner_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc')),
+  1::bigint,
+  'only the current revision remains after the age cap applies'
+);
+
 -- ---------------------------------------------------------------------------
 -- Storage stats
 -- ---------------------------------------------------------------------------
 select is(
   (select revision_count from public.archive_storage_stats()
    where archive_id = (select id from public.archives where owner_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc')),
-  3::bigint,
+  1::bigint,
   'archive_storage_stats reports the live revision count'
 );
 

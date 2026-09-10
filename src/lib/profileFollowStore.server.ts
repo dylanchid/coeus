@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FollowedProfile } from "./profileFollow.ts";
+import { readAllPages } from "./pagedRead.ts";
 
 /** One page of a follower / following list. `nextCursor` is the created_at of
  * the last row on this page — feed it back as `cursor` for the next page. */
@@ -150,19 +151,25 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
     scopeColumn: "follower_id" | "followee_id",
     joinColumn: "follower_id" | "followee_id"
   ): Promise<number> {
-    const { data, error } = await this.supabase
+    const edges = await readAllPages((from, to) => this.supabase
       .from("profile_follows")
       .select(joinColumn)
-      .eq(scopeColumn, scopeValue);
-    if (error) throw error;
-    const ids = [...new Set(((data ?? []) as Record<string, string>[]).map((row) => row[joinColumn]))];
-    if (!ids.length) return 0;
-    const { count, error: profileError } = await this.supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .in("id", ids);
-    if (profileError) throw profileError;
-    return count ?? 0;
+      .eq(scopeColumn, scopeValue)
+      .order(joinColumn)
+      .range(from, to));
+    const ids = [...new Set((edges as Record<string, string>[]).map((row) => row[joinColumn]))];
+    // Keep the profile count query below PostgREST's response and URL limits as
+    // well; this graph can be much larger than the displayed page size.
+    let count = 0;
+    for (let start = 0; start < ids.length; start += 1_000) {
+      const { count: pageCount, error } = await this.supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .in("id", ids.slice(start, start + 1_000));
+      if (error) throw error;
+      count += pageCount ?? 0;
+    }
+    return count;
   }
 
   /** Shared paginator for listFollowers / listFollowing: created_at desc, a

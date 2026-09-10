@@ -11,6 +11,13 @@ export class UnsafeOutboundUrlError extends Error {
   }
 }
 
+export class OutboundResponseTooLargeError extends Error {
+  constructor() {
+    super("Outbound response exceeds the configured byte limit");
+    this.name = "OutboundResponseTooLargeError";
+  }
+}
+
 function ipv4IsUnsafe(address: string): boolean {
   const octets = address.split(".").map(Number);
   if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) return true;
@@ -94,7 +101,13 @@ export function fixedAddressLookup(address: string, family: 4 | 6) {
  * that answer to https.request's lookup hook prevents a second hostname lookup
  * between validation and connection (the DNS-rebinding window).
  */
-export async function fetchValidatedHttps(url: URL, address: string, family: 4 | 6, init: RequestInit): Promise<Response> {
+export async function fetchValidatedHttps(
+  url: URL,
+  address: string,
+  family: 4 | 6,
+  init: RequestInit,
+  maxBytes = 5 * 1024 * 1024
+): Promise<Response> {
   return new Promise((resolve, reject) => {
     const headers: Record<string, string> = {};
     new Headers(init.headers).forEach((value, name) => { headers[name] = value; });
@@ -105,7 +118,15 @@ export async function fetchValidatedHttps(url: URL, address: string, family: 4 |
       signal: init.signal as AbortSignal | undefined,
     }, (response) => {
       const chunks: Buffer[] = [];
-      response.on("data", (chunk: Buffer) => chunks.push(chunk));
+      let receivedBytes = 0;
+      response.on("data", (chunk: Buffer) => {
+        receivedBytes += chunk.length;
+        if (receivedBytes > maxBytes) {
+          response.destroy(new OutboundResponseTooLargeError());
+          return;
+        }
+        chunks.push(chunk);
+      });
       response.on("error", reject);
       response.on("end", () => {
         const headers = new Headers();

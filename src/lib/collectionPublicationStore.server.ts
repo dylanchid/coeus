@@ -12,6 +12,7 @@ import {
   type PublishCollectionRequest,
 } from "./collectionPublication.ts";
 import { CollectionNotFoundError, SlugExhaustedError } from "./collectionPublicationErrors.ts";
+import { readAllPages } from "./pagedRead.ts";
 
 export { CollectionNotFoundError, SlugExhaustedError };
 
@@ -104,12 +105,8 @@ export class SupabaseCollectionPublicationStore
       .maybeSingle();
     if (error) throw error;
     if (!data) return null;
-    const { data: items, error: itemsError } = await this.supabase
-      .from("collection_publication_items")
-      .select("*")
-      .eq("publication_id", (data as { id: string }).id);
-    if (itemsError) throw itemsError;
-    return toPublication(data as Record<string, unknown>, (items ?? []) as Record<string, unknown>[]);
+    const items = await this.collectionItems([String((data as { id: string }).id)]);
+    return toPublication(data as Record<string, unknown>, items);
   }
 
   async listPublic(limit: number, offset: number): Promise<{ items: CollectionPublicationSummary[]; hasMore: boolean }> {
@@ -130,13 +127,9 @@ export class SupabaseCollectionPublicationStore
     const page = rows.slice(0, boundedLimit);
     if (!page.length) return { items: [], hasMore: false };
 
-    const { data: items, error: itemsError } = await this.supabase
-      .from("collection_publication_items")
-      .select("publication_id")
-      .in("publication_id", page.map((entry) => entry.id));
-    if (itemsError) throw itemsError;
+    const items = await this.collectionItems(page.map((entry) => String(entry.id)), "publication_id");
     const counts = new Map<string, number>();
-    for (const item of (items ?? []) as { publication_id: string }[]) {
+    for (const item of items as { publication_id: string }[]) {
       counts.set(item.publication_id, (counts.get(item.publication_id) ?? 0) + 1);
     }
 
@@ -191,13 +184,9 @@ export class SupabaseCollectionPublicationStore
     const rows = (publications ?? []) as Record<string, unknown>[];
     if (!rows.length) return [];
 
-    const { data: items, error: itemsError } = await this.supabase
-      .from("collection_publication_items")
-      .select("*")
-      .in("publication_id", rows.map((entry) => entry.id));
-    if (itemsError) throw itemsError;
+    const items = await this.collectionItems(rows.map((entry) => String(entry.id)));
     const itemsByPublication = new Map<string, Record<string, unknown>[]>();
-    for (const item of (items ?? []) as Record<string, unknown>[]) {
+    for (const item of items) {
       const key = String(item.publication_id);
       const grouped = itemsByPublication.get(key) ?? [];
       grouped.push(item);
@@ -223,13 +212,9 @@ export class SupabaseCollectionPublicationStore
     if (error) throw error;
     const rows = (publications ?? []) as Record<string, unknown>[];
     if (!rows.length) return [];
-    const { data: items, error: itemsError } = await this.supabase
-      .from("collection_publication_items")
-      .select("*")
-      .in("publication_id", rows.map((entry) => entry.id));
-    if (itemsError) throw itemsError;
+    const items = await this.collectionItems(rows.map((entry) => String(entry.id)));
     const itemsByPublication = new Map<string, Record<string, unknown>[]>();
-    for (const item of (items ?? []) as Record<string, unknown>[]) {
+    for (const item of items) {
       const key = String(item.publication_id);
       const grouped = itemsByPublication.get(key) ?? [];
       grouped.push(item);
@@ -301,12 +286,25 @@ export class SupabaseCollectionPublicationStore
   private async publication(publicationId: string): Promise<CollectionPublication> {
     const { data, error } = await this.supabase.from("collection_publications").select("*").eq("id", publicationId).single();
     if (error) throw error;
-    const { data: items, error: itemsError } = await this.supabase
-      .from("collection_publication_items")
-      .select("*")
-      .eq("publication_id", publicationId);
-    if (itemsError) throw itemsError;
-    return toPublication(data as Record<string, unknown>, (items ?? []) as Record<string, unknown>[]);
+    const items = await this.collectionItems([publicationId]);
+    return toPublication(data as Record<string, unknown>, items);
+  }
+
+  /** Page item rows and split large IN lists so neither PostgREST limit truncates an archive. */
+  private async collectionItems(publicationIds: string[], columns = "*"): Promise<Record<string, unknown>[]> {
+    const items: Record<string, unknown>[] = [];
+    for (let start = 0; start < publicationIds.length; start += 500) {
+      const ids = publicationIds.slice(start, start + 500);
+      const page = await readAllPages((from, to) => this.supabase
+        .from("collection_publication_items")
+        .select(columns)
+        .in("publication_id", ids)
+        .order("publication_id")
+        .order("position")
+        .range(from, to));
+      items.push(...(page as unknown as Record<string, unknown>[]));
+    }
+    return items;
   }
 
   private async archiveId(ownerId: string): Promise<string | null> {

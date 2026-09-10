@@ -6,6 +6,7 @@ import { createRecoverySnapshot, type ArchiveRevisionSummary, type ContentSnapsh
 import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "./archiveSync.ts";
 import { fetchSafeContent } from "./safeContentFetch.server.ts";
 import { removeStoragePrefix } from "./storageCleanup.ts";
+import { readAllPages } from "./pagedRead.ts";
 
 export interface ArchiveRecoveryStore {
   export(ownerId: string): Promise<{ archiveId: string; current: ArchiveSyncSnapshot; revisions: ArchiveRevisionSummary[]; contentSnapshots: ContentSnapshotSummary[] }>;
@@ -46,17 +47,15 @@ export class SupabaseArchiveRecoveryStore implements ArchiveRecoveryStore {
 
   async export(ownerId: string) {
     const archive = await this.archive(ownerId);
-    const [{ data: revisions, error: revisionsError }, { data: contentSnapshots, error: contentError }] = await Promise.all([
-      this.supabase.from("archive_revisions").select("revision,created_at").eq("archive_id", archive.id).order("revision", { ascending: false }),
-      this.supabase.from("content_snapshots").select("id,item_id,canonical_url,fetched_url,status,media_type,byte_length,sha256,captured_at,created_at").eq("archive_id", archive.id).order("created_at", { ascending: false }),
+    const [revisions, contentSnapshots] = await Promise.all([
+      readAllPages((from, to) => this.supabase.from("archive_revisions").select("revision,created_at").eq("archive_id", archive.id).order("revision", { ascending: false }).range(from, to)),
+      readAllPages((from, to) => this.supabase.from("content_snapshots").select("id,item_id,canonical_url,fetched_url,status,media_type,byte_length,sha256,captured_at,created_at").eq("archive_id", archive.id).order("created_at", { ascending: false }).order("id", { ascending: false }).range(from, to)),
     ]);
-    if (revisionsError) throw revisionsError;
-    if (contentError) throw contentError;
     return {
       archiveId: archive.id,
       current: archive.current,
-      revisions: (revisions ?? []).map((row) => ({ revision: Number(row.revision), createdAt: String(row.created_at) })),
-      contentSnapshots: (contentSnapshots ?? []).map((row) => summary(row as Record<string, unknown>)),
+      revisions: revisions.map((row) => ({ revision: Number(row.revision), createdAt: String(row.created_at) })),
+      contentSnapshots: contentSnapshots.map((row) => summary(row as Record<string, unknown>)),
     };
   }
 

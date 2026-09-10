@@ -24,7 +24,7 @@ export async function fetchFeedText(initialUrl: string, fetcher: typeof fetch | 
       redirect: "manual", signal: AbortSignal.timeout(6_000),
       headers: { "User-Agent": "coeus/1.0 (+local news reader)", Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml, */*" },
     } as const;
-    const response = fetcher ? await fetcher(url, init) : await fetchValidatedHttps(url, address, family, init);
+    const response = fetcher ? await fetcher(url, init) : await fetchValidatedHttps(url, address, family, init, MAX_FEED_BYTES);
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location || redirect === MAX_REDIRECTS) throw new Error("Too many feed redirects");

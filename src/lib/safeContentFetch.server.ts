@@ -11,6 +11,8 @@ export interface CapturedContent {
   body: Uint8Array;
   mediaType: string;
   fetchedUrl: string;
+  /** Response policy headers used by downstream capture consumers. */
+  responseHeaders: Headers;
 }
 
 async function checkedContentUrl(value: string, resolve: AddressResolver) {
@@ -35,7 +37,7 @@ export async function fetchSafeContent(
       signal: AbortSignal.timeout(10_000),
       headers: { "User-Agent": "coeus/1.0 (+private archive capture)", Accept: "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8" },
     } as const;
-    const response = fetcher ? await fetcher(url, init) : await fetchValidatedHttps(url, address, family, init);
+    const response = fetcher ? await fetcher(url, init) : await fetchValidatedHttps(url, address, family, init, MAX_CONTENT_BYTES);
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location || redirect === MAX_REDIRECTS) throw new Error("Too many content redirects");
@@ -51,7 +53,7 @@ export async function fetchSafeContent(
     if (!new Set(["text/html", "text/plain", "application/xhtml+xml"]).has(mediaType)) {
       throw new Error("Only HTML and plain-text content can be captured");
     }
-    return { body, mediaType, fetchedUrl: url.toString() };
+    return { body, mediaType, fetchedUrl: url.toString(), responseHeaders: new Headers(response.headers) };
   }
   throw new Error("Too many content redirects");
 }

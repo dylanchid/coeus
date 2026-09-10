@@ -7,6 +7,7 @@ import {
   type FollowedFeedPage,
 } from "./followedFeed.ts";
 import type { Visibility } from "./visibility.ts";
+import { readAllPages } from "./pagedRead.ts";
 
 export type { FollowedFeedItem, FollowedFeedPage } from "./followedFeed.ts";
 
@@ -33,12 +34,13 @@ export class SupabaseFollowedFeedReader implements FollowedFeedReader {
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), MAX_FOLLOWED_FEED_PAGE_SIZE);
     const boundedOffset = Math.max(Math.trunc(offset), 0);
 
-    const { data: follows, error: followsError } = await this.supabase
+    const follows = await readAllPages((from, to) => this.supabase
       .from("profile_follows")
       .select("followee_id")
-      .eq("follower_id", viewerId);
-    if (followsError) throw followsError;
-    const followeeIds = ((follows ?? []) as { followee_id: string }[]).map((row) => row.followee_id);
+      .eq("follower_id", viewerId)
+      .order("followee_id")
+      .range(from, to));
+    const followeeIds = (follows as { followee_id: string }[]).map((row) => row.followee_id);
     // No follows → no content query at all.
     if (!followeeIds.length) return { items: [], hasMore: false };
 

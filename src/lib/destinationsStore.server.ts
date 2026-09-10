@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decodeEncryptionKey, decryptSecret, encryptSecret } from "./destinationSecrets.ts";
 import { ArchiveNotFoundError, DestinationNotFoundError } from "./destinationsErrors.ts";
+import { readAllPages } from "./pagedRead.ts";
 import type {
   Destination,
   DestinationDelivery,
@@ -182,24 +183,28 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
 
   async deliveries(ownerId: string, kind: DestinationKind): Promise<DestinationDelivery[]> {
     const destinationId = await this.destinationId(ownerId, kind);
-    const { data, error } = await this.supabase
+    const data = await readAllPages((from, to) => this.supabase
       .from("destination_deliveries")
       .select("destination_id,item_id,external_ref,last_delivered_revision,status,last_attempted_at,last_error,last_http_status")
-      .eq("destination_id", destinationId);
-    if (error) throw error;
-    return (data ?? []).map((row) => deliveryRow(row as Record<string, unknown>));
+      .eq("destination_id", destinationId)
+      .order("item_id")
+      .range(from, to));
+    return data.map((row) => deliveryRow(row as Record<string, unknown>));
   }
 
   async activeDestinations(ownerId?: string): Promise<WorkerDestination[]> {
-    let query = this.supabase
-      .from("destinations")
-      .select("kind,config,secret_ciphertext,secret_iv,secret_auth_tag,archives!inner(id,owner_id)")
-      .eq("status", "active")
-      .not("secret_ciphertext", "is", null);
-    if (ownerId) query = query.eq("archives.owner_id", ownerId);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? [])
+    const data = await readAllPages((from, to) => {
+      let query = this.supabase
+        .from("destinations")
+        .select("kind,config,secret_ciphertext,secret_iv,secret_auth_tag,archives!inner(id,owner_id)")
+        .eq("status", "active")
+        .not("secret_ciphertext", "is", null)
+        .order("id")
+        .range(from, to);
+      if (ownerId) query = query.eq("archives.owner_id", ownerId);
+      return query;
+    });
+    return data
       .map((row) => row as unknown as {
         kind: DestinationKind;
         config: ObsidianGitConfig | NotionConfig;
