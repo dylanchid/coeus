@@ -40,8 +40,17 @@ test("explicit source directives disable static previews", () => {
   assert.equal(pageDisallowsPreview("<meta name=\"robots\" content=\"noimageindex\">", new Headers()), true);
   assert.equal(pageDisallowsPreview("<meta name=\"coeus-preview\" content=\"no-preview\">", new Headers()), true);
   assert.equal(pageDisallowsPreview("<html><head></head></html>", new Headers({ "X-Robots-Tag": "noarchive" })), true);
+  assert.equal(pageDisallowsPreview("<html><head></head></html>", new Headers({ "X-Robots-Tag": "bingbot: noarchive" })), false);
+  assert.equal(pageDisallowsPreview("<html><head></head></html>", new Headers({ "X-Robots-Tag": "CoeusPreview: noarchive" })), true);
   assert.equal(pageDisallowsPreview("<meta name=\"robots\" content=\"index, follow\">", new Headers()), false);
   assert.equal(pageDisallowsPreview("<meta content=\"no-preview\" name=\"coeus-preview\">", new Headers()), true);
   assert.equal(pageAppearsAccessRestricted('<meta itemprop="isAccessibleForFree" content="false">', new Headers()), true);
   assert.equal(pageAppearsAccessRestricted("<html></html>", new Headers({ "WWW-Authenticate": "Bearer" })), true);
+});
+
+test("structured access declarations use the JSON-LD boolean value", () => {
+  const freeArticle = '<script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":true,"hasPart":{"position":0}}</script>';
+  const paidArticle = '<script type="application/ld+json">{"@type":"NewsArticle","isAccessibleForFree":false}</script>';
+  assert.equal(pageAppearsAccessRestricted(freeArticle, new Headers()), false);
+  assert.equal(pageAppearsAccessRestricted(paidArticle, new Headers()), true);
 });

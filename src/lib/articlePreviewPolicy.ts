@@ -10,6 +10,7 @@ export function isPreviewOptedOut(hostname: string, domains: string[]): boolean 
 
 type RobotsRule = { allow: boolean; path: string };
 type RobotsGroup = { agents: string[]; rules: RobotsRule[] };
+const PREVIEW_BLOCKING_DIRECTIVES = new Set(["none", "noindex", "noimageindex", "nosnippet", "noarchive", "no-preview"]);
 
 function robotsGroups(text: string): RobotsGroup[] {
   const groups: RobotsGroup[] = [];
@@ -54,21 +55,61 @@ export function robotsAllowsUrl(robotsText: string, url: URL, userAgent = PREVIE
   return matches[0].allow;
 }
 
+function xRobotsTagDisallowsPreview(value: string): boolean {
+  let scope: "all" | "preview" | "other" = "all";
+
+  for (const rawPart of value.split(",")) {
+    const part = rawPart.trim();
+    if (!part) continue;
+    const scoped = /^([a-z][a-z0-9_-]*)\s*:\s*(.*)$/i.exec(part);
+    if (scoped) {
+      scope = scoped[1].toLowerCase() === PREVIEW_AGENT.toLowerCase() ? "preview" : "other";
+    }
+    const directives = (scoped?.[2] ?? part).trim().split(/\s+/);
+    if (scope !== "other" && directives.some((directive) => PREVIEW_BLOCKING_DIRECTIVES.has(directive.toLowerCase()))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Honors explicit page-level instructions in addition to robots.txt. */
 export function pageDisallowsPreview(html: string, headers: Headers): boolean {
-  const header = headers.get("x-robots-tag") ?? "";
   const meta = [...html.matchAll(/<meta\b[^>]*>/gi)]
     .filter((match) => /(?:name|http-equiv)\s*=\s*["']?(?:robots|coeus-preview)["']?(?:\s|>|\/)/i.test(match[0]))
     .map((match) => /content\s*=\s*["']([^"']*)["']/i.exec(match[0])?.[1] ?? "")
     .join(",");
-  return /\b(?:none|noindex|noimageindex|nosnippet|noarchive|no-preview)\b/i.test(`${header},${meta}`);
+  return xRobotsTagDisallowsPreview(headers.get("x-robots-tag") ?? "")
+    || [...meta.split(/[,\s]+/)].some((directive) => PREVIEW_BLOCKING_DIRECTIVES.has(directive.toLowerCase()));
+}
+
+function structuredDataDeclaresPaidAccess(html: string): boolean {
+  const values: unknown[] = [];
+  for (const match of html.matchAll(/<script\b(?=[^>]*\btype\s*=\s*(?:["']application\/ld\+json["']|application\/ld\+json(?:\s|>|\/)))[^>]*>([\s\S]*?)<\/script\s*>/gi)) {
+    try {
+      values.push(JSON.parse(match[1]));
+    } catch {
+      // Invalid JSON-LD is not a reliable declaration of restricted access.
+    }
+  }
+
+  const visit = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(visit);
+    if (!value || typeof value !== "object") return false;
+    return Object.entries(value).some(([key, nested]) => (
+      key.toLowerCase() === "isaccessibleforfree" ? nested === false : visit(nested)
+    ));
+  };
+  return values.some(visit);
 }
 
 /** Conservative detection for common publisher-declared access restrictions. */
 export function pageAppearsAccessRestricted(html: string, headers: Headers): boolean {
   if (headers.has("www-authenticate")) return true;
-  const declaresPaidStructuredData = /isAccessibleForFree/i.test(html) && /(?:content\s*=\s*["']?(?:false|0)|[:=]\s*(?:false|0))/i.test(html);
-  return declaresPaidStructuredData || /(?:paywall|content[_-]?tier)["']?\s*[:=]\s*["']?(?:premium|paid|subscriber)/i.test(html);
+  const declaresPaidMetaData = /<meta\b(?=[^>]*\bitemprop\s*=\s*["']?isAccessibleForFree["']?(?:\s|>|\/))(?=[^>]*\bcontent\s*=\s*["']?(?:false|0)["']?(?:\s|>|\/))[^>]*>/i.test(html);
+  return structuredDataDeclaresPaidAccess(html)
+    || declaresPaidMetaData
+    || /(?:paywall|content[_-]?tier)["']?\s*[:=]\s*["']?(?:premium|paid|subscriber)/i.test(html);
 }
 
 /**
