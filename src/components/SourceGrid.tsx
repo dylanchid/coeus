@@ -16,7 +16,7 @@ import {
   rectSortingStrategy,
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import type { Article, EmbedCompatibility, SourceFeed } from "@/lib/types";
+import type { Article, SourceFeed } from "@/lib/types";
 import { SourceColumn } from "./SourceColumn";
 
 type Props = {
@@ -32,7 +32,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
-  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined) => void;
 };
 
 function SourceGridInner({

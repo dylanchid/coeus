@@ -101,6 +101,20 @@ export function fixedAddressLookup(address: string, family: 4 | 6) {
  * that answer to https.request's lookup hook prevents a second hostname lookup
  * between validation and connection (the DNS-rebinding window).
  */
+function responseHeaders(raw: NodeJS.Dict<string | string[]>): Headers {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(raw)) {
+    if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+  }
+  return headers;
+}
+
+/**
+ * Fetches over HTTPS against a pre-validated address. `maxBytes === 0` resolves as
+ * soon as the response headers arrive and discards the body — use it when only the
+ * status and headers matter (e.g. an embed-policy probe) so a large page is never
+ * downloaded just to be thrown away.
+ */
 export async function fetchValidatedHttps(
   url: URL,
   address: string,
@@ -117,6 +131,14 @@ export async function fetchValidatedHttps(
       lookup: fixedAddressLookup(address, family) as unknown as Parameters<typeof httpsRequest>[1]["lookup"],
       signal: init.signal as AbortSignal | undefined,
     }, (response) => {
+      if (maxBytes === 0) {
+        const status = response.statusCode ?? 0;
+        const collected = responseHeaders(response.headers);
+        response.on("error", () => {}); // headers are already in hand; a torn-down body is expected
+        response.destroy();
+        resolve(new Response(null, { status, headers: collected }));
+        return;
+      }
       const chunks: Buffer[] = [];
       let receivedBytes = 0;
       response.on("data", (chunk: Buffer) => {
@@ -129,11 +151,10 @@ export async function fetchValidatedHttps(
       });
       response.on("error", reject);
       response.on("end", () => {
-        const headers = new Headers();
-        for (const [name, value] of Object.entries(response.headers)) {
-          if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
-        }
-        resolve(new Response(Buffer.concat(chunks), { status: response.statusCode ?? 0, headers }));
+        resolve(new Response(Buffer.concat(chunks), {
+          status: response.statusCode ?? 0,
+          headers: responseHeaders(response.headers),
+        }));
       });
     });
     request.on("error", reject);

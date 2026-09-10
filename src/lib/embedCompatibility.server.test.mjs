@@ -30,3 +30,14 @@ test("embed audit reports a non-success response as unknown", async () => {
   const resolve = async () => [{ address: "8.8.8.8", family: 4 }];
   assert.equal(await inspectEmbedCompatibility("https://public.example/article", { fetcher, resolve }), "unknown");
 });
+
+test("embed audit probes with GET so per-method framing headers are seen", async () => {
+  let method;
+  const fetcher = async (_url, init) => {
+    method = init.method;
+    return new Response(null, { status: 200, headers: { "x-frame-options": "DENY" } });
+  };
+  const resolve = async () => [{ address: "8.8.8.8", family: 4 }];
+  assert.equal(await inspectEmbedCompatibility("https://public.example/article", { fetcher, resolve }), "blocked");
+  assert.equal(method, "GET");
+});

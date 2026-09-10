@@ -15,8 +15,6 @@ import {
   vetCachedSummary,
 } from "../summary";
 import { BoundedCache, feedCacheKey } from "../feedCache";
-import { embedCompatibilityCache } from "../embedCompatibility.server";
-import type { EmbedCompatibility } from "../types";
 
 const parser = new Parser({
   timeout: 6_000,
@@ -76,7 +74,6 @@ type CacheEntry = {
   articles: CachedArticle[];
   error?: string;
   summaryQuality?: number;
-  embedCompatibility?: EmbedCompatibility;
 };
 
 /** Process-local feed cache (survives across requests in Node). */
@@ -192,14 +189,10 @@ async function networkFetch(sourceId: string, sourceById: Map<string, SourceDef>
       }
     }
 
-    const embedCompatibility = articles[0]
-      ? await embedCompatibilityCache.get(feedCacheKey(def), articles[0].url)
-      : "unknown";
     return {
       fetchedAt: Date.now(),
       articles,
       summaryQuality: SUMMARY_QUALITY_VERSION,
-      embedCompatibility,
     };
   } catch (err) {
     return {
@@ -307,7 +300,6 @@ function materialize(
     topic: def?.topic ?? "all",
     homeUrl: def?.homeUrl,
     articles,
-    embedCompatibility: entry.embedCompatibility ?? "unknown",
     error: entry.error,
   };
 }

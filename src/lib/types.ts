@@ -75,8 +75,6 @@ export interface SourceFeed {
   topic: string;
   homeUrl?: string;
   articles: Article[];
-  /** Framing policy observed for a current article from this source. */
-  embedCompatibility?: EmbedCompatibility;
   error?: string;
 }
 

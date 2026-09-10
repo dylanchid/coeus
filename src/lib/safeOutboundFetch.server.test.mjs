@@ -35,6 +35,18 @@ test("fetchValidatedHttps reads a real HTTPS response inside its byte limit", as
   });
 });
 
+test("fetchValidatedHttps with maxBytes 0 returns headers and a discarded body", async () => {
+  await withServer((_request, response) => {
+    response.setHeader("x-frame-options", "DENY");
+    response.end("a body that the caller never needs");
+  }, async (url) => {
+    const response = await fetchValidatedHttps(url, "127.0.0.1", 4, { method: "GET" }, 0);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("x-frame-options"), "DENY");
+    assert.equal(await response.text(), "");
+  });
+});
+
 test("fetchValidatedHttps aborts a real streaming response once its byte limit is exceeded", async () => {
   await withServer((_request, response) => {
     response.write("1234");

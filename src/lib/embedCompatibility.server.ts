@@ -38,15 +38,17 @@ export async function inspectEmbedCompatibility(
   let { url, address, family } = await validatedHttpsUrl(initialUrl, resolve);
   try {
     for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
+      // GET, not HEAD: many origins omit X-Frame-Options / CSP on HEAD or vary it
+      // per method. maxBytes 0 keeps this to headers only — the body is discarded.
       const init = {
-        method: "HEAD",
+        method: "GET",
         redirect: "manual",
         signal: AbortSignal.timeout(AUDIT_TIMEOUT_MS),
         headers: { "User-Agent": "coeus/1.0 embed compatibility audit" },
       } as const;
       const response = options.fetcher
         ? await options.fetcher(url, init)
-        : await fetchValidatedHttps(url, address, family, init);
+        : await fetchValidatedHttps(url, address, family, init, 0);
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");
         if (!location || redirect === MAX_REDIRECTS) return "unknown";
@@ -63,32 +65,47 @@ export async function inspectEmbedCompatibility(
   return "unknown";
 }
 
-/** Bounded process-local cache; a feed response never needs to expose URLs or headers. */
+/**
+ * Bounded process-local cache keyed by the exact article URL, so a verdict reflects
+ * that article's headers rather than a single probe for the whole feed. Confirmed
+ * allowed/blocked verdicts hold for 24h; "unknown" is re-checked within the hour so
+ * a transient network failure does not stick.
+ */
 export class EmbedCompatibilityCache {
   private readonly entries = new BoundedCache<string, CacheEntry>(500);
   private readonly inflight = new BoundedCache<string, Promise<EmbedCompatibility>>(500);
 
-  async get(key: string, articleUrl: string): Promise<EmbedCompatibility> {
-    const cached = this.entries.get(key);
+  async get(articleUrl: string): Promise<EmbedCompatibility> {
+    const cached = this.entries.get(articleUrl);
     const maxAge = cached?.compatibility === "unknown" ? UNKNOWN_CACHE_TTL_MS : CACHE_TTL_MS;
     if (cached && Date.now() - cached.checkedAt < maxAge) return cached.compatibility;
 
-    let pending = this.inflight.get(key);
+    let pending = this.inflight.get(articleUrl);
     if (!pending) {
       pending = inspectEmbedCompatibility(articleUrl)
         .then((compatibility) => {
-          this.entries.set(key, { compatibility, checkedAt: Date.now() });
-          this.inflight.delete(key);
+          this.entries.set(articleUrl, { compatibility, checkedAt: Date.now() });
+          this.inflight.delete(articleUrl);
           return compatibility;
         })
         .catch(() => {
-          this.entries.set(key, { compatibility: "unknown", checkedAt: Date.now() });
-          this.inflight.delete(key);
+          this.entries.set(articleUrl, { compatibility: "unknown", checkedAt: Date.now() });
+          this.inflight.delete(articleUrl);
           return "unknown" as const;
         });
-      this.inflight.set(key, pending);
+      this.inflight.set(articleUrl, pending);
     }
     return pending;
+  }
+
+  /**
+   * Records a verdict derived from headers a caller already fetched for another
+   * purpose (e.g. the preview content fetch), sparing a redundant probe. A
+   * confirmed allowed/blocked verdict never regresses to a cached "unknown".
+   */
+  remember(articleUrl: string, compatibility: EmbedCompatibility): void {
+    if (compatibility === "unknown" && this.entries.get(articleUrl)) return;
+    this.entries.set(articleUrl, { compatibility, checkedAt: Date.now() });
   }
 }
 

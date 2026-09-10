@@ -25,6 +25,26 @@ import { ArticlePreview, ArticlePreviewChoice } from "./ArticlePreview";
 
 const EMPTY_SOURCE_IDS: string[] = [];
 
+/**
+ * Resolves the framing policy for one article URL. A failed or ambiguous check
+ * returns "unknown", which the preview modal renders as the static fallback
+ * rather than skipping the preview entirely.
+ */
+async function resolveEmbedCompatibility(url: string): Promise<EmbedCompatibility> {
+  try {
+    const response = await fetch(`/api/embed-compatibility?url=${encodeURIComponent(url)}`, {
+      headers: { accept: "application/json" },
+    });
+    if (!response.ok) return "unknown";
+    const data = (await response.json()) as { compatibility?: EmbedCompatibility };
+    return data.compatibility === "allowed" || data.compatibility === "blocked"
+      ? data.compatibility
+      : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 function formatUpdated(iso: string | null): string {
   if (!iso) return "—";
   try {
@@ -209,12 +229,19 @@ export function NewsApp() {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  const openStory = useCallback((article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => {
-    if (prefs?.articlePreviewMode === "external" || compatibility === "unknown") {
+  const openStory = useCallback((article: Article, sourceName: string, sourceHomeUrl: string | undefined) => {
+    if (prefs?.articlePreviewMode === "external") {
       openOriginal(article.url);
       return;
     }
-    setPreviewTarget({ article, sourceName, sourceHomeUrl, compatibility });
+    // Open immediately in the fallback-safe "unknown" state, then upgrade to an
+    // inline frame only if this article's own headers confirm framing is allowed.
+    setPreviewTarget({ article, sourceName, sourceHomeUrl, compatibility: "unknown" });
+    void resolveEmbedCompatibility(article.url).then((compatibility) => {
+      setPreviewTarget((current) =>
+        current && current.article.url === article.url ? { ...current, compatibility } : current,
+      );
+    });
   }, [openOriginal, prefs?.articlePreviewMode]);
 
   const visible = useMemo(

@@ -5,7 +5,6 @@ import { formatEngagement } from "@/lib/engagement";
 import { rankStories, type RankingReason } from "@/lib/ranking";
 import type {
   Article,
-  EmbedCompatibility,
   HomeViewId,
   KeywordRule,
   SourceFeed,
@@ -20,7 +19,6 @@ type Story = {
   sourceName: string;
   sourceTopic: string;
   sourceHomeUrl?: string;
-  embedCompatibility: EmbedCompatibility;
   sourceIndex: number;
   articleIndex: number;
   score?: number;
@@ -39,7 +37,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
-  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined) => void;
 };
 
 function storyTime(story: Story): number {
@@ -68,7 +66,6 @@ function flatten(sources: SourceFeed[]): Story[] {
           sourceName: source.name,
           sourceTopic: source.topic,
           sourceHomeUrl: source.homeUrl,
-          embedCompatibility: source.embedCompatibility ?? "unknown",
           sourceIndex,
           articleIndex,
         }))
@@ -230,7 +227,7 @@ function StoryFeedInner({
                 <a href={story.article.url} target="_blank" rel="noreferrer" onClick={(event) => {
                   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                   event.preventDefault();
-                  onOpen(story.article, story.sourceName, story.sourceHomeUrl, story.embedCompatibility);
+                  onOpen(story.article, story.sourceName, story.sourceHomeUrl);
                 }}>
                   {highlight(story.article.title, highlightTerms)}<ExternalLinkHint />
                 </a>
