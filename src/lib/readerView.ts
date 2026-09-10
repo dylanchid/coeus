@@ -1,4 +1,5 @@
 import sanitizeHtml from "sanitize-html";
+import type { ArticleIndex } from "./articleIndex.ts";
 
 /**
  * A bounded, in-Coeus reading layer for a page that cannot be framed. It is a
@@ -15,6 +16,8 @@ export interface ReaderView {
   leadImage: string | null;
   /** True when the article ran past the excerpt budget and was cut. */
   truncated: boolean;
+  /** Publisher labels and local indexing suggestions, never third-party AI output. */
+  index: ArticleIndex;
 }
 
 /** Roughly the length of a long news lead — enough to orient, not to replace the source. */

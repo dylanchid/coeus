@@ -300,6 +300,7 @@ test("the source-preview card renders the publisher's metadata when the endpoint
           domain: "example.com",
           imageUrl: "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg",
           faviconUrl: null,
+          index: { publisherTags: ["public interest"], topics: ["culture"], keywords: ["archives", "publishing"] },
         },
       }), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -309,6 +310,9 @@ test("the source-preview card renders the publisher's metadata when the endpoint
   await waitFor(() => assert.ok(screen.getByText("Publisher headline")));
   assert.ok(screen.getByText("The standfirst from OpenGraph."));
   assert.ok(screen.getByText("Example News"));
+  assert.ok(screen.getByText("Publisher labels"));
+  assert.ok(screen.getByText("#public interest"));
+  assert.ok(screen.getByText("#archives"));
   const image = container.querySelector(".article-preview-card-image");
   assert.equal(image?.getAttribute("src"), "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg");
 });

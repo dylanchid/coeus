@@ -1,5 +1,6 @@
 import type { Article } from "./types";
 import type { ArchiveData, ArchiveItem } from "./archiveTypes";
+import { inferArticleIndex } from "./articleIndex.ts";
 
 export function archiveArticle(
   data: ArchiveData,
@@ -12,6 +13,7 @@ export function archiveArticle(
     (item) => item.articleId === article.id || item.url === article.url
   );
   if (existing) return data;
+  const index = inferArticleIndex({ title: article.title, description: article.summary, sourceTopic: topic });
   const item: ArchiveItem = {
     id: `saved-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
     articleId: article.id,
@@ -26,7 +28,7 @@ export function archiveArticle(
     state: "unread",
     starred: false,
     collectionIds: ["inbox"],
-    tags: [],
+    tags: [...index.topics, ...index.keywords].slice(0, 6),
     note: "",
   };
   return { ...data, items: [item, ...data.items] };

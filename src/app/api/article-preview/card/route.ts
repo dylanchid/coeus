@@ -42,6 +42,7 @@ export async function GET(request: Request): Promise<Response> {
         domain: card.domain,
         imageUrl: proxied(card.imageUrl),
         faviconUrl: proxied(card.faviconUrl),
+        index: card.index,
       },
     },
     { headers: { "Cache-Control": "private, max-age=3600" } },

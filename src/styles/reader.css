@@ -130,6 +130,14 @@
 .article-preview-card-site img { width: 16px; height: 16px; border-radius: 2px; }
 .article-preview-card-title { font: 700 clamp(1.15rem, 2vw, 1.7rem)/1.15 var(--font); letter-spacing: -0.02em; }
 .article-preview-card-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; color: #444; font: 0.9rem/1.5 var(--font); }
+.article-preview-index { display: grid; gap: 0.5rem; margin: 1.2rem 0 0; padding-top: 0.85rem; border-top: 1px solid var(--line); }
+.article-preview-index > p { display: flex; justify-content: space-between; margin: 0; color: #444; font: 700 0.68rem/1.2 var(--font); letter-spacing: 0.06em; text-transform: uppercase; }
+.article-preview-index > p span { color: #777; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.article-preview-index > div { display: grid; grid-template-columns: 6.4rem minmax(0, 1fr); gap: 0.4rem; font: 0.72rem/1.35 var(--font); }
+.article-preview-index b { color: #666; font-weight: 400; }
+.article-preview-index div > span { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.article-preview-index em { padding: 0.1rem 0.3rem; border: 1px solid #d0d0d0; color: #333; font-style: normal; }
+.article-preview-index.is-compact { margin-top: 0.4rem; }
 .article-preview-reader { justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .article-preview-reader article { max-width: 40rem; margin: 0 auto; padding: 2.6rem 1.6rem 2rem; color: #161616; text-align: left; }
 .article-preview-reader-source { margin: 0 0 0.5rem; color: #555; font: 700 0.7rem/1.2 var(--font); letter-spacing: 0.04em; text-transform: uppercase; }

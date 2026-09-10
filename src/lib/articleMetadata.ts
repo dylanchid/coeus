@@ -1,4 +1,5 @@
 import { decodeHtmlEntities } from "./summary.ts";
+import { inferArticleIndex, type ArticleIndex } from "./articleIndex.ts";
 
 /**
  * The publisher-supplied card shown when a page cannot be framed. Every field is
@@ -14,6 +15,7 @@ export interface ArticleCard {
   imageUrl: string | null;
   /** Absolute https URL for the site icon, or null. */
   faviconUrl: string | null;
+  index: ArticleIndex;
 }
 
 /** Reads one attribute from a single tag string, tolerating quote style and order. */
@@ -36,6 +38,17 @@ function metaTags(html: string): Map<string, string> {
     if (key && content && !entries.has(key)) entries.set(key, content);
   }
   return entries;
+}
+
+function metaValues(html: string, wanted: string): string[] {
+  const values: string[] = [];
+  for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
+    const tag = match[0];
+    const key = (attr(tag, "property") ?? attr(tag, "name") ?? attr(tag, "itemprop"))?.toLowerCase();
+    const content = attr(tag, "content");
+    if (key === wanted && content) values.push(content);
+  }
+  return values;
 }
 
 function firstNonEmpty(...values: (string | null | undefined)[]): string {
@@ -110,5 +123,9 @@ export function extractArticleCard(html: string, baseUrl: string): ArticleCard {
     absoluteHttps(iconHref(html), baseUrl) ??
     absoluteHttps("/favicon.ico", baseUrl);
 
-  return { title, description, siteName, domain, imageUrl, faviconUrl };
+  const publisherTags = [
+    ...metaValues(html, "article:tag"),
+    ...metaValues(html, "keywords").flatMap((value) => value.split(",")),
+  ];
+  return { title, description, siteName, domain, imageUrl, faviconUrl, index: inferArticleIndex({ title, description, publisherTags }) };
 }

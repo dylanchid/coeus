@@ -8,6 +8,7 @@ import {
   EXCERPT_WORD_BUDGET,
   type ReaderView,
 } from "./readerView.ts";
+import { inferArticleIndex } from "./articleIndex.ts";
 
 // No `import "server-only"`: linkedom + defuddle are Node libraries but the
 // module is exercised by the strip-types test runner. Network callers stay
@@ -128,5 +129,6 @@ export async function extractReaderView(html: string, baseUrl: string): Promise<
     wordCount: trimmed.wordCount,
     leadImage,
     truncated: trimmed.truncated,
+    index: inferArticleIndex({ title: parsed.title ?? "", description: parsed.description ?? "" }),
   };
 }

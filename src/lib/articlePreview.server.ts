@@ -224,6 +224,9 @@ export async function createReaderView(urlValue: string): Promise<ReaderViewResu
     }
     const view = await extractReaderView(html, captured.fetchedUrl);
     if (!view) return { decision: { allowed: false, reason: "unavailable" } };
+    // Defuddle does not consistently retain article:tag metadata, so combine
+    // its extracted text with the publisher labels from the original document.
+    view.index = extractArticleCard(html, captured.fetchedUrl).index;
     readerCache.set(url.toString(), { createdAt: Date.now(), view });
     return { decision: { allowed: true }, reader: view };
   } catch {

@@ -18,7 +18,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
-  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, sourceTopic: string) => void;
 };
 
 function EngagementChip({
@@ -179,7 +179,7 @@ function SourceColumnInner({
             <a href={a.url} target="_blank" rel="noreferrer" onClick={(event) => {
               if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
-              onOpen(a, source.name, source.homeUrl);
+              onOpen(a, source.name, source.homeUrl, source.topic);
             }}>
               {q ? highlight(a.title, q) : a.title}<ExternalLinkHint />
             </a>
