@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Article, EmbedCompatibility } from "@/lib/types";
+import { inferArticleIndex, type ArticleIndex } from "@/lib/articleIndex";
 import { useModalDialog } from "@/hooks/useModalDialog";
 
 type Props = {
   article: Article;
   sourceName: string;
   sourceHomeUrl?: string;
+  sourceTopic?: string;
   onClose: () => void;
   onOpenOriginal: () => void;
   onPreferExternal: () => void;
@@ -26,7 +28,7 @@ function articleHost(url: string): string {
  * A deliberately lightweight in-site reading layer. Publishers may prohibit
  * framing; the original-link control remains the reliable reading path.
  */
-export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, onOpenOriginal, onPreferExternal, compatibility = "unknown" }: Props) {
+export function ArticlePreview({ article, sourceName, sourceHomeUrl, sourceTopic, onClose, onOpenOriginal, onPreferExternal, compatibility = "unknown" }: Props) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useModalDialog({ active: true, containerRef: dialogRef, initialFocusRef: closeRef, onClose });
@@ -47,7 +49,7 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, on
         <div className="article-preview-layout">
           <div className="article-preview-frame-wrap">
             {compatibility !== "allowed" ? (
-              <StaticSourcePreview key={article.url} article={article} />
+              <StaticSourcePreview key={article.url} article={article} sourceTopic={sourceTopic} />
             ) : (
               <>
                 <iframe
@@ -70,6 +72,7 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, on
               {article.author ? <div><dt>By</dt><dd>{article.author}</dd></div> : null}
               {article.publishedAt ? <div><dt>Published</dt><dd>{new Date(article.publishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</dd></div> : null}
             </dl>
+            <ArticleIndexPanel index={inferArticleIndex({ title: article.title, description: article.summary, sourceTopic })} />
             <div className="article-preview-actions">
               <button type="button" onClick={onOpenOriginal}>Read at {host} ↗</button>
               <button type="button" className="article-preview-text-button" onClick={onPreferExternal}>Always open originals</button>
@@ -88,36 +91,76 @@ type PreviewCard = {
   domain: string;
   imageUrl: string | null;
   faviconUrl: string | null;
+  index: ArticleIndex;
 };
+
+type ReaderViewData = {
+  title: string;
+  byline: string;
+  excerpt: string;
+  contentHtml: string;
+  wordCount: number;
+  leadImage: string | null;
+  truncated: boolean;
+  index: ArticleIndex;
+};
+
+const EMPTY_INDEX: ArticleIndex = { publisherTags: [], topics: [], keywords: [] };
+
+function normaliseIndex(value: unknown): ArticleIndex {
+  if (!value || typeof value !== "object") return EMPTY_INDEX;
+  const raw = value as Record<string, unknown>;
+  const strings = (field: string) => Array.isArray(raw[field]) ? raw[field].filter((item): item is string => typeof item === "string") : [];
+  return { publisherTags: strings("publisherTags"), topics: strings("topics"), keywords: strings("keywords") };
+}
 
 type CardState =
   | { status: "loading" }
+  | { status: "reader"; reader: ReaderViewData }
   | { status: "ready"; card: PreviewCard }
   | { status: "unavailable" };
 
+async function loadReader(url: string): Promise<ReaderViewData | null> {
+  try {
+    const response = await fetch(`/api/article-preview/reader?url=${encodeURIComponent(url)}`, { headers: { accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { reader?: ReaderViewData };
+    return data.reader ? { ...data.reader, index: normaliseIndex(data.reader.index) } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadCard(url: string): Promise<PreviewCard | null> {
+  try {
+    const response = await fetch(`/api/article-preview/card?url=${encodeURIComponent(url)}`, { headers: { accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { card?: PreviewCard };
+    return data.card ? { ...data.card, index: normaliseIndex(data.card.index) } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The fallback shown when a publisher blocks framing: a metadata card built
- * server-side from the article's own OpenGraph/Twitter tags. No screenshot, no
- * browser — the image and favicon are streamed back through our origin.
+ * The fallback shown when a publisher blocks framing. SPIKE (bareaga_web-0bs.3):
+ * try a server-extracted, sanitised reader view first; fall back to the
+ * OpenGraph metadata card; then to a plain "open the original" message.
  */
-function StaticSourcePreview({ article }: { article: Article }) {
+function StaticSourcePreview({ article, sourceTopic }: { article: Article; sourceTopic?: string }) {
   const [state, setState] = useState<CardState>({ status: "loading" });
   const [heroBroken, setHeroBroken] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/article-preview/card?url=${encodeURIComponent(article.url)}`, { headers: { accept: "application/json" } })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("card unavailable");
-        return (await response.json()) as { card?: PreviewCard };
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setState(data.card ? { status: "ready", card: data.card } : { status: "unavailable" });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "unavailable" });
-      });
+    (async () => {
+      const reader = await loadReader(article.url);
+      if (cancelled) return;
+      if (reader) { setState({ status: "reader", reader }); return; }
+      const card = await loadCard(article.url);
+      if (cancelled) return;
+      setState(card ? { status: "ready", card } : { status: "unavailable" });
+    })();
     return () => { cancelled = true; };
   }, [article.url]);
 
@@ -138,6 +181,28 @@ function StaticSourcePreview({ article }: { article: Article }) {
         <div className="article-preview-static-label">Source preview</div>
         <figcaption>Preview unavailable or disallowed by this publisher. Open the original article to read it.</figcaption>
       </figure>
+    );
+  }
+
+  if (state.status === "reader") {
+    const { reader } = state;
+    return (
+      <div className="article-preview-static article-preview-reader">
+        <div className="article-preview-static-label">Reader view</div>
+        <article>
+          <p className="article-preview-reader-source">{host}</p>
+          <h3>{reader.title || article.title}</h3>
+          {reader.byline ? <p className="article-preview-reader-byline">{reader.byline}</p> : null}
+          {/* contentHtml is sanitised server-side (sanitize-html allowlist, https-only,
+              images already routed through the same-origin proxy) before it reaches here. */}
+          <div className="article-preview-reader-body" dangerouslySetInnerHTML={{ __html: reader.contentHtml }} />
+          <ArticleIndexPanel index={mergeIndex(reader.index, sourceTopic)} />
+          <p className="article-preview-reader-more">
+            {reader.truncated ? "Excerpt shown. " : ""}
+            <a href={article.url} target="_blank" rel="noreferrer">Read the full article at {host} ↗</a>
+          </p>
+        </article>
+      </div>
     );
   }
 
@@ -164,8 +229,27 @@ function StaticSourcePreview({ article }: { article: Article }) {
         </span>
         <span className="article-preview-card-title">{card.title || article.title}</span>
         {card.description ? <span className="article-preview-card-desc">{card.description}</span> : null}
+        <ArticleIndexPanel index={mergeIndex(card.index, sourceTopic)} compact />
       </figcaption>
     </figure>
+  );
+}
+
+function mergeIndex(index: ArticleIndex, sourceTopic?: string): ArticleIndex {
+  if (!sourceTopic || sourceTopic === "all" || index.topics.includes(sourceTopic.toLocaleLowerCase())) return index;
+  return { ...index, topics: [sourceTopic.toLocaleLowerCase(), ...index.topics].slice(0, 3) };
+}
+
+function ArticleIndexPanel({ index, compact = false }: { index: ArticleIndex; compact?: boolean }) {
+  const hasSignals = index.publisherTags.length || index.topics.length || index.keywords.length;
+  if (!hasSignals) return null;
+  return (
+    <section className={`article-preview-index${compact ? " is-compact" : ""}`} aria-label="Article indexing signals">
+      <p>Index signals <span>Local suggestions</span></p>
+      {index.publisherTags.length ? <div><b>Publisher labels</b><span>{index.publisherTags.map((tag) => <em key={tag}>#{tag}</em>)}</span></div> : null}
+      {index.topics.length ? <div><b>Topics</b><span>{index.topics.map((topic) => <em key={topic}>#{topic}</em>)}</span></div> : null}
+      {index.keywords.length ? <div><b>Key terms</b><span>{index.keywords.map((keyword) => <em key={keyword}>#{keyword}</em>)}</span></div> : null}
+    </section>
   );
 }
 

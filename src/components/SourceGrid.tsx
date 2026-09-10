@@ -32,7 +32,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
-  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, sourceTopic: string) => void;
 };
 
 function SourceGridInner({

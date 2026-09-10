@@ -37,7 +37,7 @@ type Props = {
   savedArticleIds: Set<string>;
   onSave: (article: Article, sourceName: string, topic: string) => void;
   onShare: (article: Article, sourceName: string, topic: string) => void;
-  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined) => void;
+  onOpen: (article: Article, sourceName: string, sourceHomeUrl: string | undefined, sourceTopic: string) => void;
 };
 
 function storyTime(story: Story): number {
@@ -227,7 +227,7 @@ function StoryFeedInner({
                 <a href={story.article.url} target="_blank" rel="noreferrer" onClick={(event) => {
                   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
                   event.preventDefault();
-                  onOpen(story.article, story.sourceName, story.sourceHomeUrl);
+                  onOpen(story.article, story.sourceName, story.sourceHomeUrl, story.sourceTopic);
                 }}>
                   {highlight(story.article.title, highlightTerms)}<ExternalLinkHint />
                 </a>

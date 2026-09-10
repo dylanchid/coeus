@@ -69,7 +69,7 @@ export function NewsApp() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ article: Article; sourceName: string; topic: string } | null>(null);
   const [shareStatus, setShareStatus] = useState("");
-  const [previewTarget, setPreviewTarget] = useState<{ article: Article; sourceName: string; sourceHomeUrl?: string; compatibility: EmbedCompatibility } | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{ article: Article; sourceName: string; sourceHomeUrl?: string; sourceTopic: string; compatibility: EmbedCompatibility } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchHydrated = useRef(false);
 
@@ -229,14 +229,14 @@ export function NewsApp() {
     window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  const openStory = useCallback((article: Article, sourceName: string, sourceHomeUrl: string | undefined) => {
+  const openStory = useCallback((article: Article, sourceName: string, sourceHomeUrl: string | undefined, sourceTopic: string) => {
     if (prefs?.articlePreviewMode === "external") {
       openOriginal(article.url);
       return;
     }
     // Open immediately in the fallback-safe "unknown" state, then upgrade to an
     // inline frame only if this article's own headers confirm framing is allowed.
-    setPreviewTarget({ article, sourceName, sourceHomeUrl, compatibility: "unknown" });
+    setPreviewTarget({ article, sourceName, sourceHomeUrl, sourceTopic, compatibility: "unknown" });
     void resolveEmbedCompatibility(article.url).then((compatibility) => {
       setPreviewTarget((current) =>
         current && current.article.url === article.url ? { ...current, compatibility } : current,
@@ -536,6 +536,7 @@ export function NewsApp() {
           article={previewTarget.article}
           sourceName={previewTarget.sourceName}
           sourceHomeUrl={previewTarget.sourceHomeUrl}
+          sourceTopic={previewTarget.sourceTopic}
           compatibility={previewTarget.compatibility}
           onClose={() => setPreviewTarget(null)}
           onOpenOriginal={() => openOriginal(previewTarget.article.url)}

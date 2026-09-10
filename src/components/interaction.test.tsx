@@ -300,6 +300,7 @@ test("the source-preview card renders the publisher's metadata when the endpoint
           domain: "example.com",
           imageUrl: "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg",
           faviconUrl: null,
+          index: { publisherTags: ["public interest"], topics: ["culture"], keywords: ["archives", "publishing"] },
         },
       }), { status: 200, headers: { "content-type": "application/json" } });
     }
@@ -309,8 +310,37 @@ test("the source-preview card renders the publisher's metadata when the endpoint
   await waitFor(() => assert.ok(screen.getByText("Publisher headline")));
   assert.ok(screen.getByText("The standfirst from OpenGraph."));
   assert.ok(screen.getByText("Example News"));
+  assert.ok(screen.getByText("Publisher labels"));
+  assert.ok(screen.getByText("#public interest"));
+  assert.ok(screen.getByText("#archives"));
   const image = container.querySelector(".article-preview-card-image");
   assert.equal(image?.getAttribute("src"), "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg");
+});
+
+test("SPIKE: the reader view renders when extraction succeeds, ahead of the metadata card", async () => {
+  globalThis.fetch = async (input) => {
+    if (String(input).startsWith("/api/article-preview/reader")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        reader: {
+          title: "The extracted headline",
+          byline: "By A. Reporter",
+          excerpt: "Lead sentence.",
+          contentHtml: "<p>First extracted paragraph of the article body.</p>",
+          wordCount: 320,
+          leadImage: null,
+          truncated: true,
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response(null, { status: 401 });
+  };
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  await waitFor(() => assert.ok(screen.getByText("The extracted headline")));
+  assert.ok(screen.getByText("By A. Reporter"));
+  assert.ok(screen.getByText(/First extracted paragraph/));
+  assert.ok(screen.getByRole("link", { name: /Read the full article at example.com/ }));
+  assert.ok(screen.getByText(/Excerpt shown/));
 });
 
 test("the source-preview card degrades to a clear unavailable message when the endpoint fails", async () => {

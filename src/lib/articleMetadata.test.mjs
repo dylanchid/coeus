@@ -39,6 +39,17 @@ test("attribute order and single quotes do not matter", () => {
   assert.equal(extractArticleCard(html, BASE).title, "Ordered last");
 });
 
+test("collects all publisher labels while keeping derived suggestions inspectable", () => {
+  const html = `
+    <meta property="article:tag" content="Digital culture">
+    <meta property="article:tag" content="Independent media">
+    <meta name="keywords" content="archives, publishing">
+    <meta property="og:title" content="Archives on the open web">`;
+  const card = extractArticleCard(html, BASE);
+  assert.deepEqual(card.index.publisherTags, ["digital culture", "independent media", "archives", "publishing"]);
+  assert.ok(card.index.keywords.includes("archives"));
+});
+
 test("an apple-touch-icon wins over a plain icon link", () => {
   const html = `
     <link rel="icon" href="/small.ico">
