@@ -57,6 +57,7 @@ const { PathnameContext } = await import(
   "next/dist/shared/lib/hooks-client-context.shared-runtime"
 );
 const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
+const { buildArticleSlashItems } = await import("@/lib/slashCommands");
 
 const defaultFetch = globalThis.fetch;
 afterEach(() => {
@@ -92,6 +93,20 @@ function slashContext(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+test("slash headlines are only built for a headline-like query", () => {
+  const reader = {
+    topic: "all",
+    sources: [{ name: "Example", articles: [{ id: "article-1", title: "A durable headline", url: "https://example.com/article" }] }],
+    busy: false,
+    onTopic: () => undefined,
+    onSearch: () => undefined,
+    onRefresh: () => undefined,
+    onFocusSearch: () => undefined,
+  } as never;
+  assert.deepEqual(buildArticleSlashItems(reader, "a"), []);
+  assert.equal(buildArticleSlashItems(reader, "dur").length, 1);
+});
 
 test("Slash Menu traps focus, leaves button Enter alone, and restores its opener", async (context) => {
   const navigate = context.mock.fn();
@@ -253,6 +268,13 @@ test("article preview retains a clear original-source exit and preference switch
   fireEvent.click(screen.getByRole("button", { name: "Always open originals" }));
   assert.equal(original.mock.callCount(), 1);
   assert.equal(external.mock.callCount(), 1);
+});
+
+test("blocked publishers use a labeled static source preview", () => {
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  assert.ok(screen.getByText("Static source preview"));
+  assert.ok(screen.getByAltText("Static preview of A durable link"));
+  assert.equal(screen.queryByTitle("Preview of A durable link"), null);
 });
 
 test("Destinations panel surfaces a Notion auth_error as a distinct Reconnect action", async () => {

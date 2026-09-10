@@ -68,6 +68,9 @@ The default view. Loads articles from the user's enabled sources (server-side fe
 - Drag-to-reorder source columns (`@dnd-kit`), persisted to preferences.
 - **Per-source failure isolation**: if one publisher's feed fails, that source shows an inline error with retry while every other source keeps working. This is treated as a UX guarantee, not an incidental backend behavior.
 - **Save** and **Share** actions live on every story card (see 6.5, ShareSheet).
+- **Publisher-respecting source previews**: Coeus may show a bounded, static preview of
+  the top of a linked page when interactive embedding is unavailable, subject to the
+  policy in §6.1.2. This is a navigation aid, not a substitute for reading the source.
 
 #### 6.1.1 Ranked view — the personalization engine
 
@@ -84,6 +87,54 @@ Not a black box: a transparent, user-authored scoring system (`src/lib/ranking.t
 ★ Insight ─────────────────────────────────────
 The diversity penalty is applied *during* selection (a greedy loop that picks the best-remaining story at each position, `rankStories` in `ranking.ts`), not as a static score baked in beforehand. That's a meaningful design choice: a story's final score is context-dependent on what was already picked before it, which is why the same story can appear with a `"diversity −5"` reason in one render and without it in another — the penalty reflects its neighbors, not an intrinsic property of the story itself.
 ─────────────────────────────────────────────────
+
+#### 6.1.2 Source preview policy — static fallback for non-embeddable pages
+
+**Decision (2026-09-09):** When a publisher blocks an interactive iframe preview,
+Coeus should aim to retain a useful source-preview experience with a small, static
+image of the top of the canonical page plus the existing source details. This is a
+publisher-respecting fallback, not a mechanism for circumventing embedding controls.
+
+The preview must be non-interactive, visibly labeled **Preview**, and always retain a
+prominent direct link to the original source. It must not hide the source, present
+Coeus as the publisher, reproduce the article in full, or make the preview usable as
+a replacement reading surface. If a preview cannot safely or permissibly be shown,
+the product falls back to the normal metadata card (title, description, favicon/domain,
+and original link).
+
+**Publisher controls and eligibility.** Before rendering or returning a screenshot,
+Coeus must:
+
+- respect `robots.txt` directives applicable to its declared preview user agent;
+- honor an explicit site instruction or a Coeus-maintained domain opt-out/denylist;
+- offer a simple public opt-out/removal route that a publisher can use without creating
+  an account, and apply verified requests promptly;
+- not generate previews for pages behind authentication, paywalls or access controls,
+  age gates, personalized sessions, sensitive categories, or other pages that cannot
+  be fetched as an ordinary anonymous visitor; and
+- preserve enough policy/audit information to remove cached previews by domain or URL.
+
+The implementation must also follow source terms where applicable. A screenshot can
+contain copyrighted page expression; a small, source-attributed navigational preview
+is a more defensible posture than copying a page, but it is not a blanket license or
+legal conclusion. The product owner should obtain legal review before broad public
+rollout, particularly in jurisdictions beyond the United States.
+
+**Safety and operating constraints.** Rendering occurs only in an isolated,
+unauthenticated server-side environment. It sends no user cookies or credentials,
+does not execute as the user, blocks private/internal network targets and unsafe
+redirects, is rate-limited, and has tight time/size limits. Previews are cached for a
+short bounded TTL; cache invalidation must support a domain-wide opt-out or takedown.
+The service must use the existing hardened outbound-fetch controls rather than create
+a separate unprotected network path.
+
+**Acceptance criteria for the feature.** The Reader should attempt the usual preview
+only when permitted. For non-embeddable links, it should show the static fallback only
+when the policy permits it; otherwise it should show metadata-only with “Open original.”
+Users must be able to distinguish the static preview from a live page, and publishers
+must have a documented, low-friction way to stop future screenshots. Tests must cover
+the policy decision paths, opt-out behavior, robots handling, redirect/SSRF protections,
+and metadata-only fallback.
 
 ### 6.2 Sources (`/sources`) — the source catalog
 

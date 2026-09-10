@@ -40,7 +40,7 @@ function formatUpdated(iso: string | null): string {
 }
 
 export function NewsApp() {
-  const { prefs, updatePrefs } = usePreferences();
+  const { prefs, updatePrefs, flushPersistence } = usePreferences();
   const { archive, updateArchive } = useArchive();
   const { slashOpen, closeSlash, setReaderSlash } = useChrome();
   const [topic, setTopic] = useState<Topic>("all");
@@ -49,7 +49,7 @@ export function NewsApp() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [shareTarget, setShareTarget] = useState<{ article: Article; sourceName: string; topic: string } | null>(null);
   const [shareStatus, setShareStatus] = useState("");
-  const [previewTarget, setPreviewTarget] = useState<{ article: Article; sourceName: string; sourceHomeUrl?: string } | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{ article: Article; sourceName: string; sourceHomeUrl?: string; compatibility: EmbedCompatibility } | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchHydrated = useRef(false);
 
@@ -145,7 +145,6 @@ export function NewsApp() {
       if (
         previous &&
         previous.topic === topic &&
-        previous.search === search &&
         previous.sources === currentSources &&
         previous.busy === busy
       ) {
@@ -153,7 +152,6 @@ export function NewsApp() {
       }
       return {
         topic,
-        search,
         sources: currentSources,
         busy,
         onTopic: changeTopic,
@@ -167,7 +165,6 @@ export function NewsApp() {
   }, [
     prefs,
     topic,
-    search,
     currentSources,
     loading,
     refreshing,
@@ -213,11 +210,11 @@ export function NewsApp() {
   }, []);
 
   const openStory = useCallback((article: Article, sourceName: string, sourceHomeUrl: string | undefined, compatibility: EmbedCompatibility) => {
-    if (prefs?.articlePreviewMode === "external" || compatibility !== "allowed") {
+    if (prefs?.articlePreviewMode === "external" || compatibility === "unknown") {
       openOriginal(article.url);
       return;
     }
-    setPreviewTarget({ article, sourceName, sourceHomeUrl });
+    setPreviewTarget({ article, sourceName, sourceHomeUrl, compatibility });
   }, [openOriginal, prefs?.articlePreviewMode]);
 
   const visible = useMemo(
@@ -316,6 +313,7 @@ export function NewsApp() {
           matchSourceCount={matchSourceCount}
           totalCount={totalCount}
           onChange={onSearchChange}
+          onBlur={flushPersistence}
         />
 
         <div className="mobile-toolbar-row">
@@ -511,6 +509,7 @@ export function NewsApp() {
           article={previewTarget.article}
           sourceName={previewTarget.sourceName}
           sourceHomeUrl={previewTarget.sourceHomeUrl}
+          compatibility={previewTarget.compatibility}
           onClose={() => setPreviewTarget(null)}
           onOpenOriginal={() => openOriginal(previewTarget.article.url)}
           onPreferExternal={() => {

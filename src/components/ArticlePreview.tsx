@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import type { Article } from "@/lib/types";
+import type { Article, EmbedCompatibility } from "@/lib/types";
 import { useModalDialog } from "@/hooks/useModalDialog";
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
   onClose: () => void;
   onOpenOriginal: () => void;
   onPreferExternal: () => void;
+  compatibility?: EmbedCompatibility;
 };
 
 function articleHost(url: string): string {
@@ -25,7 +26,7 @@ function articleHost(url: string): string {
  * A deliberately lightweight in-site reading layer. Publishers may prohibit
  * framing; the original-link control remains the reliable reading path.
  */
-export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, onOpenOriginal, onPreferExternal }: Props) {
+export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, onOpenOriginal, onPreferExternal, compatibility = "allowed" }: Props) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useModalDialog({ active: true, containerRef: dialogRef, initialFocusRef: closeRef, onClose });
@@ -45,14 +46,20 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, on
         </header>
         <div className="article-preview-layout">
           <div className="article-preview-frame-wrap">
-            <iframe
-              className="article-preview-frame"
-              src={article.url}
-              title={`Preview of ${article.title}`}
-              sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts"
-              referrerPolicy="no-referrer"
-            />
-            <p className="article-preview-frame-note">If this publisher blocks previews, open the original article.</p>
+            {compatibility === "blocked" ? (
+              <StaticSourcePreview article={article} />
+            ) : (
+              <>
+                <iframe
+                  className="article-preview-frame"
+                  src={article.url}
+                  title={`Preview of ${article.title}`}
+                  sandbox="allow-forms allow-popups allow-popups-to-escape-sandbox allow-scripts"
+                  referrerPolicy="no-referrer"
+                />
+                <p className="article-preview-frame-note">If this publisher blocks previews, Coeus can show a static source preview when the publisher permits it.</p>
+              </>
+            )}
           </div>
           <aside className="article-preview-details">
             <p className="article-preview-kicker">Reader preview</p>
@@ -71,6 +78,22 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, on
         </div>
       </section>
     </div>
+  );
+}
+
+function StaticSourcePreview({ article }: { article: Article }) {
+  const imageUrl = `/api/article-preview?url=${encodeURIComponent(article.url)}`;
+  return (
+    <figure className="article-preview-static">
+      <div className="article-preview-static-label">Static source preview</div>
+      {/* The server fetches only anonymous HTML after robots/opt-out checks; this is never a live page. */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- this is a same-origin, bounded PNG route rather than a remote source image. */}
+      <img src={imageUrl} alt={`Static preview of ${article.title}`} onError={(event) => {
+        event.currentTarget.hidden = true;
+        event.currentTarget.parentElement?.classList.add("article-preview-static-unavailable");
+      }} />
+      <figcaption>Preview unavailable or disallowed by this publisher. Open the original article to read it.</figcaption>
+    </figure>
   );
 }
 
