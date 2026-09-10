@@ -2,6 +2,8 @@ import { lookup } from "node:dns/promises";
 
 import { BoundedCache } from "./feedCache.ts";
 import { extractArticleCard, type ArticleCard } from "./articleMetadata.ts";
+import { extractReaderView } from "./readerExtract.server.ts";
+import type { ReaderView } from "./readerView.ts";
 import { compatibilityFromHeaders, embedCompatibilityCache } from "./embedCompatibility.server.ts";
 import { fetchSafeContent } from "./safeContentFetch.server.ts";
 import { fetchValidatedHttps, validatedHttpsUrl, type AddressResolver } from "./safeOutboundFetch.server.ts";
@@ -18,8 +20,10 @@ const MAX_PREVIEW_ASSET_BYTES = 1 * 1024 * 1024;
 const MAX_PREVIEW_TOTAL_BYTES = 5 * 1024 * 1024;
 const MAX_PREVIEW_IMAGE_BYTES = 2 * 1024 * 1024;
 const CARD_CACHE_MS = 60 * 60 * 1_000;
+const READER_CACHE_MS = 60 * 60 * 1_000;
 const screenshotCache = new BoundedCache<string, { createdAt: number; png: Uint8Array }>(100);
 const cardCache = new BoundedCache<string, { createdAt: number; card: ArticleCard }>(200);
+const readerCache = new BoundedCache<string, { createdAt: number; view: ReaderView }>(200);
 const robotsCache = new BoundedCache<string, { checkedAt: number; allowed: boolean }>(300);
 
 export type PreviewDecision =
@@ -187,6 +191,41 @@ export async function createArticleCard(
     const card = extractArticleCard(html, captured.fetchedUrl);
     cardCache.set(url.toString(), { createdAt: Date.now(), card });
     return { decision: { allowed: true }, card };
+  } catch {
+    return { decision: { allowed: false, reason: "unavailable" } };
+  }
+}
+
+export type ReaderViewResult = { decision: PreviewDecision; reader?: ReaderView };
+
+/**
+ * SPIKE (bareaga_web-0bs.3): an in-Coeus reader view for a blocked / unknown
+ * embed. Same policy gates and HTML source as the metadata card; the extracted
+ * content is sanitised and truncated to an excerpt in readerExtract.server.ts.
+ * Returns `page-directive` when the page opts out and `unavailable` when there is
+ * no article-like content to show (caller then uses the metadata card).
+ */
+export async function createReaderView(urlValue: string): Promise<ReaderViewResult> {
+  let url: URL;
+  try { url = new URL(urlValue); } catch { return { decision: { allowed: false, reason: "unavailable" } }; }
+  if (url.protocol !== "https:" || url.username || url.password || isPreviewOptedOut(url.hostname, configuredOptOutDomains())) {
+    return { decision: { allowed: false, reason: "opted-out" } };
+  }
+  if (!await robotsAllows(url)) return { decision: { allowed: false, reason: "robots" } };
+
+  const cached = readerCache.get(url.toString());
+  if (cached && Date.now() - cached.createdAt < READER_CACHE_MS) return { decision: { allowed: true }, reader: cached.view };
+  try {
+    const captured = await fetchSafeContent(url.toString());
+    embedCompatibilityCache.remember(url.toString(), compatibilityFromHeaders(captured.responseHeaders));
+    const html = new TextDecoder().decode(captured.body);
+    if (pageDisallowsPreview(html, captured.responseHeaders) || pageAppearsAccessRestricted(html, captured.responseHeaders)) {
+      return { decision: { allowed: false, reason: "page-directive" } };
+    }
+    const view = await extractReaderView(html, captured.fetchedUrl);
+    if (!view) return { decision: { allowed: false, reason: "unavailable" } };
+    readerCache.set(url.toString(), { createdAt: Date.now(), view });
+    return { decision: { allowed: true }, reader: view };
   } catch {
     return { decision: { allowed: false, reason: "unavailable" } };
   }

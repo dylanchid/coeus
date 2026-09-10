@@ -1,0 +1,33 @@
+{
+  "note": "Shared URL set for the reader-view extraction spikes (bareaga_web-0bs.3 Readability / bareaga_web-0bs.4 defuddle). Keep IDENTICAL on both branches. Article permalinks rot fast: the 'stable' block below is verified-good and safe to keep; the 'refresh' block holds one placeholder slug per paywalled/metered publisher — replace each with a CURRENT front-page article on that publisher before a real benchmark run (ideally from the deploy region, where fewer of them 403), and record the swap in the spike doc. Run: node --conditions=react-server --import tsx scripts/preview-bench.mts",
+  "stable": [
+    "https://en.wikipedia.org/wiki/Readability",
+    "https://simonwillison.net/2024/Dec/31/llms-in-2024/",
+    "https://overreacted.io/a-chain-reaction/",
+    "https://blog.cloudflare.com/making-workers-ai-faster/",
+    "https://danluu.com/input-lag/",
+    "https://jvns.ca/blog/2023/09/19/getting-started-with-ssh/",
+    "https://www.joelonsoftware.com/2000/04/06/things-you-should-never-do-part-i/",
+    "https://paulgraham.com/greatwork.html"
+  ],
+  "refresh": [
+    "https://www.wsj.com/tech/REPLACE-WITH-CURRENT-ARTICLE",
+    "https://www.nytimes.com/2025/01/01/technology/REPLACE.html",
+    "https://www.bloomberg.com/news/articles/REPLACE",
+    "https://www.economist.com/REPLACE",
+    "https://www.ft.com/content/REPLACE",
+    "https://www.theatlantic.com/technology/archive/REPLACE/",
+    "https://www.wired.com/story/REPLACE/",
+    "https://arstechnica.com/REPLACE/",
+    "https://www.theverge.com/REPLACE",
+    "https://techcrunch.com/REPLACE/",
+    "https://www.reuters.com/technology/REPLACE/",
+    "https://apnews.com/article/REPLACE",
+    "https://www.bbc.com/news/articles/REPLACE",
+    "https://www.theguardian.com/technology/REPLACE",
+    "https://www.npr.org/2025/01/01/REPLACE",
+    "https://stratechery.com/REPLACE/",
+    "https://newsletter.pragmaticengineer.com/p/REPLACE",
+    "https://every.to/REPLACE"
+  ]
+}

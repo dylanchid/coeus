@@ -313,6 +313,32 @@ test("the source-preview card renders the publisher's metadata when the endpoint
   assert.equal(image?.getAttribute("src"), "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg");
 });
 
+test("SPIKE: the reader view renders when extraction succeeds, ahead of the metadata card", async () => {
+  globalThis.fetch = async (input) => {
+    if (String(input).startsWith("/api/article-preview/reader")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        reader: {
+          title: "The extracted headline",
+          byline: "By A. Reporter",
+          excerpt: "Lead sentence.",
+          contentHtml: "<p>First extracted paragraph of the article body.</p>",
+          wordCount: 320,
+          leadImage: null,
+          truncated: true,
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response(null, { status: 401 });
+  };
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  await waitFor(() => assert.ok(screen.getByText("The extracted headline")));
+  assert.ok(screen.getByText("By A. Reporter"));
+  assert.ok(screen.getByText(/First extracted paragraph/));
+  assert.ok(screen.getByRole("link", { name: /Read the full article at example.com/ }));
+  assert.ok(screen.getByText(/Excerpt shown/));
+});
+
 test("the source-preview card degrades to a clear unavailable message when the endpoint fails", async () => {
   globalThis.fetch = async () => new Response(null, { status: 404 });
   render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);

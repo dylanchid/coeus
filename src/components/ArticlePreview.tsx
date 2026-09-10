@@ -90,15 +90,48 @@ type PreviewCard = {
   faviconUrl: string | null;
 };
 
+type ReaderViewData = {
+  title: string;
+  byline: string;
+  excerpt: string;
+  contentHtml: string;
+  wordCount: number;
+  leadImage: string | null;
+  truncated: boolean;
+};
+
 type CardState =
   | { status: "loading" }
+  | { status: "reader"; reader: ReaderViewData }
   | { status: "ready"; card: PreviewCard }
   | { status: "unavailable" };
 
+async function loadReader(url: string): Promise<ReaderViewData | null> {
+  try {
+    const response = await fetch(`/api/article-preview/reader?url=${encodeURIComponent(url)}`, { headers: { accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { reader?: ReaderViewData };
+    return data.reader ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadCard(url: string): Promise<PreviewCard | null> {
+  try {
+    const response = await fetch(`/api/article-preview/card?url=${encodeURIComponent(url)}`, { headers: { accept: "application/json" } });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { card?: PreviewCard };
+    return data.card ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The fallback shown when a publisher blocks framing: a metadata card built
- * server-side from the article's own OpenGraph/Twitter tags. No screenshot, no
- * browser — the image and favicon are streamed back through our origin.
+ * The fallback shown when a publisher blocks framing. SPIKE (bareaga_web-0bs.3):
+ * try a server-extracted, sanitised reader view first; fall back to the
+ * OpenGraph metadata card; then to a plain "open the original" message.
  */
 function StaticSourcePreview({ article }: { article: Article }) {
   const [state, setState] = useState<CardState>({ status: "loading" });
@@ -106,18 +139,14 @@ function StaticSourcePreview({ article }: { article: Article }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/article-preview/card?url=${encodeURIComponent(article.url)}`, { headers: { accept: "application/json" } })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("card unavailable");
-        return (await response.json()) as { card?: PreviewCard };
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setState(data.card ? { status: "ready", card: data.card } : { status: "unavailable" });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ status: "unavailable" });
-      });
+    (async () => {
+      const reader = await loadReader(article.url);
+      if (cancelled) return;
+      if (reader) { setState({ status: "reader", reader }); return; }
+      const card = await loadCard(article.url);
+      if (cancelled) return;
+      setState(card ? { status: "ready", card } : { status: "unavailable" });
+    })();
     return () => { cancelled = true; };
   }, [article.url]);
 
@@ -138,6 +167,27 @@ function StaticSourcePreview({ article }: { article: Article }) {
         <div className="article-preview-static-label">Source preview</div>
         <figcaption>Preview unavailable or disallowed by this publisher. Open the original article to read it.</figcaption>
       </figure>
+    );
+  }
+
+  if (state.status === "reader") {
+    const { reader } = state;
+    return (
+      <div className="article-preview-static article-preview-reader">
+        <div className="article-preview-static-label">Reader view</div>
+        <article>
+          <p className="article-preview-reader-source">{host}</p>
+          <h3>{reader.title || article.title}</h3>
+          {reader.byline ? <p className="article-preview-reader-byline">{reader.byline}</p> : null}
+          {/* contentHtml is sanitised server-side (sanitize-html allowlist, https-only,
+              images already routed through the same-origin proxy) before it reaches here. */}
+          <div className="article-preview-reader-body" dangerouslySetInnerHTML={{ __html: reader.contentHtml }} />
+          <p className="article-preview-reader-more">
+            {reader.truncated ? "Excerpt shown. " : ""}
+            <a href={article.url} target="_blank" rel="noreferrer">Read the full article at {host} ↗</a>
+          </p>
+        </article>
+      </div>
     );
   }
 
