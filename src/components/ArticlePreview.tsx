@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Article, EmbedCompatibility } from "@/lib/types";
 import { useModalDialog } from "@/hooks/useModalDialog";
 
@@ -26,7 +26,7 @@ function articleHost(url: string): string {
  * A deliberately lightweight in-site reading layer. Publishers may prohibit
  * framing; the original-link control remains the reliable reading path.
  */
-export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, onOpenOriginal, onPreferExternal, compatibility = "allowed" }: Props) {
+export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, onOpenOriginal, onPreferExternal, compatibility = "unknown" }: Props) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   useModalDialog({ active: true, containerRef: dialogRef, initialFocusRef: closeRef, onClose });
@@ -46,8 +46,8 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, on
         </header>
         <div className="article-preview-layout">
           <div className="article-preview-frame-wrap">
-            {compatibility === "blocked" ? (
-              <StaticSourcePreview article={article} />
+            {compatibility !== "allowed" ? (
+              <StaticSourcePreview key={article.url} article={article} />
             ) : (
               <>
                 <iframe
@@ -81,18 +81,90 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, onClose, on
   );
 }
 
+type PreviewCard = {
+  title: string;
+  description: string;
+  siteName: string;
+  domain: string;
+  imageUrl: string | null;
+  faviconUrl: string | null;
+};
+
+type CardState =
+  | { status: "loading" }
+  | { status: "ready"; card: PreviewCard }
+  | { status: "unavailable" };
+
+/**
+ * The fallback shown when a publisher blocks framing: a metadata card built
+ * server-side from the article's own OpenGraph/Twitter tags. No screenshot, no
+ * browser — the image and favicon are streamed back through our origin.
+ */
 function StaticSourcePreview({ article }: { article: Article }) {
-  const imageUrl = `/api/article-preview?url=${encodeURIComponent(article.url)}`;
+  const [state, setState] = useState<CardState>({ status: "loading" });
+  const [heroBroken, setHeroBroken] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/article-preview/card?url=${encodeURIComponent(article.url)}`, { headers: { accept: "application/json" } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("card unavailable");
+        return (await response.json()) as { card?: PreviewCard };
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setState(data.card ? { status: "ready", card: data.card } : { status: "unavailable" });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: "unavailable" });
+      });
+    return () => { cancelled = true; };
+  }, [article.url]);
+
+  const host = articleHost(article.url);
+
+  if (state.status === "loading") {
+    return (
+      <div className="article-preview-static is-loading">
+        <div className="article-preview-static-label">Source preview</div>
+        <p>Loading a preview from {host}…</p>
+      </div>
+    );
+  }
+
+  if (state.status === "unavailable") {
+    return (
+      <figure className="article-preview-static article-preview-static-unavailable">
+        <div className="article-preview-static-label">Source preview</div>
+        <figcaption>Preview unavailable or disallowed by this publisher. Open the original article to read it.</figcaption>
+      </figure>
+    );
+  }
+
+  const { card } = state;
   return (
-    <figure className="article-preview-static">
-      <div className="article-preview-static-label">Static source preview</div>
-      {/* The server fetches only anonymous HTML after robots/opt-out checks; this is never a live page. */}
-      {/* eslint-disable-next-line @next/next/no-img-element -- this is a same-origin, bounded PNG route rather than a remote source image. */}
-      <img src={imageUrl} alt={`Static preview of ${article.title}`} onError={(event) => {
-        event.currentTarget.hidden = true;
-        event.currentTarget.parentElement?.classList.add("article-preview-static-unavailable");
-      }} />
-      <figcaption>Preview unavailable or disallowed by this publisher. Open the original article to read it.</figcaption>
+    <figure className="article-preview-static article-preview-card">
+      <div className="article-preview-static-label">Source preview</div>
+      {card.imageUrl && !heroBroken ? (
+        // eslint-disable-next-line @next/next/no-img-element -- same-origin proxy route (/api/article-preview/image), not a remote source image.
+        <img
+          className="article-preview-card-image"
+          src={card.imageUrl}
+          alt=""
+          onError={() => setHeroBroken(true)}
+        />
+      ) : null}
+      <figcaption className="article-preview-card-body">
+        <span className="article-preview-card-site">
+          {card.faviconUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- same-origin proxy route.
+            <img src={card.faviconUrl} alt="" width={16} height={16} onError={(event) => { event.currentTarget.hidden = true; }} />
+          ) : null}
+          {card.siteName || card.domain || host}
+        </span>
+        <span className="article-preview-card-title">{card.title || article.title}</span>
+        {card.description ? <span className="article-preview-card-desc">{card.description}</span> : null}
+      </figcaption>
     </figure>
   );
 }

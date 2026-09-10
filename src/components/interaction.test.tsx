@@ -262,7 +262,7 @@ test("article preview lets a reader choose the familiar external-link behavior",
 test("article preview retains a clear original-source exit and preference switch", (context) => {
   const original = context.mock.fn();
   const external = context.mock.fn();
-  render(<ArticlePreview article={article} sourceName="Example" onClose={() => undefined} onOpenOriginal={original} onPreferExternal={external} />);
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="allowed" onClose={() => undefined} onOpenOriginal={original} onPreferExternal={external} />);
   assert.ok(screen.getByTitle("Preview of A durable link"));
   fireEvent.click(screen.getByRole("button", { name: /Read at example.com/ }));
   fireEvent.click(screen.getByRole("button", { name: "Always open originals" }));
@@ -270,10 +270,53 @@ test("article preview retains a clear original-source exit and preference switch
   assert.equal(external.mock.callCount(), 1);
 });
 
-test("blocked publishers use a labeled static source preview", () => {
+test("only a confirmed allowed publisher is framed inline", () => {
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="allowed" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  assert.ok(screen.getByTitle("Preview of A durable link"));
+});
+
+test("a blocked publisher gets the source-preview fallback, never an inline frame", async () => {
   render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
-  assert.ok(screen.getByText("Static source preview"));
-  assert.ok(screen.getByAltText("Static preview of A durable link"));
+  await waitFor(() => assert.ok(screen.getByText("Source preview")));
+  assert.equal(screen.queryByTitle("Preview of A durable link"), null);
+});
+
+test("an unknown framing verdict still opens the modal with the fallback, not an inline frame", async () => {
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="unknown" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  assert.ok(screen.getByRole("dialog", { name: /A durable link/i }));
+  await waitFor(() => assert.ok(screen.getByText("Source preview")));
+  assert.equal(screen.queryByTitle("Preview of A durable link"), null);
+});
+
+test("the source-preview card renders the publisher's metadata when the endpoint resolves it", async () => {
+  globalThis.fetch = async (input) => {
+    if (String(input).startsWith("/api/article-preview/card")) {
+      return new Response(JSON.stringify({
+        ok: true,
+        card: {
+          title: "Publisher headline",
+          description: "The standfirst from OpenGraph.",
+          siteName: "Example News",
+          domain: "example.com",
+          imageUrl: "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg",
+          faviconUrl: null,
+        },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
+    return new Response(null, { status: 401 });
+  };
+  const { container } = render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  await waitFor(() => assert.ok(screen.getByText("Publisher headline")));
+  assert.ok(screen.getByText("The standfirst from OpenGraph."));
+  assert.ok(screen.getByText("Example News"));
+  const image = container.querySelector(".article-preview-card-image");
+  assert.equal(image?.getAttribute("src"), "/api/article-preview/image?url=https%3A%2F%2Fexample.com%2Flead.jpg");
+});
+
+test("the source-preview card degrades to a clear unavailable message when the endpoint fails", async () => {
+  globalThis.fetch = async () => new Response(null, { status: 404 });
+  render(<ArticlePreview article={article} sourceName="Example" compatibility="blocked" onClose={() => undefined} onOpenOriginal={() => undefined} onPreferExternal={() => undefined} />);
+  await waitFor(() => assert.ok(screen.getByText(/Preview unavailable or disallowed/i)));
   assert.equal(screen.queryByTitle("Preview of A durable link"), null);
 });
 

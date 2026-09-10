@@ -128,6 +128,17 @@ short bounded TTL; cache invalidation must support a domain-wide opt-out or take
 The service must use the existing hardened outbound-fetch controls rather than create
 a separate unprotected network path.
 
+**Implementation note (2026-09-09) — metadata card fallback.** The first shipped
+fallback for a blocked embed is a publisher metadata card: `og:`/`twitter:` title,
+description, image, and favicon parsed from the same HTML the policy path already
+fetches through the hardened outbound controls. No headless browser is involved.
+The card image and favicon are streamed back through a same-origin route
+(`/api/article-preview/image`) rather than hotlinked: this keeps `img-src` at
+`'self'` (no per-publisher CSP surface), avoids leaking the reader's IP/referer to
+the publisher's asset host, and routes every hop through `validatedHttpsUrl` with a
+2 MB cap and an `image/*` (non-SVG) content-type check. A richer in-Coeus reader
+view is tracked separately (epic `bareaga_web-0bs`).
+
 **Acceptance criteria for the feature.** The Reader should attempt the usual preview
 only when permitted. For non-embeddable links, it should show the static fallback only
 when the policy permits it; otherwise it should show metadata-only with “Open original.”
