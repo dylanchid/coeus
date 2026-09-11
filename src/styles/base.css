@@ -253,13 +253,6 @@ body {
   color: var(--fg);
   line-height: 1.45;
   min-height: 100vh;
-  /* subtle grain, not a heavy grid of boxes */
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    color-mix(in srgb, var(--fg) 5%, transparent) 1px,
-    transparent 0
-  );
-  background-size: 18px 18px;
 }
 
 a {
