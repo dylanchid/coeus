@@ -56,7 +56,7 @@ const { AppRouterContext } = await import(
 const { PathnameContext } = await import(
   "next/dist/shared/lib/hooks-client-context.shared-runtime"
 );
-const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
+const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/archive/localArchiveRepository");
 const { buildArticleSlashItems } = await import("@/lib/slashCommands");
 
 const defaultFetch = globalThis.fetch;

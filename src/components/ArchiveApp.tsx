@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ArchiveCollection, ArchiveData, ArchiveItem, CollectionKind, CollectionVisibility } from "@/lib/archive";
-import { archiveToCsv, archiveToMarkdown } from "@/lib/archiveExport";
+import { archiveToCsv, archiveToMarkdown } from "@/lib/archive/archiveExport";
 import { useArchive } from "./AppProviders";
 import { useAuth } from "./AuthProvider";
 import { ProfileGate } from "./ProfileGate";

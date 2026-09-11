@@ -1,4 +1,4 @@
-import { parseRetryAfterMs } from "./httpRetry.ts";
+import { parseRetryAfterMs } from "../httpRetry.ts";
 
 /**
  * How the client sync queue should treat a failed synchronization attempt.

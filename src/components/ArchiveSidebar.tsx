@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import type { ArchiveCollection, ArchiveData, CollectionKind, CollectionVisibility } from "@/lib/archive";
-import type { ContentSnapshotSummary, ArchiveRevisionSummary } from "@/lib/archiveRecovery";
-import type { ArchiveSyncState } from "@/lib/syncedArchiveRepository";
+import type { ContentSnapshotSummary, ArchiveRevisionSummary } from "@/lib/archive/archiveRecovery";
+import type { ArchiveSyncState } from "@/lib/archive/syncedArchiveRepository";
 import type { AuthStatus, AuthUser } from "./AuthProvider";
 import { ArchivePublishPanel } from "./ArchivePublishPanel";
 import { DestinationsPanel } from "./DestinationsPanel";

@@ -4,9 +4,9 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRecoverySnapshot, type ArchiveRevisionSummary, type ContentSnapshotSummary } from "./archiveRecovery.ts";
 import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "./archiveSync.ts";
-import { fetchSafeContent } from "./safeContentFetch.server.ts";
-import { removeStoragePrefix } from "./storageCleanup.ts";
-import { readAllPages } from "./pagedRead.ts";
+import { fetchSafeContent } from "../safeContentFetch.server.ts";
+import { removeStoragePrefix } from "../storageCleanup.ts";
+import { readAllPages } from "../pagedRead.ts";
 
 export interface ArchiveRecoveryStore {
   export(ownerId: string): Promise<{ archiveId: string; current: ArchiveSyncSnapshot; revisions: ArchiveRevisionSummary[]; contentSnapshots: ContentSnapshotSummary[] }>;

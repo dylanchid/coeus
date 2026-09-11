@@ -36,7 +36,7 @@ await import("react");
 const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppProviders, usePreferences, useArchive } = await import("./AppProviders");
 const { DEFAULT_PREFS } = await import("@/lib/prefs");
-const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
+const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/archive/localArchiveRepository");
 const { ARCHIVE_SYNC_VERSION } = await import("@/lib/archiveSync");
 
 const PREFS_STORAGE_KEY = "coeus.prefs.v1";

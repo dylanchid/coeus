@@ -1,4 +1,4 @@
-import type { ArchiveCollection, ArchiveItem } from "./archive";
+import type { ArchiveCollection, ArchiveItem } from "./archiveTypes.ts";
 
 function yaml(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, " ")}"`;
@@ -87,4 +87,3 @@ export function itemToObsidianNote(item: ArchiveItem): string {
   ];
   return [...frontmatter, itemToMarkdown(item)].join("\n");
 }
-

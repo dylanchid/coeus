@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
-import { ARCHIVE_BUDGET } from "@/lib/archiveBudget";
-import { SupabaseArchiveSyncStore } from "@/lib/archiveSyncStore.server";
+import { ARCHIVE_BUDGET } from "@/lib/archive/archiveBudget";
+import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
 import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";

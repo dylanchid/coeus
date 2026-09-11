@@ -1,6 +1,6 @@
-import type { Article } from "./types";
+import type { Article } from "../types";
 import type { ArchiveData, ArchiveItem } from "./archiveTypes";
-import { inferArticleIndex } from "./articleIndex.ts";
+import { inferArticleIndex } from "../articleIndex.ts";
 
 export function archiveArticle(
   data: ArchiveData,

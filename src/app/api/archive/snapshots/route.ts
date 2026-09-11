@@ -1,5 +1,5 @@
-import { handleContentCapture } from "@/lib/archiveRecoveryApi";
-import { SupabaseArchiveRecoveryStore } from "@/lib/archiveRecoveryStore.server";
+import { handleContentCapture } from "@/lib/archive/archiveRecoveryApi";
+import { SupabaseArchiveRecoveryStore } from "@/lib/archive/archiveRecoveryStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 export const dynamic = "force-dynamic";

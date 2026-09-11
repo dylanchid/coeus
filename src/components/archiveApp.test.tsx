@@ -21,7 +21,7 @@ const { PathnameContext } = await import("next/dist/shared/lib/hooks-client-cont
 const { AppProviders } = await import("./AppProviders");
 const { ArchiveWorkspace } = await import("./ArchiveApp");
 const { createDemoArchive } = await import("@/lib/archiveFixtures");
-const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/localArchiveRepository");
+const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/archive/localArchiveRepository");
 
 const defaultFetch = globalThis.fetch;
 afterEach(() => { cleanup(); localStorage.clear(); globalThis.fetch = defaultFetch; });

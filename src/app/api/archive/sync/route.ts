@@ -1,6 +1,6 @@
 import { after } from "next/server";
-import { handleArchiveSync } from "@/lib/archiveApi";
-import { SupabaseArchiveSyncStore } from "@/lib/archiveSyncStore.server";
+import { handleArchiveSync } from "@/lib/archive/archiveApi";
+import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
 import { logDelivery } from "@/lib/deliveryLog";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
 import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";

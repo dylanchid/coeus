@@ -1,5 +1,5 @@
 import { createDemoArchive } from "./archiveFixtures.ts";
-import { isVisibility } from "./visibility.ts";
+import { isVisibility } from "../visibility.ts";
 import type {
   ArchiveCollection,
   ArchiveData,

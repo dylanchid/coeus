@@ -1,5 +1,5 @@
-import { handleAccountDelete } from "@/lib/archiveRecoveryApi";
-import { SupabaseArchiveRecoveryStore } from "@/lib/archiveRecoveryStore.server";
+import { handleAccountDelete } from "@/lib/archive/archiveRecoveryApi";
+import { SupabaseArchiveRecoveryStore } from "@/lib/archive/archiveRecoveryStore.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 export const dynamic = "force-dynamic";

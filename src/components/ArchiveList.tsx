@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ArchiveCollection, ArchiveData, ArchiveItem, ArchiveState } from "@/lib/archive";
-import { itemToMarkdown } from "@/lib/archiveExport";
+import { itemToMarkdown } from "@/lib/archive/archiveExport";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { PostPublishPanel, type PublishedPost } from "./PostPublishPanel";
 import type { ArchiveFilter, ArchiveSort } from "./useArchiveFilters";

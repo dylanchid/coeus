@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { removeStoragePrefix } from "./storageCleanup.ts";
+import { removeStoragePrefix } from "../storageCleanup.ts";
 
 class MemoryBucket {
   files;

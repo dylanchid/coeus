@@ -1,5 +1,5 @@
-import { handleArchiveGet } from "@/lib/archiveApi";
-import { SupabaseArchiveSyncStore } from "@/lib/archiveSyncStore.server";
+import { handleArchiveGet } from "@/lib/archive/archiveApi";
+import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
 import { instrument, newCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 
