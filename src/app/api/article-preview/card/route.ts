@@ -1,13 +1,19 @@
 import { createArticleCard } from "@/lib/articlePreview.server";
 import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { signPreviewImageUrl } from "@/lib/imageProxySignature.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
+import { requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
 
 /** Publisher image bytes are served back through our own origin so the card's
- *  <img> stays within `img-src 'self'` and never hotlinks a third-party host. */
-function proxied(remote: string | null): string | null {
-  return remote ? `/api/article-preview/image?url=${encodeURIComponent(remote)}` : null;
+ *  <img> stays within `img-src 'self'` and never hotlinks a third-party host.
+ *  Signed so `/api/article-preview/image` only honours URLs minted here. */
+function proxied(remote: string | null, secret: string): string | null {
+  if (!remote) return null;
+  const { expires, signature } = signPreviewImageUrl(remote, secret);
+  const params = new URLSearchParams({ url: remote, expires: String(expires), signature });
+  return `/api/article-preview/image?${params.toString()}`;
 }
 
 function unavailable(reason: string, status = 404): Response {
@@ -32,6 +38,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!result.card) return unavailable("unavailable");
 
   const { card } = result;
+  const secret = requiredEnvironment("ARTICLE_PREVIEW_IMAGE_SECRET");
   return Response.json(
     {
       ok: true,
@@ -40,8 +47,8 @@ export async function GET(request: Request): Promise<Response> {
         description: card.description,
         siteName: card.siteName,
         domain: card.domain,
-        imageUrl: proxied(card.imageUrl),
-        faviconUrl: proxied(card.faviconUrl),
+        imageUrl: proxied(card.imageUrl, secret),
+        faviconUrl: proxied(card.faviconUrl, secret),
         index: card.index,
       },
     },

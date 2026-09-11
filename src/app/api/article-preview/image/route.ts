@@ -1,6 +1,8 @@
 import { fetchPreviewImage } from "@/lib/articlePreview.server";
 import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { verifyPreviewImageUrl } from "@/lib/imageProxySignature.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
+import { requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +11,11 @@ function unavailable(status = 404): Response {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  const url = new URL(request.url).searchParams.get("url");
-  if (!url || url.length > 2_000) return unavailable(400);
+  const params = new URL(request.url).searchParams;
+  const url = params.get("url");
+  const expiresParam = params.get("expires");
+  const signature = params.get("signature");
+  if (!url || url.length > 2_000 || !expiresParam || !signature) return unavailable(400);
 
   let target: URL;
   try {
@@ -19,6 +24,12 @@ export async function GET(request: Request): Promise<Response> {
     return unavailable(400);
   }
   if (target.protocol !== "https:") return unavailable(400);
+
+  const expires = Number(expiresParam);
+  const secret = requiredEnvironment("ARTICLE_PREVIEW_IMAGE_SECRET");
+  // Only URLs signed by /api/article-preview/card are honoured — this route is
+  // not a general-purpose image proxy.
+  if (!verifyPreviewImageUrl(url, expires, signature, secret)) return unavailable(403);
 
   const budget = consumeFeedRefreshBudget(request, 1);
   if (!budget.allowed) return unavailable(429);
