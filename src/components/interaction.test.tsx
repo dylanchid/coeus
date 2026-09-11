@@ -47,6 +47,7 @@ const { AuthProvider } = await import("./AuthProvider");
 const { SignInPanel } = await import("./SignInPanel");
 const { WelcomeForm } = await import("./WelcomeForm");
 const { AccountMenu } = await import("./AccountMenu");
+const { ArchiveList } = await import("./ArchiveList");
 const { ProfileFollowButton } = await import("./ProfileFollowButton");
 const { SectionSwitches } = await import("./SectionSwitches");
 const { ChromeProvider, useChrome } = await import("./ChromeProvider");
@@ -636,6 +637,56 @@ test("Account menu shows the handle and opens Settings / Edit profile / Sign out
   fireEvent.click(trigger);
   fireEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
   await waitFor(() => assert.equal(signOutCalls.length, 1));
+});
+
+test("Account menu supports menu keyboard navigation and restores trigger focus on Escape", async () => {
+  const profile = { id: "u1", handle: "theman", displayName: "bareaga", bio: "Traveller", createdAt: "t", updatedAt: "t" };
+  renderAccountMenu({ user: { id: "u1", email: "u1@example.com" } }, profile);
+
+  const trigger = await screen.findByRole("button", { name: /@theman/ });
+  trigger.focus();
+  fireEvent.keyDown(trigger, { key: "ArrowUp" });
+  const signOut = await screen.findByRole("menuitem", { name: "Sign out" });
+  assert.equal(document.activeElement, signOut);
+
+  fireEvent.keyDown(signOut, { key: "Home" });
+  assert.equal(document.activeElement, screen.getByRole("menuitem", { name: "View profile" }));
+  fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" });
+  assert.equal(document.activeElement, signOut);
+  fireEvent.keyDown(signOut, { key: "Escape" });
+  await waitFor(() => assert.equal(screen.queryByRole("menu"), null));
+  assert.equal(document.activeElement, trigger);
+});
+
+test("Archive list limits mounted cards and defers collection options until Organize is opened", () => {
+  const visible = Array.from({ length: 21 }, (_, index) => ({
+    id: `item-${index}`,
+    articleId: `article-${index}`,
+    title: `Item ${index}`,
+    url: `https://example.com/${index}`,
+    sourceName: "Example",
+    topic: "Technology",
+    summary: "",
+    author: "",
+    publishedAt: null,
+    savedAt: "2026-01-01T00:00:00.000Z",
+    state: "unread" as const,
+    starred: false,
+    collectionIds: [],
+    tags: [],
+    note: "",
+  }));
+  const collections = Array.from({ length: 3 }, (_, index) => ({ id: `collection-${index}`, name: `Collection ${index}`, description: "", visibility: "private" as const, kind: "personal" as const, createdAt: "2026-01-01T00:00:00.000Z" }));
+  render(<ArchiveList data={{ version: 1, items: visible, collections, socialPosts: [] }} query="" setQuery={() => undefined} filter="all" setFilter={() => undefined} sort="newest" setSort={() => undefined} counts={{ all: 21, unread: 21, starred: 0, annotated: 0 }} visible={visible} patchItem={() => undefined} recoveryBusy={false} captureContent={async () => undefined} onNotice={() => undefined} shareNotice="" showPostPanels={false} postsByItem={new Map()} />);
+
+  assert.equal(screen.getAllByRole("listitem").length, 20);
+  assert.equal(document.querySelectorAll(".archive-item-tools option").length, 20); // one "No collection" option per mounted card
+  const organize = screen.getAllByText("Organize")[0]!.closest("details")!;
+  organize.open = true;
+  fireEvent(organize, new Event("toggle", { bubbles: true }));
+  assert.equal(document.querySelectorAll(".archive-item-tools option").length, 23);
+  fireEvent.click(screen.getByRole("button", { name: "Show 1 more pieces" }));
+  assert.equal(screen.getAllByRole("listitem").length, 21);
 });
 
 test("Account menu prompts an onboarding-incomplete account to finish its profile", async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
@@ -20,15 +20,19 @@ export function AccountMenu() {
   const menuId = useId();
 
   const [open, setOpen] = useState(false);
+  const [initialMenuItem, setInitialMenuItem] = useState<"first" | "last">("first");
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    const menuItems = () => Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    const items = menuItems();
+    items[initialMenuItem === "first" ? 0 : items.length - 1]?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault();
         setOpen(false);
         triggerRef.current?.focus();
       }
@@ -42,7 +46,7 @@ export function AccountMenu() {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onPointerDown);
     };
-  }, [open]);
+  }, [initialMenuItem, open]);
 
   if (status === "loading") {
     return <span className="account-slot" aria-hidden="true" />;
@@ -71,6 +75,34 @@ export function AccountMenu() {
     router.push(href);
   };
 
+  const openMenu = (initialItem: "first" | "last" = "first") => {
+    setInitialMenuItem(initialItem);
+    setOpen(true);
+  };
+
+  const onTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openMenu(event.key === "ArrowDown" ? "first" : "last");
+    }
+  };
+
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (!items.length) return;
+
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowDown") nextIndex = currentIndex < 0 || currentIndex === items.length - 1 ? 0 : currentIndex + 1;
+    if (event.key === "ArrowUp") nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = items.length - 1;
+    if (nextIndex !== null) {
+      event.preventDefault();
+      items[nextIndex]?.focus();
+    }
+  };
+
   return (
     <div className="account-menu" ref={rootRef}>
       <button
@@ -80,7 +112,8 @@ export function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => open ? setOpen(false) : openMenu()}
+        onKeyDown={onTriggerKeyDown}
       >
         <span
           className="account-avatar"
@@ -94,7 +127,7 @@ export function AccountMenu() {
       </button>
 
       {open ? (
-        <div className="account-dropdown" id={menuId} role="menu" aria-label="Account">
+        <div className="account-dropdown" id={menuId} ref={menuRef} role="menu" aria-label="Account" onKeyDown={onMenuKeyDown}>
           {profileHref ? (
             <button type="button" role="menuitem" onClick={() => navigate(profileHref)}>
               View profile
