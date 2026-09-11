@@ -159,6 +159,47 @@ test("a retired handle returns a 308 to its canonical profile", async ({ establi
   await expect(page).toHaveURL(new RegExp(`/@${canonicalHandle}$`));
 });
 
+test("GET /api/collections/followed omits a collection after the owner goes private", async ({ browser, establishedUser }) => {
+  const { page: ownerPage } = establishedUser;
+  const suffix = `follow-revoke-${Math.random().toString(36).slice(2, 8)}`;
+  const publication = await seedCollection(ownerPage, suffix);
+
+  const followerContext = await browser.newContext();
+  const followerPage = await followerContext.newPage();
+  try {
+    await signIn(followerPage, newEstablishedUser());
+    const followed = await followerPage.request.post("/api/collections/follow", {
+      data: { publicationId: publication.id },
+    });
+    expect(followed.status(), await followed.text()).toBe(204);
+
+    const before = await followerPage.request.get("/api/collections/followed");
+    expect(before.ok(), await before.text()).toBeTruthy();
+    expect((await before.json()).publications).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: publication.id }),
+    ]));
+
+    const privatePublication = await ownerPage.request.post("/api/collections/publish", {
+      data: { collectionLocalId: publication.collectionLocalId, visibility: "private", curatorNote: "", attribution: "" },
+    });
+    expect(privatePublication.status(), await privatePublication.text()).toBe(201);
+
+    const after = await followerPage.request.get("/api/collections/followed");
+    expect(after.ok(), await after.text()).toBeTruthy();
+    expect((await after.json()).publications).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: publication.id }),
+    ]));
+
+    const sneakFollow = await followerPage.request.post("/api/collections/follow", {
+      data: { publicationId: publication.id },
+    });
+    expect(sneakFollow.status()).toBe(403);
+  } finally {
+    await signOut(followerPage);
+    await followerContext.close();
+  }
+});
+
 test("a profile follower loses a private collection after revocation", async ({ browser, establishedUser }) => {
   const { page: ownerPage, handle } = establishedUser;
   const suffix = `revoke-${Math.random().toString(36).slice(2, 8)}`;

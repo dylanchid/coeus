@@ -10,14 +10,17 @@ import {
   handleUnfollowCollection,
   handleUnpublishCollection,
 } from "./collectionPublicationApi.ts";
-import { CollectionNotFoundError } from "./collectionPublicationErrors.ts";
+import { actorCanReachTarget } from "./conversation.ts";
+import { CollectionForbiddenError, CollectionNotFoundError } from "./collectionPublicationErrors.ts";
+import { filterFollowedCollections } from "./collectionPublication.ts";
 
 const PUBLICATION_ID = "11111111-1111-1111-1111-111111111111";
 
 class MemoryPublicationStore {
   publications = new Map();
   follows = new Map();
-  nextId = 1;
+  /** `${followerId}:${ownerId}` keys — profile follows, used by the collection-follow vis cut. */
+  profileFollows = new Set();
   failNext = { publish: null, unpublish: null, listPublic: null, follow: null, unfollow: null };
 
   async list(ownerId) {
@@ -28,7 +31,7 @@ class MemoryPublicationStore {
     if (this.failNext.publish) throw this.consume("publish");
     const existing = this.publications.get(request.collectionLocalId);
     const publication = {
-      id: existing?.id ?? `pub-${this.nextId++}`,
+      id: existing?.id ?? globalThis.crypto.randomUUID(),
       archiveId: "archive-1",
       collectionLocalId: request.collectionLocalId,
       slug: existing?.slug ?? `${request.collectionLocalId}-slug`,
@@ -75,6 +78,12 @@ class MemoryPublicationStore {
 
   async follow(followerId, publicationId) {
     if (this.failNext.follow) throw this.consume("follow");
+    const publication = [...this.publications.values()].find((entry) => entry.id === publicationId);
+    if (!publication || publication.unpublishedAt) throw new CollectionNotFoundError("Collection not found");
+    const followsOwner = this.profileFollows.has(`${followerId}:${publication.ownerId}`);
+    if (!actorCanReachTarget(publication, followerId, followsOwner)) {
+      throw new CollectionForbiddenError("You cannot follow a collection you cannot see");
+    }
     const set = this.follows.get(publicationId) ?? new Set();
     set.add(followerId);
     this.follows.set(publicationId, set);
@@ -86,7 +95,15 @@ class MemoryPublicationStore {
   }
 
   async listFollowed(followerId) {
-    return [...this.publications.values()].filter((entry) => this.follows.get(entry.id)?.has(followerId));
+    const live = [...this.publications.values()].filter(
+      (entry) => this.follows.get(entry.id)?.has(followerId) && !entry.unpublishedAt,
+    );
+    const followedOwnerIds = new Set(
+      [...this.profileFollows]
+        .filter((key) => key.startsWith(`${followerId}:`))
+        .map((key) => key.slice(followerId.length + 1)),
+    );
+    return filterFollowedCollections(live, followerId, followedOwnerIds);
   }
 
   consume(key) {
@@ -227,9 +244,10 @@ test("handleDiscoverCollections returns 503 when the store fails", async () => {
 
 test("handleFollowCollection requires auth, validates the publicationId, and follows", async () => {
   const store = new MemoryPublicationStore();
+  const published = await store.publish("user-1", { collectionLocalId: "c1", visibility: "public", curatorNote: "", attribution: "" });
 
   const unauthorized = await handleFollowCollection(
-    jsonRequest("http://localhost/api/collections/follow", { publicationId: PUBLICATION_ID }),
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: published.id }),
     dependencies(store, null)
   );
   assert.equal(unauthorized.status, 401);
@@ -241,11 +259,64 @@ test("handleFollowCollection requires auth, validates the publicationId, and fol
   assert.equal(invalidId.status, 400);
 
   const success = await handleFollowCollection(
-    jsonRequest("http://localhost/api/collections/follow", { publicationId: PUBLICATION_ID }),
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: published.id }),
     dependencies(store, "follower-1")
   );
   assert.equal(success.status, 204);
-  assert.ok(store.follows.get(PUBLICATION_ID)?.has("follower-1"));
+  assert.ok(store.follows.get(published.id)?.has("follower-1"));
+});
+
+test("handleFollowCollection follows an unlisted collection by id", async () => {
+  const store = new MemoryPublicationStore();
+  const published = await store.publish("user-1", { collectionLocalId: "c1", visibility: "unlisted", curatorNote: "", attribution: "" });
+  const response = await handleFollowCollection(
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: published.id }),
+    dependencies(store, "follower-1")
+  );
+  assert.equal(response.status, 204);
+});
+
+test("handleFollowCollection rejects a missing or unpublished collection with 404", async () => {
+  const store = new MemoryPublicationStore();
+  const missing = await handleFollowCollection(
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: PUBLICATION_ID }),
+    dependencies(store, "follower-1")
+  );
+  assert.equal(missing.status, 404);
+
+  const published = await store.publish("user-1", { collectionLocalId: "c1", visibility: "public", curatorNote: "", attribution: "" });
+  await store.unpublish("user-1", "c1");
+  const unpublished = await handleFollowCollection(
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: published.id }),
+    dependencies(store, "follower-1")
+  );
+  assert.equal(unpublished.status, 404);
+});
+
+test("handleFollowCollection rejects a publication the actor cannot canSee with 403", async () => {
+  const store = new MemoryPublicationStore();
+  const privatePub = await store.publish("user-1", { collectionLocalId: "private", visibility: "private", curatorNote: "", attribution: "" });
+  const followersPub = await store.publish("user-1", { collectionLocalId: "followers", visibility: "followers", curatorNote: "", attribution: "" });
+
+  const privateDenied = await handleFollowCollection(
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: privatePub.id }),
+    dependencies(store, "follower-1")
+  );
+  assert.equal(privateDenied.status, 403);
+  assert.equal(store.follows.get(privatePub.id)?.has("follower-1") ?? false, false);
+
+  const followersDenied = await handleFollowCollection(
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: followersPub.id }),
+    dependencies(store, "follower-1")
+  );
+  assert.equal(followersDenied.status, 403);
+
+  store.profileFollows.add("follower-1:user-1");
+  const followersAllowed = await handleFollowCollection(
+    jsonRequest("http://localhost/api/collections/follow", { publicationId: followersPub.id }),
+    dependencies(store, "follower-1")
+  );
+  assert.equal(followersAllowed.status, 204);
 });
 
 test("handleFollowCollection returns 503 when the store fails", async () => {
@@ -291,6 +362,37 @@ test("handleListFollowed requires auth and returns only the caller's followed pu
   const forStranger = await handleListFollowed(dependencies(store, "someone-else"));
   const strangerBody = await forStranger.json();
   assert.equal(strangerBody.publications.length, 0);
+});
+
+test("handleListFollowed omits a followed collection after revocation to private", async () => {
+  const store = new MemoryPublicationStore();
+  const published = await store.publish("user-1", { collectionLocalId: "c1", visibility: "public", curatorNote: "", attribution: "" });
+  await store.follow("follower-1", published.id);
+
+  published.visibility = "private";
+  const afterPrivate = await handleListFollowed(dependencies(store, "follower-1"));
+  assert.equal((await afterPrivate.json()).publications.length, 0, "private is invisible to a former follower");
+});
+
+test("handleListFollowed keeps unlisted and omits followers-tier unless the viewer follows the owner", async () => {
+  const store = new MemoryPublicationStore();
+  const unlisted = await store.publish("user-1", { collectionLocalId: "unlisted", visibility: "unlisted", curatorNote: "", attribution: "" });
+  const followersOnly = await store.publish("user-1", { collectionLocalId: "followers", visibility: "public", curatorNote: "", attribution: "" });
+  await store.follow("follower-1", unlisted.id);
+  await store.follow("follower-1", followersOnly.id);
+  followersOnly.visibility = "followers";
+
+  const beforeProfileFollow = await handleListFollowed(dependencies(store, "follower-1"));
+  const beforeBody = await beforeProfileFollow.json();
+  assert.deepEqual(beforeBody.publications.map((entry) => entry.collectionLocalId), ["unlisted"]);
+
+  store.profileFollows.add("follower-1:user-1");
+  const afterProfileFollow = await handleListFollowed(dependencies(store, "follower-1"));
+  const afterBody = await afterProfileFollow.json();
+  assert.deepEqual(
+    afterBody.publications.map((entry) => entry.collectionLocalId).sort(),
+    ["followers", "unlisted"],
+  );
 });
 
 test("handleListFollowed returns 503 when the store fails", async () => {

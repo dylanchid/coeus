@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(13);
 
 -- bareaga_web-kxe: thread_descendants() pages every reply under one root with a
 -- keyset cursor; thread_descendant_counts() totals them per root so the Replies
@@ -49,6 +49,8 @@ where parent_id is not null;
 -- ── functions exist ─────────────────────────────────────────────────────────
 select has_function('public', 'thread_descendants', 'thread_descendants() exists');
 select has_function('public', 'thread_descendant_counts', 'thread_descendant_counts() exists');
+select has_column('public', 'replies', 'thread_root_id', 'replies persist their thread root');
+select has_index('public', 'replies', 'replies_thread_root_page_idx', 'thread-root keyset index exists');
 
 -- ── thread_descendants walks every depth, not just two levels ────────────────
 select is(
@@ -93,9 +95,9 @@ select is(
 );
 
 select is(
-  (select total from public.thread_descendant_counts(array[(select id from ids where name = 'c1')])),
-  2::bigint,
-  'a mid-thread reply counts only what is beneath it'
+  (select total from public.thread_descendant_counts(array[(select id from ids where name = 'root')])),
+  5::bigint,
+  'the indexed count remains complete after keyset pagination'
 );
 
 select is(

@@ -18,15 +18,15 @@ function titleProperty(item: ArchiveItem) {
   return { Name: { title: [{ text: { content: item.title.slice(0, 2000) } }] } };
 }
 
-function bodyBlocks(item: ArchiveItem) {
+function paragraphPayload(item: ArchiveItem) {
   const text = [item.summary, item.note].filter(Boolean).join("\n\n") || item.url;
-  return [
-    {
-      object: "block",
-      type: "paragraph",
-      paragraph: { rich_text: [{ type: "text", text: { content: text.slice(0, 2000), link: { url: item.url } } }] },
-    },
-  ];
+  return {
+    rich_text: [{ type: "text" as const, text: { content: text.slice(0, 2000), link: { url: item.url } } }],
+  };
+}
+
+function bodyBlocks(item: ArchiveItem) {
+  return [{ object: "block" as const, type: "paragraph" as const, paragraph: paragraphPayload(item) }];
 }
 
 async function mappedFailure(response: Response): Promise<DestinationPushResult | null> {
@@ -93,9 +93,41 @@ export class NotionAdapter implements DestinationAdapter {
       headers: notionHeaders(this.token),
       body: JSON.stringify({ properties: titleProperty(item) }),
     });
-    const failure = await mappedFailure(response);
-    if (failure) return failure;
+    const titleFailure = await mappedFailure(response);
+    if (titleFailure) return titleFailure;
+
+    // PATCH /pages updates properties only — children sent there are ignored.
+    // Rewrite the first paragraph (the block we created) or append one.
+    const bodyFailure = await this.replaceBody(existingExternalRef, item);
+    if (bodyFailure) return bodyFailure;
     return { ok: true, externalRef: existingExternalRef, httpStatus: response.status };
+  }
+
+  private async replaceBody(pageId: string, item: ArchiveItem): Promise<DestinationPushResult | null> {
+    const listed = await this.request(`${NOTION_API}/blocks/${pageId}/children?page_size=1`, {
+      method: "GET",
+      headers: notionHeaders(this.token),
+    });
+    const listFailure = await mappedFailure(listed);
+    if (listFailure) return listFailure;
+    const list = (await listed.json()) as { results?: { id: string; type: string }[] };
+    const first = list.results?.[0];
+
+    if (first?.type === "paragraph") {
+      const updated = await this.request(`${NOTION_API}/blocks/${first.id}`, {
+        method: "PATCH",
+        headers: notionHeaders(this.token),
+        body: JSON.stringify({ paragraph: paragraphPayload(item) }),
+      });
+      return mappedFailure(updated);
+    }
+
+    const appended = await this.request(`${NOTION_API}/blocks/${pageId}/children`, {
+      method: "PATCH",
+      headers: notionHeaders(this.token),
+      body: JSON.stringify({ children: bodyBlocks(item) }),
+    });
+    return mappedFailure(appended);
   }
 
   async pushDelete(_itemId: string, existingExternalRef: string): Promise<DestinationPushResult> {

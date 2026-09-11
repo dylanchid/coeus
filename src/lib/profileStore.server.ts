@@ -10,6 +10,7 @@ import { HANDLE_PATTERN, normalizeHandle, validateProfileLinks, type Profile, ty
 import { isPublicationVisibility } from "./collectionPublication.ts";
 import type { ProfileSectionsPatch, ProfileSectionSwitches } from "./profileSections.ts";
 import type { OwnedPublication } from "./publicProfile.ts";
+import type { Viewer } from "./visibility.ts";
 import {
   encodeProfileFeedCursor,
   type ProfileFeedPage,
@@ -318,6 +319,25 @@ export class SupabaseProfileStore implements ProfileStore {
       .limit(PUBLICATION_LIMIT);
     if (error) throw error;
     return ((data ?? []) as unknown as Record<string, unknown>[]).map(ownedPublication);
+  }
+
+  /** A visibility-cut aggregate for the sidebar figure. This is deliberately
+   * separate from card loading: the Collections tab must not fetch 500 cards
+   * merely to render its total. */
+  async countVisibleOwnedPublications(profileId: string, viewer: Viewer): Promise<number> {
+    let query = this.supabase
+      .from("collection_publications")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", profileId);
+    if (viewer.kind !== "owner") {
+      query = query.is("unpublished_at", null);
+      query = viewer.kind === "follower"
+        ? query.in("visibility", ["public", "followers"])
+        : query.eq("visibility", "public");
+    }
+    const { count, error } = await query;
+    if (error) throw error;
+    return count ?? 0;
   }
 
   /**

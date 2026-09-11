@@ -6,6 +6,7 @@ import { createDemoArchive } from "./archiveFixtures.ts";
 
 const CONFIG = { databaseId: "db-1", workspaceName: "Acme" };
 const ITEM = createDemoArchive().items[0];
+const BODY_TEXT = [ITEM.summary, ITEM.note].filter(Boolean).join("\n\n") || ITEM.url;
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status });
@@ -31,18 +32,59 @@ test("pushUpsert POSTs a new page when there is no existing externalRef", async 
   assert.equal(calls[0].method, "POST");
   assert.match(calls[0].url, /\/v1\/pages$/);
   assert.deepEqual(calls[0].body.parent, { database_id: "db-1" });
+  assert.equal(calls[0].body.children[0].type, "paragraph");
+  assert.equal(calls[0].body.children[0].paragraph.rich_text[0].text.content, BODY_TEXT.slice(0, 2000));
   assert.deepEqual(result, { ok: true, externalRef: "page-1", httpStatus: 200 });
 });
 
-test("pushUpsert PATCHes the existing page when an externalRef is already known", async () => {
-  const { fetcher, calls } = fetcherFromScript([jsonResponse({ id: "page-1" })]);
+test("pushUpsert PATCHes title and rewrites the first paragraph when an externalRef is known", async () => {
+  const { fetcher, calls } = fetcherFromScript([
+    jsonResponse({ id: "page-1" }),
+    jsonResponse({ results: [{ id: "block-1", type: "paragraph" }] }),
+    jsonResponse({ id: "block-1" }),
+  ]);
   const adapter = new NotionAdapter(CONFIG, "token", fetcher);
   const result = await adapter.pushUpsert(ITEM, "page-1");
 
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 3);
   assert.equal(calls[0].method, "PATCH");
   assert.match(calls[0].url, /\/v1\/pages\/page-1$/);
+  assert.equal(calls[0].body.properties.Name.title[0].text.content, ITEM.title.slice(0, 2000));
+  assert.equal(calls[0].body.children, undefined, "PATCH /pages cannot rewrite children");
+  assert.equal(calls[1].method, "GET");
+  assert.match(calls[1].url, /\/v1\/blocks\/page-1\/children/);
+  assert.equal(calls[2].method, "PATCH");
+  assert.match(calls[2].url, /\/v1\/blocks\/block-1$/);
+  assert.equal(calls[2].body.paragraph.rich_text[0].text.content, BODY_TEXT.slice(0, 2000));
+  assert.deepEqual(calls[2].body.paragraph.rich_text[0].text.link, { url: ITEM.url });
   assert.deepEqual(result, { ok: true, externalRef: "page-1", httpStatus: 200 });
+});
+
+test("pushUpsert appends a body paragraph when the page has no paragraph child", async () => {
+  const { fetcher, calls } = fetcherFromScript([
+    jsonResponse({ id: "page-1" }),
+    jsonResponse({ results: [] }),
+    jsonResponse({ results: [] }),
+  ]);
+  const adapter = new NotionAdapter(CONFIG, "token", fetcher);
+  const result = await adapter.pushUpsert(ITEM, "page-1");
+
+  assert.equal(calls[2].method, "PATCH");
+  assert.match(calls[2].url, /\/v1\/blocks\/page-1\/children$/);
+  assert.equal(calls[2].body.children[0].type, "paragraph");
+  assert.equal(calls[2].body.children[0].paragraph.rich_text[0].text.content, BODY_TEXT.slice(0, 2000));
+  assert.deepEqual(result, { ok: true, externalRef: "page-1", httpStatus: 200 });
+});
+
+test("a failed body rewrite is not reported as a successful update", async () => {
+  const { fetcher } = fetcherFromScript([
+    jsonResponse({ id: "page-1" }),
+    jsonResponse({ results: [{ id: "block-1", type: "paragraph" }] }),
+    jsonResponse({ message: "Could not update block" }, 400),
+  ]);
+  const adapter = new NotionAdapter(CONFIG, "token", fetcher);
+  const result = await adapter.pushUpsert(ITEM, "page-1");
+  assert.deepEqual(result, { ok: false, httpStatus: 400, error: "Could not update block" });
 });
 
 test("pushDelete archives the page rather than deleting it", async () => {

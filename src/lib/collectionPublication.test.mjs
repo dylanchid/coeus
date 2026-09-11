@@ -4,6 +4,7 @@ import test from "node:test";
 import { createDemoArchive } from "./archiveFixtures.ts";
 import {
   derivePublicationSnapshot,
+  filterFollowedCollections,
   isValidSlug,
   parseFollowRequest,
   parsePublicationSnapshot,
@@ -243,4 +244,41 @@ test("parseFollowRequest rejects unknown fields", () => {
   const result = parseFollowRequest({ publicationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6", extra: true });
   assert.equal(result.ok, false);
   assert.match(result.error, /Unknown field/);
+});
+
+const FOLLOWER_ID = "follower-1";
+const OWNER_ID = "owner-1";
+
+function followed(visibility, ownerId = OWNER_ID) {
+  return { visibility, ownerId, slug: visibility };
+}
+
+test("filterFollowedCollections keeps public and unlisted for a stranger", () => {
+  const kept = filterFollowedCollections(
+    [followed("public"), followed("unlisted"), followed("followers"), followed("private")],
+    FOLLOWER_ID,
+    new Set(),
+  );
+  assert.deepEqual(kept.map((entry) => entry.visibility), ["public", "unlisted"]);
+});
+
+test("filterFollowedCollections keeps followers-tier only when the viewer follows the owner", () => {
+  const withoutFollow = filterFollowedCollections([followed("followers")], FOLLOWER_ID, new Set());
+  const withFollow = filterFollowedCollections([followed("followers")], FOLLOWER_ID, new Set([OWNER_ID]));
+  assert.equal(withoutFollow.length, 0);
+  assert.equal(withFollow.length, 1);
+});
+
+test("filterFollowedCollections never lists a private collection for a non-owner, even a profile follower", () => {
+  const kept = filterFollowedCollections([followed("private")], FOLLOWER_ID, new Set([OWNER_ID]));
+  assert.equal(kept.length, 0);
+});
+
+test("filterFollowedCollections lets the owner keep every tier of their own collection", () => {
+  const kept = filterFollowedCollections(
+    [followed("private", FOLLOWER_ID), followed("followers", FOLLOWER_ID), followed("unlisted", FOLLOWER_ID)],
+    FOLLOWER_ID,
+    new Set(),
+  );
+  assert.equal(kept.length, 3);
 });

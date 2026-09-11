@@ -1,5 +1,6 @@
 import { slugifyId } from "./sources.ts";
 import type { ArchiveCollection, ArchiveItem } from "./archiveTypes.ts";
+import { actorCanReachTarget } from "./conversation.ts";
 
 /**
  * Object-level visibility, matching the four-value `public.visibility` Postgres
@@ -306,4 +307,21 @@ export function parseFollowRequest(raw: unknown): FollowRequestParseResult {
   if (unknownField) return { ok: false, error: `Unknown field: ${unknownField}` };
   if (!isUuid(raw.publicationId)) return { ok: false, error: "publicationId must be a UUID" };
   return { ok: true, value: { publicationId: raw.publicationId } };
+}
+
+/**
+ * The collection-follow visibility cut: keep only publications the follower
+ * can still canSee, given who they follow as people. Unlisted stays (link-
+ * reachable, FollowButton must keep working); private and unpublished-ineligible
+ * rows drop; followers-tier stays only when `followedOwnerIds` contains the
+ * owner. Reuses {@link actorCanReachTarget} — do not re-derive the 16 cells.
+ */
+export function filterFollowedCollections<T extends { visibility: PublicationVisibility; ownerId: string }>(
+  publications: readonly T[],
+  followerId: string,
+  followedOwnerIds: ReadonlySet<string>,
+): T[] {
+  return publications.filter((publication) =>
+    actorCanReachTarget(publication, followerId, followedOwnerIds.has(publication.ownerId)),
+  );
 }

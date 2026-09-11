@@ -15,6 +15,7 @@ import {
   type ProfileFeedPageRequest,
 } from "./profileFeedCursor.ts";
 import type { Visibility } from "./visibility.ts";
+import type { Viewer } from "./visibility.ts";
 
 export { PostItemNotFoundError };
 
@@ -57,6 +58,7 @@ function ownedPost(row: Record<string, unknown>): OwnedPost {
  */
 export interface PublicPostReader {
   listByAuthor(authorId: string): Promise<OwnedPost[]>;
+  countVisibleByAuthor(authorId: string, viewer: Viewer): Promise<number>;
   /**
    * One forward-only page of an author's posts, newest first, all tiers — the
    * cursor equivalent of {@link listByAuthor} for the dedicated Posts tab
@@ -103,6 +105,20 @@ export class SupabasePostPublicationStore implements PostPublicationStore, Publi
       .limit(POST_LIMIT);
     if (error) throw error;
     return ((data ?? []) as Record<string, unknown>[]).map(ownedPost);
+  }
+
+  /** Aggregate-only companion to the cursor page. It preserves the same
+   * visibility cut as derivePostCards without loading unused post payloads. */
+  async countVisibleByAuthor(authorId: string, viewer: Viewer): Promise<number> {
+    let query = this.supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", authorId);
+    if (viewer.kind !== "owner") {
+      query = viewer.kind === "follower"
+        ? query.in("visibility", ["public", "followers"])
+        : query.eq("visibility", "public");
+    }
+    const { count, error } = await query;
+    if (error) throw error;
+    return count ?? 0;
   }
 
   async pageByAuthor(authorId: string, page: ProfileFeedPageRequest): Promise<ProfileFeedPage<OwnedPost>> {

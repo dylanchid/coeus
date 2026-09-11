@@ -5,4 +5,6 @@
  * in a module that only resolves inside Next's server bundle.
  */
 export class CollectionNotFoundError extends Error {}
+/** The publication exists, but the actor is not allowed to see it — so cannot follow it. */
+export class CollectionForbiddenError extends Error {}
 export class SlugExhaustedError extends Error {}

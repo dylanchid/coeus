@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  * `loadProfileIdentity` is a request-scoped `cache()` shared with
  * `generateMetadata`, so the two passes cost one `resolveHandle` query between
  * them. The render body then issues one parallel batch for everything the view
- * needs: publications, posts, the person-follow counts, and — for a signed-in
+ * needs: the active tab's cards, aggregate sidebar figures, the person-follow counts, and — for a signed-in
  * non-owner — whether this viewer follows the profile (plan risk R5: resolved
  * once here, carried down as the Viewer).
  */
@@ -65,42 +65,17 @@ export default async function ProfilePage({
   const postReader = new SupabasePostPublicationStore(admin);
   const conversationReader = new SupabaseConversationProfileReader(admin);
 
-  // The dedicated Collections / Posts tabs page through a keyset cursor beyond
-  // the bt0 load cap (bareaga_web-p5o). Overview and every other tab render
-  // from the capped full loads below, unchanged. Only one of the two page
-  // loads is ever issued, and only when its tab is the active one.
+  // Collections and Posts use a keyset page only when active. Overview alone
+  // loads collection cards for its preview; sidebar figures use the
+  // visibility-cut aggregates below rather than a second card payload.
   const activeParam = resolveProfileTab(query.tab);
   const feedCursor = decodeProfileFeedCursor(query.cursor);
   const feedRequest = { cursor: feedCursor, limit: PROFILE_FEED_PAGE_SIZE };
 
-  const [
-    publications,
-    posts,
-    followers,
-    following,
-    initialFollowing,
-    reposts,
-    likes,
-    replies,
-    collectionsPage,
-    postsPage,
-  ] = await Promise.all([
-    profileStore.listOwnedPublications(profile.id),
-    postReader.listByAuthor(profile.id),
-    followStore.countFollowers(profile.id),
-    followStore.countFollowing(profile.id),
-    viewerId && !isOwner ? followStore.isFollowing(viewerId, profile.id) : Promise.resolve(false),
-    conversationReader.listRepostsByActor(profile.id),
-    conversationReader.listLikesByActor(profile.id),
-    conversationReader.listRepliesByActor(profile.id),
-    activeParam === "collections"
-      ? profileStore.pageOwnedPublications(profile.id, feedRequest)
-      : Promise.resolve(null),
-    activeParam === "posts"
-      ? postReader.pageByAuthor(profile.id, feedRequest)
-      : Promise.resolve(null),
-  ]);
-
+  // Resolve the relationship first: it defines the visibility-safe aggregate
+  // predicates below. Cursor tabs load only their own card slice; overview is
+  // the sole surface that needs the capped collection card list.
+  const initialFollowing = viewerId && !isOwner ? await followStore.isFollowing(viewerId, profile.id) : false;
   const viewer: Viewer = isOwner
     ? { kind: "owner", id: viewerId! }
     : initialFollowing
@@ -108,6 +83,46 @@ export default async function ProfilePage({
       : viewerId
         ? { kind: "signed-in", id: viewerId }
         : { kind: "anonymous" };
+  const canRenderLikes = isOwner || (
+    profile.sections.showLikes && (
+      profile.sections.likesVisibility === "public" ||
+      (profile.sections.likesVisibility === "followers" && viewer.kind === "follower")
+    )
+  );
+
+  const [
+    overviewPublications,
+    collectionCount,
+    postCount,
+    followers,
+    following,
+    reposts,
+    likes,
+    replies,
+    collectionsPage,
+    postsPage,
+  ] = await Promise.all([
+    activeParam === "overview" ? profileStore.listOwnedPublications(profile.id) : Promise.resolve([]),
+    profileStore.countVisibleOwnedPublications(profile.id, viewer),
+    postReader.countVisibleByAuthor(profile.id, viewer),
+    followStore.countFollowers(profile.id),
+    followStore.countFollowing(profile.id),
+    profile.sections.showReposts || isOwner
+      ? conversationReader.listRepostsByActor(profile.id)
+      : Promise.resolve([]),
+    canRenderLikes ? conversationReader.listLikesByActor(profile.id) : Promise.resolve([]),
+    profile.sections.showReplies || isOwner
+      ? conversationReader.listRepliesByActor(profile.id)
+      : Promise.resolve([]),
+    activeParam === "collections"
+      ? profileStore.pageOwnedPublications(profile.id, feedRequest)
+      : Promise.resolve(null),
+    activeParam === "posts"
+      ? postReader.pageByAuthor(profile.id, feedRequest)
+      : Promise.resolve(null),
+  ]);
+  const publications = overviewPublications.length ? overviewPublications : (collectionsPage?.items ?? []);
+  const posts = postsPage?.items ?? [];
 
   // The `followers`-tier target check in canSeeIndirect needs, for each row,
   // whether THIS viewer follows that row's target owner — a different person
@@ -141,6 +156,8 @@ export default async function ProfilePage({
     sections: profile.sections,
     followers,
     following,
+    collectionCount,
+    postCount,
     reposts,
     likes,
     replies,

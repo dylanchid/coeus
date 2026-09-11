@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "./archiveSync.ts";
 import {
   derivePublicationSnapshot,
+  filterFollowedCollections,
   parsePublicationSnapshot,
   proposeSlug,
   slugWithSuffix,
@@ -11,10 +12,16 @@ import {
   type CollectionPublicationSummary,
   type PublishCollectionRequest,
 } from "./collectionPublication.ts";
-import { CollectionNotFoundError, SlugExhaustedError } from "./collectionPublicationErrors.ts";
+import { actorCanReachTarget } from "./conversation.ts";
+import {
+  CollectionForbiddenError,
+  CollectionNotFoundError,
+  SlugExhaustedError,
+} from "./collectionPublicationErrors.ts";
 import { readAllPages } from "./pagedRead.ts";
+import type { Visibility } from "./visibility.ts";
 
-export { CollectionNotFoundError, SlugExhaustedError };
+export { CollectionForbiddenError, CollectionNotFoundError, SlugExhaustedError };
 
 const MAX_SLUG_ATTEMPTS = 5;
 const UNIQUE_VIOLATION = "23505";
@@ -37,8 +44,22 @@ export interface PublicCollectionReader {
 }
 
 export interface CollectionFollowStore {
+  /**
+   * Subscribe to a live publication the actor can canSee. Throws
+   * {@link CollectionNotFoundError} when the id is missing or unpublished, and
+   * {@link CollectionForbiddenError} when the actor cannot read it (private, or
+   * followers-tier without a profile follow). Public and unlisted succeed for
+   * any signed-in actor.
+   */
   follow(followerId: string, publicationId: string): Promise<void>;
   unfollow(followerId: string, publicationId: string): Promise<void>;
+  /**
+   * Live followed publications the actor can still canSee, most-recently-
+   * followed first. After revocation (public → private/followers) a former
+   * collection-follower does not receive items unless they still clear canSee
+   * (owner, or profile-follower of a followers-tier collection). Unlisted
+   * remains: it is reachable by link, not a listing rule.
+   */
   listFollowed(followerId: string): Promise<CollectionPublication[]>;
 }
 
@@ -150,6 +171,28 @@ export class SupabaseCollectionPublicationStore
   }
 
   async follow(followerId: string, publicationId: string): Promise<void> {
+    const { data, error: lookupError } = await this.supabase
+      .from("collection_publications")
+      .select("id,visibility,owner_id,unpublished_at")
+      .eq("id", publicationId)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (!data || (data as { unpublished_at: string | null }).unpublished_at !== null) {
+      throw new CollectionNotFoundError("Collection not found");
+    }
+    const publication = data as { visibility: Visibility; owner_id: string };
+    const followsOwner =
+      followerId !== publication.owner_id && publication.visibility === "followers"
+        ? await this.actorFollowsOwner(followerId, publication.owner_id)
+        : false;
+    if (!actorCanReachTarget(
+      { visibility: publication.visibility, ownerId: publication.owner_id },
+      followerId,
+      followsOwner,
+    )) {
+      throw new CollectionForbiddenError("You cannot follow a collection you cannot see");
+    }
+
     const { error } = await this.supabase
       .from("collection_follows")
       .upsert({ follower_id: followerId, publication_id: publicationId }, { onConflict: "publication_id,follower_id" });
@@ -184,7 +227,21 @@ export class SupabaseCollectionPublicationStore
     const rows = (publications ?? []) as Record<string, unknown>[];
     if (!rows.length) return [];
 
-    const items = await this.collectionItems(rows.map((entry) => String(entry.id)));
+    const annotated = rows.map((entry) => ({
+      entry,
+      ownerId: String(entry.owner_id),
+      visibility: entry.visibility as CollectionPublication["visibility"],
+    }));
+    const ownerIdsNeedingFollow = [...new Set(
+      annotated
+        .filter((row) => row.ownerId !== followerId && row.visibility === "followers")
+        .map((row) => row.ownerId),
+    )];
+    const followedOwnerIds = await this.followedOwnerIds(followerId, ownerIdsNeedingFollow);
+    const reachable = filterFollowedCollections(annotated, followerId, followedOwnerIds);
+    if (!reachable.length) return [];
+
+    const items = await this.collectionItems(reachable.map((row) => String(row.entry.id)));
     const itemsByPublication = new Map<string, Record<string, unknown>[]>();
     for (const item of items) {
       const key = String(item.publication_id);
@@ -194,7 +251,7 @@ export class SupabaseCollectionPublicationStore
     }
 
     // Preserve most-recently-followed-first order rather than the publications query's own ordering.
-    const byId = new Map(rows.map((entry) => [String(entry.id), entry]));
+    const byId = new Map(reachable.map((row) => [String(row.entry.id), row.entry]));
     return publicationIds
       .map((id) => byId.get(id))
       .filter((entry): entry is Record<string, unknown> => Boolean(entry))
@@ -305,6 +362,28 @@ export class SupabaseCollectionPublicationStore
       items.push(...(page as unknown as Record<string, unknown>[]));
     }
     return items;
+  }
+
+  private async actorFollowsOwner(followerId: string, ownerId: string): Promise<boolean> {
+    const { count, error } = await this.supabase
+      .from("profile_follows")
+      .select("follower_id", { count: "exact", head: true })
+      .eq("follower_id", followerId)
+      .eq("followee_id", ownerId);
+    if (error) throw error;
+    return (count ?? 0) > 0;
+  }
+
+  /** Profile-follow edges from `followerId` onto the given owners. Empty `ownerIds` skips the query. */
+  private async followedOwnerIds(followerId: string, ownerIds: string[]): Promise<Set<string>> {
+    if (!ownerIds.length) return new Set();
+    const { data, error } = await this.supabase
+      .from("profile_follows")
+      .select("followee_id")
+      .eq("follower_id", followerId)
+      .in("followee_id", ownerIds);
+    if (error) throw error;
+    return new Set((data ?? []).map((row) => String((row as { followee_id: string }).followee_id)));
   }
 
   private async archiveId(ownerId: string): Promise<string | null> {

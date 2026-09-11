@@ -103,9 +103,9 @@ export interface ProfilePostCard {
 }
 
 export interface ProfileFigures {
-  /** Always equals collections.length — never a raw count that could imply a hidden row. */
+  /** Visibility-cut total — never a raw count that could imply a hidden row. */
   collections: number;
-  /** Always equals posts.length — per-viewer filtered (design decision #11). */
+  /** Visibility-cut post total (design decision #11). */
   posts: number;
   /** Person-follow counts, resolved by the page loader and gated by the
    * show_followers / show_following switches at the view layer. */
@@ -157,6 +157,10 @@ export interface DeriveProfileOptions {
   followers?: number;
   /** People this profile follows (profile_follows). */
   following?: number;
+  /** Visibility-cut aggregate counts for routes that render a cursor page
+   * instead of the full card list. */
+  collectionCount?: number;
+  postCount?: number;
   /** This profile's reposts and likes, each with its target freshly joined —
    * dropped here unless canSeeIndirect() clears the target's CURRENT state. */
   reposts?: readonly LoadedInteraction[];
@@ -297,8 +301,8 @@ export function deriveProfileView(
     figures: {
       // The rule: a figure equals the length of what actually crossed the
       // boundary, so a number can never imply a row this viewer cannot reach.
-      collections: collections.length,
-      posts: posts.length,
+      collections: Math.max(0, Math.trunc(options.collectionCount ?? collections.length)),
+      posts: Math.max(0, Math.trunc(options.postCount ?? posts.length)),
       followers: Math.max(0, Math.trunc(options.followers ?? 0)),
       following: Math.max(0, Math.trunc(options.following ?? 0)),
     },

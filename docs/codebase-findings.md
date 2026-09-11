@@ -1,17 +1,19 @@
 # Codebase findings
 
 **Status:** Living research. This is not an implementation plan and not a
-task list. Findings are indexed so later sessions can refine them. As of pass 4
-most of §7 is closed: the **security envelope (§8 items 1–7) is ready to become
-beads and ship**; the performance/correctness work still waits on EXPLAIN
-(§7.2), a localStorage measurement (§7.7), and a deploy timing (§7.11–12).
+task list. Findings are indexed so later sessions can refine them. As of pass 5
+the **security envelope (§8 items 1–7) is done on the working tree** (epic
+`bareaga_web-dmm`, not yet committed as a ship). F-32 is **fixed-on-tree**.
+F-31 and F-32 are **fixed-on-tree**. Performance/correctness still
+waits on EXPLAIN (§7.2), a localStorage measurement (§7.7), and a deploy
+timing (§7.11–12).
 **Started:** 2026-09-09
-**Last updated:** 2026-09-09 (pass 4: §7 research closed against code + platform
-docs; F-29/F-30 added; F-02/F-03/F-19/F-27 corrected)
+**Last updated:** 2026-09-11 (pass 5: sliced S1–S10 + skeptic; F-31–F-51;
+fixed-on-tree / narrowed catalog refresh)
 **Beads:** `bareaga_web-dcr` (this living research). `bareaga_web-7c0` (closed
 library-opportunity audit) spawned `bareaga_web-w3p`, `bareaga_web-kbt`,
 `bareaga_web-m31`. Those three over-specify vendors relative to the problems
-below.
+below. Pass 5 launch work: F-31 and F-32 fixed-on-tree (see §6).
 **Related:** [`HANDOFF.md`](../HANDOFF.md) (what is built),
 [`lib-architecture.md`](./lib-architecture.md),
 [`synced-archive-architecture.md`](./synced-archive-architecture.md),
@@ -53,6 +55,7 @@ plan is accepted.
 | 2 | 2026-09-09 | Broader bottleneck sweep: lists, snapshots, destinations, profile/conversation queries, client write storms, auth/media/proxy spot-check, test/CI map | F-01–F-22. |
 | 3 | 2026-09-09 | Auth, RLS, Storage, OAuth, proxy, test/CI | F-23–F-28. Preview SSRF pin hole; public media bucket bypass; `after()` cookies; `safeNext`; e2e login gate. Unit glob misses nested `src/lib/feeds/`. |
 | 4 | 2026-09-09 | Close §7 against code + Vercel/Supabase/GitHub/Notion docs; re-read the six security findings and the SSRF/storage/`after()` code | §7 items 1, 3, 4, 5, 6, 8, 9, 10, 14 answered; 2, 7, 11, 12, 13 still need a live system or a product call. F-19 open redirect **demonstrated**. F-29 (function `EXECUTE` not locked down) and F-30 (`isUnsafeIp` transition-range gap) added. F-02 corrected: default `maxDuration` is 300s, not 120s — the real mismatch is lease TTL 120s < function budget 300s. F-03 corrected: Vercel body cap is a hard **4.5 MB** on request *and* response. Hobby cron cannot run more than once/day (deploy-time reject), so "cron more often" is not a lever without Pro. |
+| 5 | 2026-09-11 | Sliced S1–S10 + independent skeptic (`bareaga_web-dcr.1.1`–`.1.12`) | Catalog F-01–F-30 re-opened on the working tree. **Fixed-on-tree:** F-06, F-07, F-19, F-23, F-24, F-25, F-26, F-27, F-29 (F-20 CSP half). **Narrowed:** F-02, F-04, F-05, F-09, F-12; F-13 SQL CTE gone (`thread_root_key`), `childrenOf` remainder. F-14 visibility sentence inverted. F-01 cap stands; destination/item/followee/count/recovery rows now paged. Launch keeps: F-31 (Notion PATCH title-only), F-32 (collection follow skips `canSee`). Scale keeps: F-33–F-35. Later keeps: F-36–F-51 (S9-1/2/4 folded into §5 / §7.14–15, not minted). Merges into existing ids, not new ones: S1-3/S1-4→F-03; S2-3→F-02; S4-1/S4-2/S5-2→F-01; S4-3→F-28; S5-4→F-22; S6-1→F-13; S6-2/S6-3→F-14; S7-1→F-05; S10-3→F-21. Still no live EXPLAIN, quota run, or deploy timing. |
 
 Pass 2 method: read hot-path modules and migrations; compare query shape to
 `ARCHIVE_BUDGET` and `supabase/config.toml`; compare `src/lib/*.ts` to
@@ -67,6 +70,15 @@ Pass 4 method: re-read the SSRF stack (`safeOutboundFetch` / `safeFeedFetch` /
 installed `next/dist/docs` `after`/`cookies` pages and current Vercel / Supabase /
 GitHub / Notion platform docs. Still did **not** run EXPLAIN, a large-archive
 fixture, a real deploy, or a browser quota test.
+
+Pass 5 method: ten file-owned slices (S1–S10) re-read the current tree against
+F-01–F-30 and proposed F-TEMP candidates; skeptic (`bareaga_web-dcr.1.12`)
+kept/rejected/merged/demoted each candidate against kill rules (wrong citation,
+already catalogued, fixed-on-tree, launch only if a 5k archive / first Notion
+connect / popular profile would hit it). Synthesis assigned F-31+ only to
+skeptic **keep** (not merge) items. Still did **not** run a loaded EXPLAIN
+ANALYZE, a 5,000-item fixture, a production PostgREST dump, a browser quota
+test, or a timed first-connect.
 
 ---
 
@@ -103,8 +115,11 @@ Two quality regimes already exist:
    pagination on posts/collections/follows/threads, batched `.in()` target
    resolution, pgTAP + unit tests around the query-budget contract.
 2. **Archive + destinations** — strong *write* protocol (revision CAS, leases,
-   idempotent ops, budgets) and weak *read/render/dispatch* envelope (full
-   snapshot, unbounded DOM, `after()` + daily cron, unbounded PostgREST reads).
+   idempotent ops, budgets). Pass 5 found the cheap dispatch levers already
+   on tree (lease TTL 300, 100 items/tick, GitHub chunk 500, batched watermarks,
+   `maxDuration=300` on sync/cron). Residual envelope: full snapshot GET,
+   document-scrolled archive list, Hobby daily cron as the only catch-up,
+   and a handful of still-unbounded PostgREST reads (F-01 remainder).
 
 The rest of this file is about that split.
 
@@ -119,82 +134,75 @@ The rest of this file is about that split.
 **Tag:** launch · **Confidence:** confirmed locally; hosted value **inferred**
 (Supabase default is 1000 unless raised).
 
-Local config: `supabase/config.toml` `max_rows = 1000`. Several service-role
-reads have no `.limit()`:
+**Pass 5:** the **cap stands**. Several catalog rows are now paged
+(`readAllPages` / `POSTGREST_PAGE_SIZE=1000`); truncation on those paths is
+patched, cost remains. Residual unbounded reads still silently stop at 1,000.
 
-| Read | File |
-|---|---|
-| All delivery watermarks | `src/lib/destinationsStore.server.ts` `deliveries()` |
-| All active destinations (cron) | same file `activeDestinations()` |
-| All followee ids for Following | `src/lib/followedFeed.server.ts` |
-| Follower/following **counts** | `src/lib/profileFollowStore.server.ts` `countJoinable()` |
-| Collection item rows (getBySlug, RSS, some lists) | `src/lib/collectionPublicationStore.server.ts` |
-| Export revision + content-snapshot lists | `src/lib/archiveRecoveryStore.server.ts` |
+Local config: `supabase/config.toml` `max_rows = 1000`. Service-role reads:
 
-Archive budget is **5,000 items**. After 1,000 watermarks, `computeDirtyItems`
-treats the rest as never-delivered and **re-pushes** (duplicate Notion pages /
-Git files). Follow counts and Following lie above 1,000 edges. Collection
-*items* are product-capped at 500, so getBySlug is safer than deliveries.
+| Read | File | Pass 5 |
+|---|---|---|
+| Delivery watermarks | `destinationsStore.server.ts` `deliveries()` | **paged** `readAllPages` |
+| Active destinations (cron) | same file `activeDestinations()` | **paged** |
+| Followee ids for Following | `followedFeed.server.ts` | **paged** `readAllPages` |
+| Follower/following **counts** | `profileFollowStore.server.ts` `countJoinable()` | **paged** (still downloads the whole graph, then batched head-count — S4-1) |
+| Collection item rows (getBySlug, RSS, some lists) | `collectionPublicationStore.server.ts` `collectionItems()` | **paged** |
+| Export revision + content-snapshot lists | `archiveRecoveryStore.server.ts` | **paged** (`revision,created_at` / snapshot metadata) |
+| Followed collections (full publications + items) | `collectionPublicationStore.server.ts` `listFollowed()` | **still unbounded** (S5-2) |
+| `GET /api/profiles/followed` | `profileFollowStore.server.ts` `listFollowed()` | **still unbounded**; no `src/` or e2e caller (S4-2, later) |
+| Owner collection list | `collectionPublicationStore.server.ts` `list(ownerId)` | **still unbounded** (product-small) |
 
-**Next measurement:** dump hosted `max_rows`; add a 1,001-row fixture test.
+Archive budget is **5,000 items**. The original “after 1,000 watermarks,
+`computeDirtyItems` re-pushes” hole is closed for destinations. Follow
+*counts* are complete above 1,000 edges but still pay for every row.
+Collection *items* remain product-capped at 500.
+
+**Next measurement:** dump hosted `max_rows`; add a 1,001-row fixture on a
+still-unbounded path (`listFollowed` collections).
 
 #### F-02 · Destination work is durable once started, not guaranteed to start or finish
 
-**Tag:** launch · **Confidence:** confirmed (dispatch/envelope); duplicate-page
-risk **inferred** from lease TTL vs runtime.
+**Tag:** launch (start/finish/drain) · **Confidence:** confirmed (dispatch).
 
-- Primary trigger: `after()` on `src/app/api/archive/sync/route.ts` — **no
-  `maxDuration`**. Only the daily cron route sets `maxDuration = 300`.
-- That hook re-calls `authenticateArchiveRequest()` (cookie JWT). If `after()`
-  has no cookie jar, delivery is skipped and only logged.
-- Catch-up: Hobby cron once a day (`vercel.json` `0 6 * * *`).
-- Notion: sequential `await` per dirty item, **no per-tick cap**
-  (`src/lib/destinationDelivery.ts`). First connect of hundreds of items will
-  not finish inside the default **120s lease**.
-- GitHub: one tree + one commit (good) of the **entire** dirty set, no
-  chunking (`src/lib/obsidianGitAdapter.server.ts`). Failure is all-or-nothing.
-- After a batched GitHub push, **each item still gets its own
-  `record_delivery_outcome` RPC**. `destination_delivery_attempts` is
-  append-only and never pruned.
-- Manual `/api/archive/destinations/[destinationId]/sync` also has no
-  `maxDuration`.
+**Pass 5 — narrowed / partially fixed-on-tree** (`bareaga_web-ky6` / `l4v`).
+Stale catalog bullets (120s lease, missing `maxDuration`, per-item watermark
+RPC, unchunked GitHub, `after()` re-auth) are **gone**:
+
+- `leaseTtlSeconds` default **300** (`destinationWorker.server.ts`).
+- `MAX_ITEMS_PER_TICK = 100`.
+- GitHub `GITHUB_TREE_CHUNK_SIZE = 500` + `base_tree`.
+- Batch `record_delivery_outcomes`.
+- `maxDuration = 300` on sync, manual sync, **and** cron.
+- F-27: `sync/route.ts` captures `ownerId` before `after()` (no cookie re-auth).
+
+**Stands:**
+
+- Primary near-real-time trigger is still `after()` on archive sync. Connect /
+  OAuth do not start a tick; the user must Sync now, save something, or wait
+  for cron.
+- Catch-up: Hobby cron once a day (`vercel.json` `0 6 * * *`). Sub-daily cron
+  *fails at deploy time*. Cron serializes **every** active destination in one
+  300s sweep with no owner cap (S2-3). A 5,000-item first connect needs 50
+  successful ticks; if only cron fires, that is 50 days.
+- Notion: sequential `await` per dirty item (~3 req/s). 100-item cap keeps a
+  tick inside the lease; drain still depends on later `after()` / Sync now /
+  tomorrow's cron.
+- `destination_delivery_attempts` is append-only and never pruned.
+- Duplicate-page risk from lease TTL < run time is **largely removed**
+  (TTL = budget and 100-item cap). Residual: any adapter that creates before
+  it can persist `externalRef`. F-31 (title-only PATCH) is a different bug
+  and is **fixed-on-tree**.
 
 The worker *domain* (leases, min-interval, watermarks, stop-on-auth-error,
 `httpRetry`) is **solid**. Inngest (`bareaga_web-m31`) does not replace that
-domain; it is one way to fix dispatch. Cheaper levers: per-tick cap, chunk
-GitHub, batch watermarks, `maxDuration` on sync routes, more frequent cron.
+domain. Cheap levers in this finding are on tree; remaining work is drain /
+start-on-connect / Hobby catch-up. Vercel-native alternatives for the
+decision record: **Workflows**, **Queues**.
 
-**Pass 4 corrections (platform docs):**
-
-- The Vercel **default `maxDuration` is 300s on every plan** (Hobby included),
-  and `after()` runs for the route's max duration. So the sync route's missing
-  `maxDuration` export gives it 300s, not the ~120s the finding assumed. The
-  real defect is that `runDestinationWorkerTick`'s **`leaseTtlSeconds` default
-  is 120** (`destinationWorker.server.ts:168`) while the function can run 300s:
-  a first-connect delivery that runs 120–300s **loses its lease mid-run**, and
-  the next sync's `after()` hook can acquire it and re-deliver the same dirty
-  items. `release_…_lease` no-ops on the stale token (no clobber), but Notion
-  `pushUpsert` with no `externalRef` yet **creates a second page**. Fix: raise
-  lease TTL to ≥ the function budget (300s) *and* cap items per tick so one run
-  finishes well inside it.
-- **Hobby cron cannot run more than once per day** — `0 * * * *` and friends
-  *fail at deploy time* (`Hobby accounts are limited to daily cron jobs`).
-  "Run the cron more often" is not available without upgrading to Pro. On
-  Hobby the `after()` hook is genuinely the only near-real-time trigger, which
-  raises the priority of F-27.
-- Notion allows ~**3 req/s** per connection; delivery is sequential `await` per
-  item. A 300-item first connect is ≥100s of wall time before `httpRetry`
-  backoff — over the 120s lease, under the 300s budget. Per-tick cap (e.g.
-  100 items) keeps every run bounded; the next tick continues from watermarks.
-- GitHub `POST /git/trees` caps the tree array at 100,000 entries / 7 MB with
-  `recursive`, plus an **undocumented ~40 MiB request-body limit**. A 5,000-note
-  Obsidian first sync inlines every note's `content` in one tree body; at ~1 KB
-  per note that is ~5 MB (under 7 MB but with no headroom), and larger notes
-  break it — all-or-nothing, no chunking. Chunk into chained trees of ~500–1000
-  entries via `base_tree`.
-- The Vercel-native alternative to Inngest for `bareaga_web-m31` is **Vercel
-  Workflows** (durable pause/resume, no duration cap) or **Vercel Queues**. A
-  decision record should compare those first.
+**Pass 4 platform notes (still true):** default `maxDuration` 300s on every
+plan; Hobby cron once/day; GitHub tree 100k / 7 MB / ~40 MiB body; Notion
+~3 req/s. §7.11 (timed 100-item run) still open — it sizes headroom, it is
+not required to keep the cap.
 
 #### F-03 · Four different snapshot size numbers
 
@@ -227,73 +235,109 @@ body)`. Options: lower `maxSnapshotBytes` and the quota trigger to ≤ 4 MiB
 (a streamed response is not subject to the 4.5 MB cap, and Node-runtime
 streaming needs no config) if archives above 4 MiB must stay supported.
 
+**Pass 5 (S1-3 / S1-4 merged here, not new ids):**
+
+- `handleArchiveExport` `Response.json`s `{ current, revisions, contentSnapshots }`
+  — same 4.5 MB GET hole, extra payload. `handleArchiveRevisions` calls
+  `store.export()`, which still loads `archive.current` then returns only the
+  revision list.
+- `checkArchiveBudget` runs in `archiveSyncStore.server.ts` `sync()` only.
+  `LocalStorageArchiveRepository.save` migrates; it does not enforce the
+  ceiling. Anonymous users never hit the server reject. Client cap should be
+  ≤ min(4.5 MB, measured localStorage headroom) after §7.7.
+
 #### F-04 · Archive list mounts every matching card; `indexOf` is O(n²)
 
 **Tag:** launch at hundreds of items; **scale** at the 5,000 ceiling ·
 **Confidence:** confirmed.
 
-`src/components/ArchiveList.tsx` maps `visible` with no window. Inside the
-map: `data.items.indexOf(item)` (unfiltered array, reference search). Each
-signed-in row mounts `PostPublishPanel` even when closed. Cards are
-variable-height (`<details>`, notes, tags). The list is **document-scrolled**.
+**Pass 5 — narrowed / partially fixed-on-tree.** On tree now:
 
-`ARCHIVE_BUDGET.maxItems = 5_000` is documented as a pre-launch *ceiling*, not
-observed load. Virtualization (`bareaga_web-w3p`) is a tool, not step one:
+- `RESULTS_PER_PAGE = 100` + `visible.slice(0, renderLimit)` show-more.
+- `itemPositions` `Map` (no `data.items.indexOf`).
+- Lazy `PostPublishPanel` (not mounted until open).
 
-1. `id → index` map.
-2. Do not mount `PostPublishPanel` until open.
-3. Mount cap / load-more (matches Discover/profile).
-4. Measure; then window if needed. Windowing vs browser Find-in-page is a
-   product tradeoff the virtualization bead does not mention.
-
-Sidebar `itemCountIn` is collections × items on every render (**scale** under
-2,000 × 5,000).
+**Remaining:** the list is still **document-scrolled**; show-more can walk to
+5,000 cards; sidebar `itemCountIn` is collections × items on every render
+(**scale** under 2,000 × 5,000); each mounted card still embeds a full
+collections `<select>` (F-34). `ARCHIVE_BUDGET.maxItems = 5_000` is a
+pre-launch *ceiling*, not observed load. Virtualization (`bareaga_web-w3p`) is
+still a tool, not step one — remaining cheap levers are a tighter mount cap
+and not cloning 2,000 `<option>`s per row.
 
 #### F-05 · Persistence queue writes every snapshot, not only the latest
 
 **Tag:** launch as archives grow · **Confidence:** confirmed, including tests.
 
-`src/lib/persistenceQueue.ts` `enqueue` closes over the *argument*. Rapid
-stars save A, then B, then C — each a full `migrateArchiveData` (including
-`new URL()` per item) + `JSON.stringify` into localStorage.
-`operationsForChange` then `JSON.stringify`s **every field of every entity**
-to diff (`src/lib/syncedArchiveRepository.ts`).
+**Pass 5 — narrowed / partially fixed-on-tree.** Catalog “writes every
+snapshot / `saved === [1, 2]`” is **stale**. `PersistenceQueue.enqueue` now
+coalesces to `this.pending` (`persistenceQueue.ts`); tests assert a burst
+saves only the latest (`[3]`, or in-flight + two more → `[1, 3]`).
 
-This is **current spec**, not an accidental bug:
-`src/lib/persistenceQueue.test.mjs` asserts `saved === [1, 2]` for two
-enqueues. Coalescing to `this.latest` is a behavior change with a test update.
+**Remaining:** each *actual* `repository.save` still runs full
+`migrateArchiveData` (`new URL()` per item) + `JSON.stringify` of the whole
+archive + `operationsForChange`, which `JSON.stringify`s every field of every
+entity (`syncedArchiveRepository.ts`). Queue persist is a second full
+`JSON.stringify(this.queue)`.
 
 `ArchiveContext` lives on the root layout (`src/app/layout.tsx` →
 `AppProviders`). A star clones the items array and re-renders every archive
-subscriber, including chrome that only needed `savedArticleIds`.
+subscriber, including chrome that only needed `savedArticleIds` (`SiteHeader`
+`useArchive()` for `items.length` + persistence — S7-1 merged here). Unguarded
+queue persist after advancing `this.last` is F-33.
 
 #### F-06 · `fetchValidatedHttps` buffers the whole body with no streaming cap
 
+**Status:** fixed on the working tree — `receivedBytes` vs `maxBytes`, destroy
+on overflow (`safeOutboundFetch.server.ts`). Dedicated
+`safeOutboundFetch.server.test.mjs` now exists (S3 / S9). Do not reopen.
+
 **Tag:** launch (function memory) · **Confidence:** confirmed.
 
-`src/lib/safeOutboundFetch.server.ts` concatenates `data` chunks with no
-max. Callers check `Content-Length` then `arrayBuffer()` size
-(`safeFeedFetch.server.ts` 2 MiB, `safeContentFetch.server.ts` 5 MiB). Missing
-`Content-Length` means download-until-timeout, then reject.
-
-SSRF/DNS-pinning/manual-redirect revalidation is **solid** and tested through
-`safeFeedFetch.test.mjs` with an injected `fetcher` — those tests **never
-exercise** `fetchValidatedHttps` body assembly. Beads memory
-`feed-fetch-lookup-hook-needs-all-option` already records that mock-fetcher
-tests miss real `https.request` behavior.
-
-Do not replace this module with a generic HTTP client.
+Was: concatenating `data` chunks with no max; callers checked `Content-Length`
+then `arrayBuffer()` size; missing `Content-Length` meant download-until-timeout.
+SSRF/DNS-pinning/manual-redirect revalidation was already **solid**. Do not
+replace this module with a generic HTTP client. Media uploads remain F-28.
 
 #### F-07 · Revision retention is the union of 50 revisions and 30 days
 
+**Status:** fixed on the working tree (`bareaga_web-jc1`) —
+`20260909170000_cap_archive_revision_retention.sql` replaces AND with OR:
+delete when `revision <= cutoff OR created_at < now()-keepDays`, never the
+current revision. pgTAP `archive_quotas_retention.test.sql`. Do not reopen.
+
 **Tag:** launch cost if anyone syncs continuously · **Confidence:** confirmed.
 
-`prune_all_archive_revisions` deletes only when `revision <= current - 50`
-**and** `created_at` is older than 30 days
-(`20260907160000_archive_quotas_retention.sql`). Sync rate limit is 60 / 300s.
-Each accepted batch inserts a full JSONB row. A chatty client can retain
-thousands of full snapshots for a month. Daily cron also runs this sweep
-sequentially after delivery (`worker/route.ts`).
+Was: prune only when `revision <= current - 50` **and** older than 30 days
+(`20260907160000`). Catalog AND-text and the `archiveBudget.ts` “whichever is
+larger” comment are **stale**; README retention row may still say keep last 50
+**and** last 30 days. Worker still calls `prune_all_archive_revisions`, which
+delegates to the replaced function. JSONB scan cost of `archive_storage_stats`
+is F-35.
+
+#### F-31 · Notion updates PATCH title only (body stays at create text)
+
+**Status:** fixed on the working tree (`bareaga_web-dcr.2`). Create is
+unchanged (POST `properties` + `children`). Update PATCHes title, then
+rewrites the first paragraph via `PATCH /blocks/{id}` or appends
+`bodyBlocks` when that child is missing. `notionAdapter.test.mjs` covers
+create vs update payload. Not F-02.
+
+**Tag:** launch · **Confidence:** confirmed.
+
+#### F-32 · Collection follow write/read skip the visibility cut
+
+**Status:** fixed on the working tree (`bareaga_web-dcr.3`). `follow()` loads
+the live publication and requires `actorCanReachTarget` (canSee toward the
+owner; unpublished → 404, unseeable → 403). `listFollowed` filters with
+`filterFollowedCollections` before loading items: public/unlisted stay
+(FollowButton), private and followers-tier drop unless the viewer still
+clears canSee (owner, or profile-follower of a followers-tier collection).
+RLS WITH CHECK on `collection_follows` is unchanged (defence-in-depth). Do
+not reopen as isListable — unlisted must remain on GET followed. Payload/
+truncation of the same endpoint is F-01 remainder (S5-2), not this leak.
+
+**Tag:** launch · **Confidence:** confirmed.
 
 ---
 
@@ -313,11 +357,14 @@ consumers, schedules localStorage (200 ms debounce in
 **Tag:** launch at default source counts; worse at limit 50 · **Confidence:**
 confirmed.
 
-`SiteHeader` passes a **new `context` object** every render. `SlashMenu`
-`useMemo` depends on that identity. `buildSlashItems` emits one command per
-article (`src/lib/slashCommands.ts`). Display is capped; **build and fuzzy
-score are not**. `NewsApp` also writes the full `currentSources` array into
-`ChromeProvider` on every feed batch.
+**Pass 5 — narrowed / partially fixed-on-tree.** `buildArticleSlashItems` is
+gated `trim.length >= 3` and `/[a-z]/i` (`slashCommands.ts`); tests assert
+`"a"` builds nothing.
+
+**Remaining:** `SiteHeader` still passes a **new `context` object** every
+render. `SlashMenu` `useMemo` depends on that identity. Once the gate opens,
+build and fuzzy score still walk every headline. `NewsApp` also writes the
+full `currentSources` array into `ChromeProvider` on every feed batch.
 
 #### F-10 · Ranked view is O(n²); highlight multiplies DOM nodes
 
@@ -337,8 +384,60 @@ limit 50.
 **Tag:** later (first paint) · **Confidence:** confirmed.
 
 `SiteHeader` `next/image` for `/coeus_logo.png` with width 1536, height 1024,
-`priority`, `unoptimized`. Root layout also loads five `next/font/google`
-families (self-hosted, so CSP `font-src 'self'` is consistent).
+`priority`, `unoptimized`. File is **1,381,709 bytes** (`public/coeus_logo.png`).
+Root layout also loads five `next/font/google` families (self-hosted, so CSP
+`font-src 'self'` is consistent). Tag later; LCP cost is real but not a
+5k / Notion / popular-profile launch blocker.
+
+#### F-33 · Sync-queue persist is unguarded after a successful local save
+
+**Tag:** scale (demoted from launch; §7.7 unmeasured) · **Confidence:** confirmed.
+
+`SyncedArchiveRepository.save` (`syncedArchiveRepository.ts`):
+`await this.local.save(data); this.last = data;` then `persistQueue()` /
+`publishState()` with no try. `persistQueue` is
+`store.setItem(QUEUE_KEY, JSON.stringify(this.queue))`. A `QuotaExceeded`
+after advancing `this.last` means `operationsForChange` on retry is empty —
+pending ops die on reload. Real near 8 MiB snapshot + queue; folk localStorage
+~5 MiB is unmeasured (§7.7), so not launch.
+
+**Fix shape:** wrap queue/state `setItem`; on quota, surface error without
+advancing `this.last` past durable ops — or write archive+queue together.
+
+#### F-34 · Each mounted archive card embeds a full collections `<select>`
+
+**Tag:** scale at `maxCollections` × mount cap · **Confidence:** confirmed.
+
+Inside `ArchiveList` `renderedItems.map`, `data.collections.map` → `<option>`
+per collection. Closed `<details>` stay in DOM. 100 × `maxCollections`(2,000)
+= 200k option nodes at budget; tens of collections is fine. Distinct from
+remaining F-04 (per-row explosion, not virtualization).
+
+**Fix shape:** one shared `<datalist>` / combobox, or options only when the
+row's collection picker is open.
+
+#### F-42 · Keyword-rules textarea parses and writes prefs on every keystroke
+
+**Tag:** later (was launch; Ranked is opt-in) · **Confidence:** confirmed.
+
+Settings ranking textarea `onChange` → `parseKeywordRules` → `updatePrefs`
+(`SettingsPanel.tsx`). Default `homeView` is `"grid"` (`prefs.ts`) — Ranked
+is opt-in. Sibling of F-08, not a search-bar clone. Disk debounce is 200 ms;
+React is not.
+
+**Fix shape:** parse on blur, or debounce the parse the same way as disk.
+
+#### F-43 · Root `AppProviders` hydrates archive + prefs on public routes
+
+**Tag:** later · **Confidence:** confirmed.
+
+`RootLayout` wraps every route (`layout.tsx`); `useArchiveProvider` calls
+`repository.load()` on mount. `/about`, `/u/[handle]`, `/c/[slug]` still
+hydrate localStorage archive + start `synchronize()` for signed-in visitors.
+Fine at small archives; extra work on every public hit.
+
+**Fix shape:** lazy archive provider on `/archive` and signed-in chrome, or
+skip `synchronize()` until an archive mutation / `/archive` visit.
 
 ---
 
@@ -348,40 +447,45 @@ families (self-hosted, so CSP `font-src 'self'` is consistent).
 
 **Tag:** scale for a popular profile · **Confidence:** confirmed.
 
-`src/app/u/[handle]/page.tsx` always parallel-loads:
+**Pass 5 — narrowed / partially fixed-on-tree.** Tab-gates
+`listOwnedPublications` (overview) and `pageOwnedPublications` /
+`pageByAuthor`. **Gone:** always-on `listByAuthor` cap 500.
 
-- `listOwnedPublications` (cap 500 + two embedded counts)
-- `listByAuthor` (cap 500)
-- 100 likes, 100 reposts
-- 50 reply roots + two descendant queries
-- then sequential `followsAmong` + `thread_descendant_counts`
-
-Collections/Posts tabs **also** run the keyset page query. Pagination was
-added alongside the overview load, not instead of it. Identity load is
-request-`cache()`d with metadata (good).
+**Still always** when the section is on: `listRepostsByActor` 100, likes 100,
+replies 50 + children, then `followsAmong` + `threadDescendantCounts`; plus
+follow counts (F-01 / S4-1). Identity load is request-`cache()`d with metadata
+(good). Catalog “always parallel-loads listOwned + listByAuthor” is stale.
 
 #### F-13 · `thread_descendants` LIMIT is on the outer SELECT, not inside the CTE
 
 **Tag:** scale for a viral thread · **Confidence:** confirmed.
 
-`supabase/migrations/20260909130000_thread_pagination.sql` comments say
-“LIMIT inside the CTE”. The recursive CTE materializes all descendants, then
-the outer query orders and `limit`s (clamped 200).
-`thread_descendant_counts` walks the full subtree of up to 50 roots with no
-cap.
+**Pass 5 — narrowed: SQL fixed-on-tree; `childrenOf` remains.**
+`20260910100000_thread_root_key.sql` replaces the recursive CTE with a
+`thread_root_id` index scan + LIMIT. `thread_descendant_counts` is GROUP BY,
+uncapped aggregation (not recursive).
 
-`childrenOf` uses one global `.limit(200)` across **all** parent ids
-(`conversationProfileStore.server.ts`). Fifty roots share 200 children; later
-threads starve. Dedicated thread page exists for overflow.
+**Remaining:** `childrenOf` uses one global `.limit(200)` across **all**
+parent ids (`conversationProfileStore.server.ts`). Fifty roots share 200
+children; later threads starve. Dedicated thread page exists for overflow
+(S6-1 merged here). F-41 is a different hole (`hasMore` before derive).
 
 #### F-14 · Following feed: unbounded follow graph + offset merge
 
 **Tag:** scale · **Confidence:** confirmed.
 
-Loads every `followee_id`, then `IN (...)` with `limit = offset+limit+1` on
-each table (`followedFeed.server.ts`). Deep offsets over a union of two
-independently capped tables skip rows. Visibility filtering can return a short
-page while `hasMore` is true. PostgREST URL length and F-01 also apply.
+**Pass 5:** followee id list is now `readAllPages` (F-01 truncation patched).
+Offset merge + `.limit(offset+limit+1)` remain (`followedFeed.server.ts`).
+`boundedOffset` accepts any integer ≥ 0 (`discover/page.tsx`); at offset ≥ 1000
+PostgREST `max_rows` can still truncate a `.limit(cap)` that is not `.range()`
+(S6-3).
+
+**Visibility sentence inverted (S6 wins):** catalog “short page while
+`hasMore` is true” is **stale**. `combineFollowedFeed` filters with
+`isListable` then slices; `hasMore` is `visible.length > offset+limit`
+(`followedFeed.ts`). Remaining failure: `listFollowedPeopleContent` `.limit(cap)`
+with **no vis predicate**, then filter-after-cap — private newest rows starve
+older public ones (S6-2). Posts-tab cousin is F-40, not this table.
 
 #### F-15 · Discover `listPublic` counts by downloading item id rows
 
@@ -398,11 +502,13 @@ shape; timeout **inferred** from Hobby defaults.
 
 `feeds.server.ts`: `BoundedCache(250)`, 50 items/feed, concurrency 8, 6 s
 timeout, in-flight de-dupe, stale-while-revalidate. `/api/feeds` has no
-`maxDuration`. Default reader asks for on the order of 20 sources. HN
-enrichment fans out up to 50 Firebase calls; `hnMetricsCache` is an
+`maxDuration`. Default reader asks for on the order of **22** enabled sources.
+HN enrichment fans out up to 50 Firebase calls; `hnMetricsCache` is an
 **unbounded** `Map` (`engagement.server.ts`). Refresh budget
 (`feedRefreshGuard.server.ts`) is process-local (80 sources / 60s per IP).
-CDN `s-maxage=90` only helps after a success.
+CDN `s-maxage=90` only helps after a success. Unauthenticated cache-miss
+fan-out (not on that budget) is F-38. §7.12 unmeasured — do not treat cold
+TTFB as a ship-blocker number.
 
 #### F-17 · Admin client + application-layer visibility is intentional
 
@@ -411,9 +517,49 @@ CDN `s-maxage=90` only helps after a success.
 `lock_down_public_tables` + service role + `canSee` / `canSeeIndirect` /
 `deriveProfileView` is the product security model, not a missing RLS policy.
 The footgun is any new reader that uses the admin client and **forgets** the
-derive layer. Conversation create path does gate
-`actorCanReachTarget` (`conversationApi.ts`). Keep this pattern; do not “fix”
-it by putting PostgREST in the browser.
+derive layer. **Was live: F-32** (collection follow write/read) — now
+fixed-on-tree (`bareaga_web-dcr.3`).
+Pass-4 sampled `/c/[slug]` / RSS / discover remain clean. Conversation create
+path does gate `actorCanReachTarget` (`conversationApi.ts`). Keep this
+pattern; do not “fix” it by putting PostgREST in the browser.
+
+#### F-35 · `archive_storage_stats` seq-scans every revision JSONB
+
+**Tag:** scale · **Confidence:** confirmed (function shape; empty-stats EXPLAIN).
+
+`archive_storage_stats` (`20260907160000`) `sum(octet_length(r.snapshot::text))`
+over all revisions plus a correlated count of `archive_operations`. Weekly
+`capture_storage_growth` calls it in-process (`max_rows` does not apply).
+Empty-stats EXPLAIN: Seq Scan `archive_revisions`; SubPlan Seq Scan
+`archive_operations` per archive. OR-cap (F-07) still keeps up to
+`keepRevisions` of 8 MiB JSONB per archive. Not a user request path.
+
+**Fix shape:** persist `snapshot_bytes` on `archive_revisions` at insert;
+aggregate that. Needs EXPLAIN ANALYZE on a multi-revision fixture (§7.2).
+
+#### F-40 · Posts-tab pages can render empty while `hasMore` is true
+
+**Tag:** later · **Confidence:** confirmed.
+
+`pageByAuthor` loads all tiers, keyset, `limit+1` (`postPublicationStore.server.ts`);
+`derivePostCards` then `isListable`. Comment already says a page may render
+shorter than limit. Cousin of F-14, posts not Following — do not merge.
+Stranger + newest-private slice: short page, `hasMore` true.
+
+**Fix shape:** push the same vis filter `countVisibleByAuthor` already uses
+into `pageByAuthor`.
+
+#### F-41 · Thread `hasMore` is computed before the visibility derive
+
+**Tag:** later · **Confidence:** confirmed.
+
+Reader `hasMore = descRows.length > limit` on the raw RPC
+(`conversationProfileStore.server.ts`); loader forwards `page.hasMore` after
+`deriveThreadView` drops invisible descendants (`threadPageLoader.server.ts`).
+Mixed-tier after the target is opened. Not F-13 (pagination SQL is fixed).
+
+**Fix shape:** recompute `hasMore` from derived rows, or push the vis
+predicate into `thread_descendants`.
 
 ---
 
@@ -602,20 +748,28 @@ cookie-free admin client inside the hook.
 
 **Tag:** later (availability), same class as F-06 · **Confidence:** confirmed.
 
-`profileMediaApi.ts` `file.arrayBuffer()` then `validateUpload` size cap.
-No `Content-Length` reject first. Product caps are 2 MB/5 MB but only after
-buffering.
+**Pass 5 — stands, partially mitigated.** `file.size` + magic-byte `slice`
+run before the second `arrayBuffer()`; the handler still
+`await request.formData()` first (`profileMediaApi.ts`). Product caps are
+2 MB avatar / 5 MB cover (`MEDIA_SIZE_CAP`). Cover 5 MiB is above Vercel’s
+hard 4.5 MB body cap (S4-3 merged here) — a first user with a 4.6 MB cover
+gets platform 413. F-06 streaming cap does not apply to this FormData path.
 
 #### F-20 · Profile media: magic bytes + size caps; CSP `img-src` is `https:`
 
+**Status:** CSP half **fixed-on-tree**; upload residual is F-28. Catalog
+`img-src … https:` blanket is **stale**.
+
 **Tag:** solid upload path; later CSP tightness · **Confidence:** confirmed.
 
-`profileUpload.ts` sniffs PNG/JPEG/WebP, caps 2 MB / 5 MB. API reads the full
-body then validates (size is checked on the buffer, not a streaming cap —
-same class as F-06, smaller because of the product cap). CSP
-(`securityHeaders.ts`) allows `img-src 'self' data: blob: https:` so any HTTPS
-image can load as avatar/cover. `script-src 'unsafe-inline'` is documented as
-required for Next bootstrap.
+`profileUpload.ts` sniffs PNG/JPEG/WebP, caps 2 MB / 5 MB. API still
+`request.formData()` then validates (F-28). CSP (`securityHeaders.ts`) is now
+`img-src 'self' data: blob:` + `https://*.supabase.co` + configured origin
+(unit `securityHeaders.test.mjs` rejects a bare `https:`). Residual: the
+wildcard is still **any** Supabase project, not only `NEXT_PUBLIC_SUPABASE_URL`.
+`script-src 'unsafe-inline'` is documented as required for Next bootstrap.
+Keep this finding as historical + F-28 pointer; do not reopen the blanket
+`https:` claim.
 
 #### F-21 · `robots.ts` disallows `/u/` but canonical profiles are `/@handle`
 
@@ -624,7 +778,15 @@ required for Next bootstrap.
 Disallow includes `/u/`, `/archive/`, `/api/`. Canonical URLs are `/@handle`
 (rewrite in `next.config.ts`). Crawlers that honor canonical may still index
 profiles; those that request `/u/...` will not. Public collections `/c` are
-allowed. Confirm whether `/@handle` should be indexable.
+allowed. Profile `generateMetadata` still has no `robots.index` (collections
+do, from visibility). Confirm whether `/@handle` should be indexable (§7.13).
+
+**Pass 5 (S10-3 merged here):** Disallow entries are trailing-slash prefixes
+(`/signin/`, `/welcome/`, `/archive/`). Next `trailingSlash` is unset; app
+routes are `/signin`, `/welcome`, `/archive`. Google prefix match: `/signin/`
+does **not** match `/signin`. `/u/` and `/api/` still match children. Fix
+shape: Disallow `/signin`, `/welcome`, `/archive` (keep `/u/`, `/api/`);
+independently decide `/@`. Preview Allow `/` is F-51.
 
 #### F-22 · Public pages are `force-dynamic` by design
 
@@ -634,6 +796,10 @@ allowed. Confirm whether `/@handle` should be indexable.
 visibility depends on the viewer. CDN caching public-only variants is a
 product decision, not a missed `cacheLife`. Do not “fix” this without a
 private-by-default story.
+
+**Pass 5 (S5-4 merged here):** `/c` index is also `force-dynamic` then only
+calls `listPublic` (SQL `visibility='public'`). Viewer-independent; discover
+API already sends `Cache-Control: public, max-age=60`. Footnote, not a new id.
 
 #### F-29 · Table lockdown does not lock down `EXECUTE` on functions
 
@@ -702,8 +868,164 @@ one-good-one-bad DNS trick — this just extends the literal check.
 
 **Fix:** in `ipv6IsUnsafe`, detect `64:ff9b::/96` (+ `64:ff9b:1::/48`),
 `2002::/16`, `2001::/32`, extract the embedded IPv4, and run it through
-`ipv4IsUnsafe`. Add fixtures to a real `safeOutboundFetch.server.test.mjs`
-(the module still has no dedicated test — see §5).
+`ipv4IsUnsafe`. Fixtures belong in `safeOutboundFetch.server.test.mjs` (that
+file now exists — F-06 / §5).
+
+#### F-36 · Corrupt local archive is replaced with demo data in memory
+
+**Tag:** later (was launch) · **Confidence:** confirmed.
+
+`localArchiveRepository.load` catch returns `createDemoArchive()` without
+copying raw bytes aside; `migrateArchiveData` invalid shape/items returns
+`{ data: createDemoArchive(), valid: false }`. Contrast: `readQueue` copies
+unusable queue JSON to `coeus.archive.sync-queue.v1.corrupt`. Disk is **not**
+overwritten on parse fail (`valid && migrated` guard). Data loss needs a
+subsequent `save`. localStorage `setItem` is typically atomic — truncated-write
+as a first-user path is unshown.
+
+**Fix shape:** same preservation path as the sync queue; do not hand demo data
+to `save` without an explicit reset.
+
+#### F-37 · Failed delivery at the current field revision is treated as caught-up
+
+**Tag:** later (was launch) · **Confidence:** confirmed (comparator); production
+hit-rate inferred.
+
+`computeDirtyItems` upserts when `!delivery || revision > lastDeliveredRevision`
+and ignores `status` (`destinationDelivery.ts`). Failed insert writes
+`last_delivered_revision = 0`. Hole is **rev-0 items** after a failed first
+push. `applyArchiveSyncBatch` typically leaves saved items at ≥ 1, so a first
+Notion connect of a starred archive is unlikely to hit rev-0. Comparator still
+real. Not F-02.
+
+**Fix shape:** dirty if no delivery, or `status` in
+`{failed_retryable, failed_auth, pending}`, or `revision > lastDeliveredRevision`.
+Test: fail upsert at rev 0 → still dirty.
+
+#### F-38 · Unauthenticated `/api/feeds` cache-miss is not on the refresh budget
+
+**Tag:** later · **Confidence:** confirmed (code); impact inferred (no live QPS).
+
+`consumeRefreshBudget` runs only `if (query.forceRefresh)` (`feedApi.ts`).
+Adjacent to F-16 (cold UX), not the same (unbudgeted miss fan-out). Unique
+query-string URLs churn `BoundedCache(250)`. Preview always budgets.
+
+**Fix shape:** budget cache-miss as well as force-refresh, or cap unauthenticated
+fan-out separately.
+
+#### F-39 · Dotted IPv4-mapped literals are classified unsafe (fail-closed parser hole)
+
+**Tag:** later · **Confidence:** confirmed (parser); Node returning this form
+**inferred**.
+
+`ipv6Groups` requires hex hextets, so `::ffff:8.8.8.8` → null → unsafe
+(`safeOutboundFetch.server.ts`). Fail-closed sibling of F-30, opposite
+direction — do not merge (F-30 is too-permissive ranges).
+
+**Fix shape:** accept dotted IPv4-mapped/compatible in `ipv6Groups`, then run
+the embedded v4 through `ipv4IsUnsafe`. Keep fail-closed on parse junk.
+
+#### F-44 · F-29 default-privilege lockdown is `postgres`-role only
+
+**Tag:** later · **Confidence:** confirmed.
+
+`ALTER DEFAULT PRIVILEGES FOR ROLE postgres` only
+(`20260909150000_lock_down_public_functions.sql`). Live dump: `supabase_admin`
+defacl still grants EXECUTE/ALL to anon. Do not reopen F-29 as launch. A
+future dashboard/SQL-editor object created as `supabase_admin` becomes
+PostgREST-callable by the publishable key.
+
+**Fix shape:** matching `ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin`;
+pgTAP over `pg_default_acl`.
+
+#### F-45 · `notion_oauth_states` and `storage_growth_snapshots` have no RLS
+
+**Tag:** later · **Confidence:** confirmed.
+
+Neither migration `ENABLE ROW LEVEL SECURITY`. OAuth table `REVOKE ALL` from
+anon/authenticated; growth table GRANT `service_role` only. Closed by GRANT,
+not RLS. Destinations tables use RLS-with-zero-policies as the tighter pattern.
+
+**Fix shape:** `ENABLE RLS` (zero client policies) on both.
+
+#### F-46 · Identity sequence USAGE remains granted to anon/authenticated
+
+**Tag:** later · **Confidence:** confirmed.
+
+Identity on `storage_growth_snapshots`; no `REVOKE … ON SEQUENCES` in
+migrations (F-29 asked to consider it). Live USAGE to anon is dump-only. Anon
+still cannot INSERT. `nextval()` gap/DoS only.
+
+**Fix shape:** `REVOKE USAGE, SELECT ON ALL SEQUENCES` + default privileges
+from anon/authenticated/public; pgTAP `has_sequence_privilege` count = 0.
+
+#### F-47 · Several list indexes omit the keyset tiebreaker
+
+**Tag:** later / scale (index work; needs loaded EXPLAIN) · **Confidence:**
+confirmed (empty-stats EXPLAIN).
+
+`collection_publications_live_idx (visibility, published_at desc)` — listPublic
+Incremental Sort on `id`. `replies_parent_idx (parent_id)` — `childrenOf`
+Sort `created_at`; `replies_author_live_idx` lacks `id`.
+`destination_deliveries_status_idx (destination_id, status)` — deliveries
+ORDER BY `item_id` sorts after bitmap. Contrast: `20260909120000` already added
+`id` to posts/owner-collection page indexes.
+
+**Fix shape:** add `id` (and `created_at` on `parent_id`) to match the bt0
+keyset indexes. Do before treating as a ship item — §7.2.
+
+#### F-48 · `log-alerts` fail-closes without `VERCEL_TOKEN`
+
+**Tag:** later · **Confidence:** confirmed.
+
+`scripts/log-thresholds.mts` `fetchLogLines` `process.exit(2)` if no token.
+`.github/workflows/log-alerts.yml` always runs the check. Contrast
+`storage-growth.mts`, which skip-greens. Unpinned `npx vercel@latest logs`.
+§7.15 remainder (S9-3). Whether the GitHub secret exists is a dashboard fact.
+
+**Fix shape:** fail-open until the secret exists (mirror storage-growth); pin
+the Vercel CLI; optional secret bead like `bareaga_web-9hc`.
+
+#### F-49 · Playwright always boots `next dev` with the test-session backdoor armed
+
+**Tag:** later (coverage around F-26; does not reopen F-26) · **Confidence:**
+confirmed.
+
+`playwright.config.ts` `webServer.command` is `npm run dev`;
+`webServer.env.E2E_TEST_LOGIN = "1"`. CI e2e job runs that suite; the quality
+job's `next build` is unused by e2e. No spec asserts 403 when the flag is off
+or `NODE_ENV=production`. A production-gate regression still gets a green e2e
+job (the suite cannot run unless the backdoor is armed).
+
+**Fix shape:** keep armed e2e on `next dev`; add a unit/negative probe of
+`testLoginEnabled()` fail-closed.
+
+#### F-50 · Proxy auth redirect drops cookies written during `getClaims` refresh
+
+**Tag:** later (was launch; same class as F-27, different site) ·
+**Confidence:** confirmed code path; whether `getClaims` Set-Cookies on that
+hop **inferred**.
+
+`src/proxy.ts` `setAll` rebuilds `response` with `cookies.set`; on
+`decideProxyRedirect` the handler `return NextResponse.redirect(to)` without
+copying that jar. Signed-in `/signin` → `/welcome`; signed-out `/welcome` →
+`/signin`. Drop is confirmed **if** `setAll` ran. Not a 5k / Notion /
+popular-profile blocker. F-27 is fixed on the sync route; do not reopen it.
+
+**Fix shape:** copy `response.cookies` onto the redirect `NextResponse` (or
+redirect via the same response object).
+
+#### F-51 · `robots.ts` always allows `/` — no preview/non-prod disallow
+
+**Tag:** later · **Confidence:** confirmed.
+
+`robots.ts` always `allow: "/"`. `docs/deployment.md` claims a non-production
+`NEXT_PUBLIC_SITE_URL` disallows all crawling — **no such branch exists**.
+Preview `*.vercel.app` emits Allow `/`. Adjacent to F-21 / §7.13.
+
+**Fix shape:** if `VERCEL_ENV !== "production"` (or SITE_URL not the apex)
+return Disallow `/`; keep production rules. Or `X-Robots-Tag: noindex` on
+preview.
 
 ---
 
@@ -735,47 +1057,57 @@ regression tests.
 
 CI (`.github/workflows/ci.yml`): lint, `tsc --noEmit`, `test:unit`, `test:ui`,
 production build with placeholder public env, `npm audit --audit-level=high`,
-pgTAP via `supabase start` + `supabase test db`. E2E is a separate concern
-(`bareaga_web-ubj.*` still open).
+pgTAP via `supabase start` + `supabase test db`. **E2E is a CI job** (`e2e`
+on PRs and `main`: supabase start + `npm run test:e2e`). `bareaga_web-ubj.4`
+(delivery assertion) is the remaining journey gap; parent ubj may still be
+open in historical text.
 
-**Glob hole:** `test:unit` is `src/lib/*.test.mjs` — nested
-`src/lib/feeds/*.test.mjs` would never run (and `src/lib/feeds/feeds.server.ts`
-has no test today). `src/hooks/` is not collected. Fix: widen to
-`src/lib/**/*.test.mjs` and add `src/hooks/**/*.test.*`. (§7.14)
+**Glob hole (S9-1, not a new F-id):** `test:unit` is still
+`src/lib/*.test.mjs` — nested `src/lib/feeds/*.test.mjs` would never run
+(and `src/lib/feeds/feeds.server.ts` has no test today). Zero nested
+`*.test.mjs` exist today, so CI is not currently dropping files. `src/hooks/`
+is not collected; `test:ui` is `src/components/*.test.tsx` (same class).
+Fix: widen to `src/lib/**/*.test.mjs` and add `src/hooks/**/*.test.*`. (§7.14)
 
 **Unit/UI that exist and matter:** archive sync/validation/budget/API,
 destination delivery/worker/secrets/OAuth state, conversation derive + API,
 profile store pagination tests, feed contract/query/discovery, safe *feed*
-fetch (injected fetcher), persistence queue (ordered saves), interaction
-(slash trap, mobile settings, account menu happy path).
+fetch (injected fetcher), **`safeOutboundFetch.server.test.mjs` (streaming
+cap)**, persistence queue (**coalescing** saves), interaction (slash trap,
+mobile settings, account menu happy path), `securityHeaders.test.mjs`.
 
 **Production logic with no dedicated test file** (not exhaustive; some is
 covered indirectly):
 
 | Module | Why it matters |
 |---|---|
-| `safeOutboundFetch.server.ts` | F-06; lookup hook already bit production once |
 | `safeContentFetch.server.ts` | capture path |
-| `destinationsStore.server.ts` | F-01 deliveries |
-| `collectionPublicationStore.server.ts` | F-15, getBySlug items |
+| `destinationsStore.server.ts` | F-01 remainder / worker store |
+| `collectionPublicationStore.server.ts` | F-15; F-32 vis cut is on tree (API tests + filter helper) |
 | `followedFeed.server.ts` | F-14 |
 | `profileFollowStore.server.ts` | F-01 counts |
 | `feeds/feeds.server.ts` | cold cache, HN fan-out |
 | `feedRefreshGuard.server.ts` | process-local budget |
-| `slashCommands.ts` | F-09 |
-| `localArchiveRepository.ts` | quota, migration |
-| `NewsApp.tsx` / `ArchiveList.tsx` / `StoryFeed.tsx` | F-04, F-08, F-10 |
+| `slashCommands.ts` | F-09 residual (lib gate is tested) |
+| `localArchiveRepository.ts` | F-36 corrupt-load / quota |
+| `NewsApp.tsx` / `ArchiveList.tsx` / `StoryFeed.tsx` | F-04 remainder, F-08, F-10, F-34 |
+| `src/proxy.ts` | F-50 cookie-copy on redirect (helper is tested) |
 
 **E2E today:** `e2e/auth.spec.ts`, `profile.spec.ts`, `public.spec.ts`,
-`routes.spec.ts`. Open beads already name the missing journeys: archive
-save→sync→reload (`ubj.2`), destinations + Notion OAuth mock (`ubj.4`),
-canonical handle 308 + visibility revocation (`ubj.5`). There is no
-`archive.spec.ts`.
+`routes.spec.ts`, **`archive.spec.ts`** (star → GET `/api/archive` → reload),
+`destinations.spec.ts` (Notion OAuth mock connect), `preview.spec.ts`.
+`profile.spec.ts` covers follow, 308 canonical handle, visibility revocation,
+feed/thread cursors. Missing: delivery tick, quota/corrupt archive, export
+size, media upload (CI supabase start excludes `storage-api`), F-26 fail-closed
+path (F-49). Playwright `trace: "retain-on-failure"` but CI never uploads
+artifacts (S9-2, §7.15 — not a new F-id).
 
 **Observability:** `/api/health` (config + `archives` exact count), uptime
 workflow, log-threshold workflow, storage-growth workflow (secret bead
 `bareaga_web-9hc`). Health `count: exact` on `archives` is a possible
-unnecessary sequential scan (later).
+unnecessary sequential scan (later). Config probe does not assert destination /
+cron / Notion OAuth env (S9-4, §7.15 — not a new F-id). Log-alerts fail-closed
+without `VERCEL_TOKEN` is F-48.
 
 ---
 
@@ -783,26 +1115,31 @@ unnecessary sequential scan (later).
 
 | Bead | Pass 0 framing | This document |
 |---|---|---|
-| `bareaga_web-w3p` | Introduce `@tanstack/react-virtual` | F-04. Problem is unbounded archive DOM. Library is step 4 after map/cap/measure. |
+| `bareaga_web-w3p` | Introduce `@tanstack/react-virtual` | F-04 remainder + F-34. Problem is still unbounded archive DOM / per-row `<option>`s. Map/lazy panel/100-card page are on tree; library is still step 4 after a tighter cap. |
 | `bareaga_web-kbt` | Adopt React Aria Components | F-18. Fix AccountMenu keys; keep `useModalDialog`. |
-| `bareaga_web-m31` | Evaluate Inngest | F-02. Decision record is the right shape; do dispatch/caps first. |
-| `bareaga_web-ubj.*` | E2E journeys | Still the right tests; they would have caught none of F-01/F-05/F-06. |
+| `bareaga_web-m31` | Evaluate Inngest | F-02 remainder (Hobby daily drain / start-on-connect). Cheap levers (lease 300, 100/tick, GitHub 500, batch watermarks, `maxDuration`) are **on tree**. Decision record vs Vercel Workflows/Queues. |
+| `bareaga_web-ubj.*` | E2E journeys | `archive.spec.ts` and destinations connect exist; delivery tick (`ubj.4`) and F-26 fail-closed (F-49) do not. |
 | `bareaga_web-7c0` | Closed library audit | Keep the keep-as-is section; do not treat its ranking as the plan. |
+| `bareaga_web-dmm` | Security envelope | **Closed.** F-19/F-23–F-27/F-29 on the working tree, not committed. Do not reopen as new design. Residuals: F-44 (defacl), F-49 (e2e gate untested), F-50 (proxy cookies). |
+| `bareaga_web-dcr.2` | — | F-31. **Fixed-on-tree.** Notion update rewrites the first paragraph. |
+| `bareaga_web-dcr.3` | — | F-32. **Fixed-on-tree.** Collection follow write/read apply `canSee`. |
 
-Do **not** file a markdown TODO for F-01–F-30. When a finding is accepted as
+Do **not** file a markdown TODO for F-01–F-51. When a finding is accepted as
 work, create or retitle a bead that names the *problem*, not the vendor.
 
 Pass 4 also reframes `bareaga_web-m31` again: the Vercel-native durable-workflow
 options (**Workflows**, **Queues**) should be the baseline in that decision
 record, with Inngest as one external alternative — and the cheap levers in F-02
-(lease TTL, per-tick cap, GitHub chunking) come first regardless.
+are already on tree. Remaining F-02 is drain, not another cap.
 
 ---
 
 ## 7. Remaining research
 
-Pass 4 status per item. **Answered** items no longer block a plan; **open**
-items still need a live system or a product decision.
+Pass 4 status per item, with pass 5 tree notes. **Answered** items no longer
+block a plan; **open** items still need a live system or a product decision.
+EXPLAIN / localStorage / deploy timing / `@handle` indexing are **not**
+answered — no live measurement happened in pass 5.
 
 1. **Hosted PostgREST `max_rows`.** *Answered.* Supabase hosted default is
    **1,000**, same as `config.toml` (settable in Project Settings → API → Max
@@ -810,10 +1147,12 @@ items still need a live system or a product decision.
    PostgREST response limit applied to every role, RPC `RETURNS TABLE`
    included. F-01 stands: every unbounded service-role read is silently
    truncated at 1,000. Fix with explicit `.range()` pagination or by moving
-   aggregation into SQL (`count`, embedded `(count)`).
+   aggregation into SQL (`count`, embedded `(count)`). Pass 5: several listed
+   reads are now paged; residual unbounded paths are in the F-01 table.
 2. **EXPLAIN.** *Open — needs the DB.* Requires `supabase db` access or a prod
-   read replica. Do before F-01/F-12/F-13/F-15 index work; not a blocker for
-   the security envelope or the persistence/list fixes.
+   read replica. Do before F-01/F-12/F-13/F-15/F-35/F-47 index work; not a
+   blocker for the security envelope, F-31, F-32, or the persistence/list
+   leftovers. Empty-stats EXPLAIN on F-35/F-47 is not ANALYZE.
 3. **`after()` cookie behavior.** *Answered from installed docs* — see F-27.
    Route handlers may read cookies in `after()`; the risk is a dropped token
    rotation, not a skipped delivery. Capture `ownerId` before `after()`
@@ -825,34 +1164,35 @@ items still need a live system or a product decision.
    2 GB / 1 vCPU. **Hobby cron cannot run more than once/day** (deploy-time
    reject). Fed into F-02 and F-03.
 5. **GitHub tree payload.** *Answered.* Tree array ≤ 100,000 entries / 7 MB
-   (`recursive`); undocumented ~40 MiB request-body cap. A 5,000-note first
-   sync is ~5 MB of inlined `content` with no headroom → chunk. See F-02.
+   (`recursive`); undocumented ~40 MiB request-body cap. Pass 5: worker sends
+   ≤100 dirty items/tick; adapter chunks at 500 with `base_tree`. A 5,000-note
+   first sync is no longer one tree. See F-02.
 6. **Notion rate limits.** *Answered.* ~3 req/s per connection + per-workspace
    limits; 429 with `Retry-After`; payload 500 KB / 1000 blocks (adapter sends
-   one block — fine). Sequential per-item delivery of a few hundred items
-   exceeds the 120s lease TTL. See F-02.
+   one block — fine). Sequential per-item delivery of a few hundred items is
+   now capped at 100/tick (lease TTL 300). Body-on-update is F-31 (fixed-on-tree), not rate.
 7. **localStorage quota.** *Open — needs a browser test.* ~5 MiB is the folk
    number; the real cap and eviction behaviour with prefs + op queue + archive
    together needs a measured run in Chrome/Safari/Firefox. Blocks the F-03
    budget-alignment number (pick ≤ 4 MiB only after confirming the client can
    hold that + the queue).
-8. **Admin-client visibility cut.** *Answered for the sampled paths.* Pass 4
-   read the collection path end to end: `/c/[slug]` applies `canSee()` for
-   private/followers, `/c/[slug]/rss.xml` restricts to public/unlisted,
-   `/api/collections/discover` → `listPublic` filters `visibility='public'`.
-   All clean. A **full sweep of all ~25 call sites + an ESLint/pgTAP guard**
-   that flags an admin-client read with no derive call is still worth doing
-   (F-17 footgun); tracked as opportunistic, not a blocker.
+8. **Admin-client visibility cut.** *Answered for the sampled page paths;
+   one live footgun.* Pass 4 `/c/[slug]` / RSS / discover remain clean. Pass 5
+   S5 found `follow()` / `listFollowed()` skip `canSee` — **F-32**, now
+   fixed-on-tree.
+   A full sweep of remaining call sites + an ESLint/pgTAP guard is still
+   worth doing (F-17); opportunistic next to F-32, not a blocker for it.
 9. **IPv6 transition ranges.** *Answered — it's a gap.* Promoted to **F-30**.
-10. **Function `EXECUTE` grants.** *Answered — it's a gap.* Promoted to
-    **F-29**. No live hole today; the lockdown migration should still add a
-    blanket revoke.
-11. **First-connect timing vs lease.** *Open — needs a timed run,* but the
-    shape is now clear from items 5–6: lease TTL 120s < function budget 300s <
-    a 300-item Notion first connect. Fix (raise TTL, cap per tick) does not
-    need the measurement; the measurement just sizes the cap.
+   Fail-closed dotted-mapped parser hole is F-39 (later, do not merge).
+10. **Function `EXECUTE` grants.** *Answered — blanket revoke is on tree
+    (F-29, `dmm.6`).* Residual default-privileges for `supabase_admin` is
+    F-44 (later). Sequence USAGE is F-46. Do not reopen F-29 as launch.
+11. **First-connect timing vs lease.** *Open — needs a timed run.* Cheap fix
+    (TTL 300, 100/tick) is **on tree**; the measurement now sizes drain
+    headroom and Hobby cron finish, not whether to cap. Do not treat as
+    answered — no timed 100-item run happened.
 12. **Feed cold-start wall time.** *Open — needs a deploy.* `/api/feeds` has no
-    `maxDuration` (→ 300s), 6s per-feed timeout, concurrency 8, ~20 default
+    `maxDuration` (→ 300s), 6s per-feed timeout, concurrency 8, ~22 default
     sources; cold isolate = empty `BoundedCache`. Measure p95 cold TTFB.
 13. **Should `/@handle` be indexed?** *Open — product call.* `robots.ts`
     disallows `/u/` (the render route) but **not** `/@` or `/c`. Collections
@@ -865,88 +1205,88 @@ items still need a live system or a product decision.
     (`bareaga_web-tpy`/`56v`), so the dangerous edges (domain core → `server` /
     `next` / `*Api`; component → `*.server` value import) are mechanically
     enforced. Residual is the opportunistic directory moves
-    (`bareaga_web-4po`/`a2n`) and the **`test:unit` glob hole**: it globs
+    (`bareaga_web-4po`/`a2n`) and the **`test:unit` glob hole** (S9-1): it globs
     `src/lib/*.test.mjs`, so a future `src/lib/feeds/*.test.mjs` (or anything
     under `src/hooks/`) silently never runs. `src/lib/feeds/feeds.server.ts`
     has no test at all today. Small bead: widen the glob to `src/lib/**/*.test.mjs`.
+    Not minted as an F-id — catalog remainder.
 15. **CI gaps.** *Open — low effort, do alongside E2E work.* Playwright trace
-    upload on failure; `log-alerts.yml` needs `VERCEL_TOKEN`; the health probe
-    does not assert `DESTINATION_TOKEN_ENCRYPTION_KEY` / `CRON_SECRET` /
-    Notion OAuth vars exist.
+    upload on failure (S9-2, not an F-id); `log-alerts.yml` `VERCEL_TOKEN`
+    fail-close is F-48; health probe missing destination/cron/OAuth env is
+    S9-4 (not an F-id). F-49 is the e2e-always-dev hole around F-26.
 
 **Still genuinely blocking a full PR plan:** only items 2, 7, 11, 12 (each
 needs a live DB, browser, or deploy) and item 13 (a product decision). The
-security envelope (§8 items 1–6) plus F-29 needs none of them.
+security envelope (§8 items 1–7) is already on the working tree. F-31 and
+F-32 need none of those measurements.
 
 ---
 
 ## 8. Draft sequencing (not accepted)
 
-Order for when we *do* plan. Problems, not packages:
+Order for when we *do* plan. Problems, not packages. This section is **still
+not an accepted plan**.
 
-Security envelope first — **all seven ship without any §7 measurement, and pass
-4 confirmed each one.** Tracked under epic `bareaga_web-dmm`. Cheapest-first:
+Security envelope first — **all seven are done on the working tree** (epic
+`bareaga_web-dmm`, closed). They still need a commit/PR; do not reopen them as
+design. Cheapest-first, historical:
 
-> **Progress (2026-09-09):** all six envelope items are **done on the working
-> tree, not committed** — `bareaga_web-dmm.1`–`.6`. Items 1–3 (F-23, F-19, F-27)
-> are code-only; items 4–6 (F-26; F-24+F-25; F-29) land two new migrations
-> (`20260909140000_profile_media_lockdown.sql`,
-> `20260909150000_lock_down_public_functions.sql`) plus code, verified with
-> `supabase test db` (300 pgTAP pass) and `npm test` (480 unit + 66 UI).
-> **F-24 outcome:** BFF-only — client `insert`/`update` storage policies
-> dropped, media route switched to the service-role client.
+> **Progress (2026-09-11):** envelope items 1–7 remain **on the working tree,
+> not committed** — `bareaga_web-dmm.1`–`.6` plus F-06/F-07 (not dmm). Pass 5
+> did not reopen F-19/F-23–F-27/F-29. Residuals are later: F-44 (defacl),
+> F-49 (e2e gate untested), F-50 (proxy cookies), F-20 wildcard `*.supabase.co`.
 
+1. **F-23** — **fixed-on-tree.** `resolveFeedUrl` `fetcher` default `undefined`.
+2. **F-19** — **fixed-on-tree.** `safeInternalPath` at all three call sites.
+3. **F-27** — **fixed-on-tree.** `ownerId` captured before `after()`.
+4. **F-26** — **fixed-on-tree.** `NODE_ENV` + `@e2e.coeus.local`. Negative
+   e2e/unit is F-49.
+5. **F-25** — **fixed-on-tree.** Host pin in validator; CHECK https+uuid.
+6. **F-24** — **fixed-on-tree.** BFF-only writes; bucket MIME + size.
+7. **F-29** — **fixed-on-tree.** Blanket `REVOKE EXECUTE` + postgres defacl.
+   Residual F-44.
 
-1. **F-23** — change `resolveFeedUrl`'s `fetcher` default from `fetch` to
-   `undefined` so `previewFeedUrl` stays DNS-pinned. ~2 lines + a test.
-2. **F-19** — one `safeInternalPath` primitive, used in all three `safeNext`
-   copies, + a bypass-vector unit test.
-3. **F-27** — capture `ownerId` in `sync/route.ts` before `after()`; admin
-   client in the hook.
-4. **F-26** — add `NODE_ENV`/allow-marker gate + `POST` email allowlist to
-   `/api/test/session`; try to exclude it from the prod build.
-5. **F-25** — pin avatar/cover URL (host = `NEXT_PUBLIC_SUPABASE_URL`, `https:`,
-   `${uid}/` prefix) in the CHECK **and** `validateProfileInput`; tighten CSP
-   `img-src`. One migration + one validator change.
-6. **F-24** — set `file_size_limit` + `allowed_mime_types` on the
-   `profile-media` bucket; drop the client `insert`/`update` policies in favour
-   of BFF-only writes (or signed upload URLs). One migration.
-7. **F-29** — add `REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public` +
-   `ALTER DEFAULT PRIVILEGES … REVOKE EXECUTE ON FUNCTIONS` to the lockdown
-   migration; re-grant `service_role`; pgTAP guard. One migration + one test.
+Then launch leftovers that pass 5 actually kept (filed as beads):
 
-Items 4–6 touch the database and want a paired pgTAP test; 1–3 and 7 are small
-and self-contained. F-24 + F-25 are one PR (both about the media bucket).
+7a. **F-32** — **fixed-on-tree.** `follow()` / `listFollowed()` apply
+   `actorCanReachTarget` / `filterFollowedCollections`. RLS WITH CHECK kept.
+7b. **F-31** — **fixed-on-tree.** Update rewrites/appends `bodyBlocks`; create unchanged.
 
 Then performance/correctness (some wait on §7 items 2/7/11/12):
 
-8. Limit or page every unbounded PostgREST read (F-01), `deliveries()` first
-   (duplicate-delivery risk). Needs EXPLAIN (§7.2) only for the index choices,
-   not for the `.range()` calls.
-9. F-02 dispatch: **raise `leaseTtlSeconds` to ≥ 300** (currently 120, below
-   the function budget), cap dirty items per tick (~100), add `maxDuration`
-   to the sync + manual sync routes, chunk the GitHub tree (~500/commit),
-   batch `record_delivery_outcome`. **"Cron more often" is off the table on
-   Hobby** — if near-real-time catch-up matters, that is a Pro upgrade or a
-   Vercel Workflow/Queue, which is the real content of `bareaga_web-m31`.
-10. Coalesce persistence to latest snapshot; stop field-wise stringify diffs;
-    debounce or blur-save `lastSearch` (F-05, F-08). Tests currently lock in
-    ordered full saves — update them in the same PR.
-11. Archive list: index map, lazy publish panel, then a mount cap (F-04).
+8. Limit or page remaining unbounded PostgREST reads (F-01 remainder:
+   collection `listFollowed`, profiles `listFollowed`). Destination
+   `deliveries()` is **already paged**. Needs EXPLAIN (§7.2) only for index
+   choices (F-47), not for `.range()` calls.
+9. F-02 **remainder:** Hobby daily catch-up + start-on-connect + drain
+   (50 ticks / 5k items). Cheap levers (lease 300, 100/tick, GitHub 500,
+   batch watermarks, `maxDuration`) are **on tree**. **"Cron more often" is
+   off the table on Hobby** — if near-real-time catch-up matters, that is a
+   Pro upgrade or a Vercel Workflow/Queue (`bareaga_web-m31`).
+10. Persistence leftovers: field-wise stringify diffs, debounce `lastSearch`
+    (F-05 remainder, F-08), unguarded queue persist (F-33). Coalescing is on
+    tree; tests already expect latest-only.
+11. Archive list leftovers: tighter mount cap, per-row `<option>`s (F-04
+    remainder, F-34). Index map and lazy publish panel are on tree.
 12. Align the snapshot budgets (F-03): set `maxSnapshotBytes` ≤ 4 MiB (after
-    §7.7 confirms client headroom) **or** stream `GET /api/archive`.
-13. Streaming byte cap in `fetchValidatedHttps` and media uploads (F-06, F-28).
-14. Stabilize slash `context`; don't build one command per article until the
-    query looks like a headline (F-09).
-15. Skip unused profile tab queries; push LIMIT into the thread CTE (F-12, F-13).
+    §7.7 confirms client headroom) **or** stream `GET /api/archive` (and
+    export).
+13. Media upload streaming / cover vs 4.5 MB (F-28). `fetchValidatedHttps`
+    byte cap is **on tree** (F-06).
+14. Stabilize slash `context` identity (F-09 remainder). Article-command gate
+    is on tree.
+15. Skip unused profile tab queries (F-12 remainder); `childrenOf` per-parent
+    cap (F-13 remainder). Thread CTE LIMIT is on tree.
 16. AccountMenu keyboard (F-18). Header image (F-11). `/@handle` robots (F-21,
-    after the §7.13 product call).
+    F-51, after the §7.13 product call).
 17. Only then: virtualization, RAC, Query, Zod, Inngest/Workflows — if the
     problem they solve is still visible.
 
-The security envelope (items 1–7) is ready to become beads and ship now. The
-performance work should wait on EXPLAIN (§7.2) and a localStorage measurement
-(§7.7) for the parts that need a number; the rest (9, 10, 11, 14) can start.
+The security envelope (items 1–7) is **code-complete on the tree**; it still
+needs a commit. F-31 and F-32 are **fixed-on-tree**. Performance
+work should wait on EXPLAIN (§7.2) and a localStorage measurement (§7.7) for
+the parts that need a number; F-02 drain and F-04/F-05 leftovers can start
+without those.
 
 ---
 

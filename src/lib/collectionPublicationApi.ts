@@ -1,5 +1,5 @@
 import { parseFollowRequest, parsePublishRequest, parseUnpublishRequest } from "./collectionPublication.ts";
-import { CollectionNotFoundError } from "./collectionPublicationErrors.ts";
+import { CollectionForbiddenError, CollectionNotFoundError } from "./collectionPublicationErrors.ts";
 import type {
   CollectionFollowStore,
   CollectionPublicationStore,
@@ -138,7 +138,11 @@ export async function handleFollowCollection(
   try {
     await dependencies.store.follow(userId, parsed.value.publicationId);
     return new Response(null, { status: 204, headers: headers() });
-  } catch {
+  } catch (cause) {
+    if (cause instanceof CollectionNotFoundError) return errorResponse("Collection not found", 404);
+    if (cause instanceof CollectionForbiddenError) {
+      return errorResponse("You cannot follow a collection you cannot see", 403);
+    }
     return errorResponse("Following this collection failed", 503);
   }
 }

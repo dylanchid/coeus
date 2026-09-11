@@ -79,7 +79,9 @@ export function ProfileView({
     : `@${view.handle} hasn’t published any collections yet.`;
 
   const tabStates: ProfileTabStates = {
-    posts: tabState(view.posts.length, isOwner, true),
+    // Cursor tabs intentionally carry only their current card slice. The
+    // visibility-cut aggregate keeps tab availability stable across pages.
+    posts: tabState(view.figures.posts, isOwner, true),
     reposts: tabState(view.reposts.length, isOwner, Boolean(view.visibleSections.reposts)),
     replies: tabState(view.replies.length, isOwner, Boolean(view.visibleSections.replies)),
     likes: tabState(view.likes.length, isOwner, view.likesSurface.render),
