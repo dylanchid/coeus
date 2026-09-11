@@ -192,21 +192,18 @@ function SourceColumnInner({
             {showEngagement && a.engagement ? (
               <EngagementChip engagement={a.engagement} />
             ) : null}
-            <details className="story-actions">
-              <summary>Actions</summary>
-              <span>
-                <button
-                  type="button"
-                  className="story-save"
-                  aria-pressed={savedArticleIds.has(a.id)}
-                  onClick={() => onSave(a, source.name, source.topic)}
-                  disabled={savedArticleIds.has(a.id)}
-                >
-                  {savedArticleIds.has(a.id) ? "saved" : "+ save"}
-                </button>
-                <button type="button" className="story-save" onClick={() => onShare(a, source.name, source.topic)}>share ↗</button>
-              </span>
-            </details>
+            <span className="story-actions">
+              <button
+                type="button"
+                className="story-save"
+                aria-pressed={savedArticleIds.has(a.id)}
+                onClick={() => onSave(a, source.name, source.topic)}
+                disabled={savedArticleIds.has(a.id)}
+              >
+                {savedArticleIds.has(a.id) ? "saved" : "+ save"}
+              </button>
+              <button type="button" className="story-save" onClick={() => onShare(a, source.name, source.topic)}>share ↗</button>
+            </span>
             {showSummaries && a.summary ? (
               <p className="summary">
                 {q ? highlight(a.summary, q) : a.summary}

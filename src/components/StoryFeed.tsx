@@ -237,21 +237,18 @@ function StoryFeedInner({
                   {highlight(story.article.summary, highlightTerms)}
                 </p>
               ) : null}
-              <details className="story-actions">
-                <summary>Actions</summary>
-                <span>
-                  <button
-                    type="button"
-                    className="story-save"
-                    aria-pressed={savedArticleIds.has(story.article.id)}
-                    onClick={() => onSave(story.article, story.sourceName, story.sourceTopic)}
-                    disabled={savedArticleIds.has(story.article.id)}
-                  >
-                    {savedArticleIds.has(story.article.id) ? "saved to archive" : "+ save to archive"}
-                  </button>
-                  <button type="button" className="story-save" onClick={() => onShare(story.article, story.sourceName, story.sourceTopic)}>share ↗</button>
-                </span>
-              </details>
+              <span className="story-actions">
+                <button
+                  type="button"
+                  className="story-save"
+                  aria-pressed={savedArticleIds.has(story.article.id)}
+                  onClick={() => onSave(story.article, story.sourceName, story.sourceTopic)}
+                  disabled={savedArticleIds.has(story.article.id)}
+                >
+                  {savedArticleIds.has(story.article.id) ? "saved to archive" : "+ save to archive"}
+                </button>
+                <button type="button" className="story-save" onClick={() => onShare(story.article, story.sourceName, story.sourceTopic)}>share ↗</button>
+              </span>
             </li>
           );
         })}

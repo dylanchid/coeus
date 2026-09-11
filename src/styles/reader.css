@@ -12,9 +12,11 @@
   cursor: pointer;
 }
 
-.story-actions,
+.story-actions {
+  display: inline-flex;
+  margin-left: 0.4rem;
+}
 .story-rank-details { display: inline-block; margin-left: 0.4rem; }
-.story-actions > summary,
 .story-rank-details > summary {
   display: inline-flex;
   align-items: center;
@@ -25,11 +27,6 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
-}
-.story-actions > span {
-  display: inline-flex;
-  margin-left: 0.25rem;
-  border-left: 1px solid var(--line);
 }
 .story-rank-details > span {
   display: block;
