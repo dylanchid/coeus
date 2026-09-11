@@ -28,7 +28,8 @@ come from the Supabase dashboard and each third-party integration. See
 | `NOTION_OAUTH_CLIENT_ID` / `NOTION_OAUTH_CLIENT_SECRET` | From the Notion integration. |
 | `NOTION_OAUTH_REDIRECT_URI` | Must exactly match the Notion integration's redirect URI (use `localhost`, not `127.0.0.1`, for local). |
 | `CRON_SECRET` | Exact name required — Vercel only attaches `Authorization: Bearer $CRON_SECRET` to Cron requests for this name. Protects `/api/archive/destinations/worker`. |
-| `COEUS_PREVIEW_OPTOUT_DOMAINS` | Optional comma/whitespace-separated publisher domains that must never receive static screenshot previews. A configured domain also covers its subdomains; use this to action verified removal requests. |
+| `COEUS_PREVIEW_OPTOUT_DOMAINS` | Optional comma/whitespace-separated publisher domains that must never receive source previews. A configured domain also covers its subdomains; use this to action verified removal requests. |
+| `BLOB_READ_WRITE_TOKEN` | Required in Production for the private, persisted one-hour reader-excerpt cache. Attach a private Vercel Blob store to the project. |
 | `SUPABASE_AUTH_GITHUB_*`, `SUPABASE_AUTH_GOOGLE_*` | Only for local `supabase start`; the hosted project sets these in its Auth dashboard. |
 
 Rotating `DESTINATION_TOKEN_ENCRYPTION_KEY` invalidates every stored destination
@@ -53,11 +54,11 @@ promoting a build that depends on a new migration.
   (`/api/archive/destinations/worker`, `0 6 * * *`) that catches up destination
   delivery and runs the revision-retention and conversation-orphan sweeps.
 - Node version is pinned by [`.nvmrc`](../.nvmrc).
-- Static source previews use Playwright Chromium in the Node runtime. Before enabling
-  them in Production, deploy with a Chromium-capable runtime (and include the matching
-  browser binary). If the renderer is unavailable, `/api/article-preview` deliberately
-  returns no image and Reader falls back to source metadata rather than weakening the
-  publisher-policy or outbound-network controls.
+- Non-embeddable source previews use Defuddle to produce a source-attributed, bounded
+  reader excerpt. Attach a private Vercel Blob store before Production so excerpts can
+  survive function instances. For a verified publisher opt-out, add its domain to
+  `COEUS_PREVIEW_OPTOUT_DOMAINS`, then run
+  `npm run purge:preview-reader-cache -- publisher.example` with the same Blob token.
 - CI (`.github/workflows/ci.yml`) must be green: `npm test`, `tsc --noEmit`,
   `lint`, `build`, `npm run audit:ci`, and the Supabase pgTAP suite.
 

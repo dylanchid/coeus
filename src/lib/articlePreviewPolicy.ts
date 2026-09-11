@@ -111,25 +111,3 @@ export function pageAppearsAccessRestricted(html: string, headers: Headers): boo
     || declaresPaidMetaData
     || /(?:paywall|content[_-]?tier)["']?\s*[:=]\s*["']?(?:premium|paid|subscriber)/i.test(html);
 }
-
-/**
- * Produces inert markup for the renderer. The original document is fetched
- * server-side; it is never navigated to by Chromium, and all subrequests are
- * blocked. Remove whole executable/fallback blocks rather than just their
- * tags—otherwise analytics/config JavaScript becomes visible page text.
- */
-export function prepareStaticPreviewHtml(html: string, baseUrl: string): string {
-  const stylesheets = [...html.matchAll(/<link\b[^>]*>/gi)]
-    .map((match) => match[0])
-    .filter((tag) => /\brel\s*=\s*["']?[^"'>]*\bstylesheet\b/i.test(tag))
-    .join("");
-  const stripped = html
-    .replace(/<(?:script|template|noscript)\b[^>]*>[\s\S]*?<\/(?:script|template|noscript)\s*>/gi, "")
-    .replace(/<\/?(?:iframe|frame|object|embed|form|video|audio|source|track|link|base)\b[^>]*>/gi, "")
-    .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "");
-  const safeBaseUrl = baseUrl.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-  return `<!doctype html><html><head><meta charset="utf-8"><base href="${safeBaseUrl}">${stylesheets}<style>
-    html { background:#fff; color:#161616; } body { margin: 28px; max-width: 1040px; font: 18px/1.5 system-ui, sans-serif; overflow:hidden; }
-    img { max-width:100%; height:auto; } a { color:#164e9b; } pre { white-space:pre-wrap; }
-  </style></head><body>${stripped}</body></html>`;
-}

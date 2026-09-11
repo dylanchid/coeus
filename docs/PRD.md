@@ -90,19 +90,21 @@ The diversity penalty is applied *during* selection (a greedy loop that picks th
 
 #### 6.1.2 Source preview policy — static fallback for non-embeddable pages
 
-**Decision (2026-09-09):** When a publisher blocks an interactive iframe preview,
-Coeus should aim to retain a useful source-preview experience with a small, static
-image of the top of the canonical page plus the existing source details. This is a
-publisher-respecting fallback, not a mechanism for circumventing embedding controls.
+**Decision (2026-09-10):** When a publisher blocks or cannot confirm an interactive
+iframe preview, Coeus shows a publisher metadata card and, where extraction is
+permitted, a Defuddle-derived reader excerpt. Defuddle was selected over Mozilla
+Readability after the shared benchmark because it extracted more eligible pages and
+returned richer publisher metadata. This is a publisher-respecting navigation aid,
+not a mechanism for circumventing embedding controls.
 
-The preview must be non-interactive, visibly labeled **Preview**, and always retain a
-prominent direct link to the original source. It must not hide the source, present
-Coeus as the publisher, reproduce the article in full, or make the preview usable as
-a replacement reading surface. If a preview cannot safely or permissibly be shown,
-the product falls back to the normal metadata card (title, description, favicon/domain,
-and original link).
+The reader excerpt must be non-interactive, visibly labeled **Reader view**, capped at
+450 words on whole content blocks, and always retain a prominent direct link to the
+original source. It must not hide the source, present Coeus as the publisher, reproduce
+the article in full, or make the preview usable as a replacement reading surface. If
+an excerpt cannot safely or permissibly be shown, the product falls back to the normal
+metadata card (title, description, favicon/domain, and original link).
 
-**Publisher controls and eligibility.** Before rendering or returning a screenshot,
+**Publisher controls and eligibility.** Before returning an excerpt or metadata card,
 Coeus must:
 
 - respect `robots.txt` directives applicable to its declared preview user agent;
@@ -114,24 +116,24 @@ Coeus must:
   be fetched as an ordinary anonymous visitor; and
 - preserve enough policy/audit information to remove cached previews by domain or URL.
 
-The implementation must also follow source terms where applicable. A screenshot can
-contain copyrighted page expression; a small, source-attributed navigational preview
-is a more defensible posture than copying a page, but it is not a blanket license or
-legal conclusion. The product owner should obtain legal review before broad public
-rollout, particularly in jurisdictions beyond the United States.
+The implementation must also follow source terms where applicable. A bounded,
+source-attributed excerpt is a more defensible posture than copying a page, but it is
+not a blanket license or legal conclusion. The product owner should obtain legal review
+before broad public rollout, particularly in jurisdictions beyond the United States.
 
-**Safety and operating constraints.** Rendering occurs only in an isolated,
+**Safety and operating constraints.** Extraction occurs only in an isolated,
 unauthenticated server-side environment. It sends no user cookies or credentials,
 does not execute as the user, blocks private/internal network targets and unsafe
-redirects, is rate-limited, and has tight time/size limits. Previews are cached for a
-short bounded TTL; cache invalidation must support a domain-wide opt-out or takedown.
-The service must use the existing hardened outbound-fetch controls rather than create
-a separate unprotected network path.
+redirects, is rate-limited, and has tight time/size limits. Excerpts are cached in a
+private Vercel Blob store for one hour under a hostname folder and hashed URL key;
+verified domain removals purge that domain and its hostname subfolders. The service must use the existing hardened
+outbound-fetch controls rather than create a separate unprotected network path.
 
-**Implementation note (2026-09-09) — metadata card fallback.** The first shipped
-fallback for a blocked embed is a publisher metadata card: `og:`/`twitter:` title,
-description, image, and favicon parsed from the same HTML the policy path already
-fetches through the hardened outbound controls. No headless browser is involved.
+**Implementation note (2026-09-10) — metadata card and reader fallback.** The
+fallback for a blocked or unknown embed first attempts the Defuddle reader excerpt,
+then a publisher metadata card: `og:`/`twitter:` title, description, image, and favicon
+parsed from the same HTML the policy path already fetches through the hardened outbound
+controls. No headless browser is involved.
 The card image and favicon are streamed back through a same-origin route
 (`/api/article-preview/image`) rather than hotlinked: this keeps `img-src` at
 `'self'` (no per-publisher CSP surface), avoids leaking the reader's IP/referer to
@@ -140,12 +142,12 @@ the publisher's asset host, and routes every hop through `validatedHttpsUrl` wit
 view is tracked separately (epic `bareaga_web-0bs`).
 
 **Acceptance criteria for the feature.** The Reader should attempt the usual preview
-only when permitted. For non-embeddable links, it should show the static fallback only
-when the policy permits it; otherwise it should show metadata-only with “Open original.”
-Users must be able to distinguish the static preview from a live page, and publishers
-must have a documented, low-friction way to stop future screenshots. Tests must cover
-the policy decision paths, opt-out behavior, robots handling, redirect/SSRF protections,
-and metadata-only fallback.
+only when permitted. For blocked or unknown links, it should show the reader excerpt
+only when policy permits it; otherwise it should show metadata-only with “Open original.”
+Users must be able to distinguish the excerpt from a live page, and publishers must
+have a documented, low-friction way to stop future excerpts. Tests must cover the policy
+decision paths, opt-out behavior, robots handling, redirect/SSRF protections, reader
+fallback, and metadata-only fallback.
 
 ### 6.2 Sources (`/sources`) — the source catalog
 
