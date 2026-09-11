@@ -6,6 +6,18 @@ import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironm
 
 export const dynamic = "force-dynamic";
 
+/** Deterministic provider boundary for the disposable Playwright environment.
+ * This is unreachable in production: the test-session gate itself rejects
+ * production deployments, and no real Notion credential is ever used. */
+const e2eNotionFetcher: typeof fetch = async (input) => {
+  const url = String(input);
+  if (url.endsWith("/oauth/token")) {
+    return Response.json({ access_token: "e2e-notion-token", workspace_name: "E2E Workspace" });
+  }
+  if (url.endsWith("/search")) return Response.json({ results: [{ id: "e2e-notion-database" }] });
+  return new Response(null, { status: 404 });
+};
+
 export async function GET(request: Request): Promise<Response> {
   return instrument({ route: "notion_oauth.callback", operation: "handleNotionOAuthCallback", correlationId: requestCorrelationId(request) }, () =>
   handleNotionOAuthCallback(request, {
@@ -15,6 +27,7 @@ export async function GET(request: Request): Promise<Response> {
     redirectUri: requiredEnvironment("NOTION_OAUTH_REDIRECT_URI"),
     store: new SupabaseDestinationsStore(createAdminSupabaseClient(), requiredEnvironment("DESTINATION_TOKEN_ENCRYPTION_KEY")),
     authenticate: authenticateArchiveRequest,
+    ...(process.env.E2E_TEST_LOGIN === "1" ? { fetcher: e2eNotionFetcher } : {}),
     stateStore: new SupabaseNotionOAuthStateStore(createAdminSupabaseClient()),
   }));
 }
