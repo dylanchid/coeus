@@ -86,6 +86,10 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Disposable key for the local Supabase stack; never used for deployed
+      # environments or production data.
+      DESTINATION_TOKEN_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
