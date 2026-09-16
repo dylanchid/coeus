@@ -209,22 +209,28 @@ export class SupabaseCollectionPublicationStore
   }
 
   async listFollowed(followerId: string): Promise<CollectionPublication[]> {
-    const { data: follows, error } = await this.supabase
-      .from("collection_follows")
-      .select("publication_id")
-      .eq("follower_id", followerId)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    const publicationIds = (follows ?? []).map((entry) => String((entry as { publication_id: string }).publication_id));
+    const follows = await readAllPages(
+      (from, to) => this.supabase
+        .from("collection_follows")
+        .select("publication_id, created_at")
+        .eq("follower_id", followerId)
+        .order("created_at", { ascending: false })
+        .order("publication_id", { ascending: false })
+        .range(from, to)
+    );
+    const publicationIds = [...new Set((follows as { publication_id: string }[]).map((entry) => String(entry.publication_id)))];
     if (!publicationIds.length) return [];
 
-    const { data: publications, error: publicationsError } = await this.supabase
-      .from("collection_publications")
-      .select("*")
-      .in("id", publicationIds)
-      .is("unpublished_at", null);
-    if (publicationsError) throw publicationsError;
-    const rows = (publications ?? []) as Record<string, unknown>[];
+    const rows: Record<string, unknown>[] = [];
+    for (let start = 0; start < publicationIds.length; start += 1_000) {
+      const { data: publications, error: publicationsError } = await this.supabase
+        .from("collection_publications")
+        .select("*")
+        .in("id", publicationIds.slice(start, start + 1_000))
+        .is("unpublished_at", null);
+      if (publicationsError) throw publicationsError;
+      rows.push(...((publications ?? []) as Record<string, unknown>[]));
+    }
     if (!rows.length) return [];
 
     const annotated = rows.map((entry) => ({
