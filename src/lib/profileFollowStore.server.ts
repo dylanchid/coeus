@@ -1,11 +1,12 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { decodeProfileFeedCursor, encodeProfileFeedCursor, type ProfileFeedCursor } from "./profileFeedCursor.ts";
 import type { FollowedProfile } from "./profileFollow.ts";
 import { readAllPages } from "./pagedRead.ts";
 
-/** One page of a follower / following list. `nextCursor` is the created_at of
- * the last row on this page — feed it back as `cursor` for the next page. */
+/** One page of a follower / following list. `nextCursor` is the composite
+ * `(created_at, id)` cursor for the last row on this page. */
 export interface FollowPage {
   items: FollowedProfile[];
   hasMore: boolean;
@@ -13,8 +14,8 @@ export interface FollowPage {
 }
 
 export interface FollowPageRequest {
-  /** ISO created_at; rows strictly older than this are returned. Null = first page. */
-  cursor: string | null;
+  /** Composite `(created_at, id)` keyset cursor, either decoded or the opaque URL token. Null = first page. */
+  cursor: ProfileFeedCursor | string | null;
   limit: number;
 }
 
@@ -91,19 +92,18 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
   }
 
   async listFollowed(followerId: string): Promise<FollowedProfile[]> {
-    // The followee_id FK to profiles lets PostgREST embed the profile row in
-    // one request; created_at desc gives most-recently-followed-first.
-    const { data, error } = await this.supabase
-      .from("profile_follows")
-      .select("created_at, followee:profiles!profile_follows_followee_id_fkey(id,handle,display_name,avatar_url,bio)")
-      .eq("follower_id", followerId)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
+    const rows = await readAllPages(
+      (from, to) => this.supabase
+        .from("profile_follows")
+        .select("created_at, followee_id, followee:profiles!profile_follows_followee_id_fkey(id,handle,display_name,avatar_url,bio)")
+        .eq("follower_id", followerId)
+        .order("created_at", { ascending: false })
+        .order("followee_id", { ascending: false })
+        .range(from, to)
+    );
 
-    // PostgREST types an embedded to-one relationship as an array; at runtime a
-    // followee_id FK yields either one object or null.
-    const rows = (data ?? []) as unknown as { followee: Record<string, unknown> | Record<string, unknown>[] | null }[];
-    return rows
+    const followed = (rows ?? []) as unknown as { followee: Record<string, unknown> | Record<string, unknown>[] | null }[];
+    return followed
       .map((row) => (Array.isArray(row.followee) ? row.followee[0] : row.followee))
       .filter((followee): followee is Record<string, unknown> => Boolean(followee))
       .map(followedProfile);
@@ -172,9 +172,9 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
     return count;
   }
 
-  /** Shared paginator for listFollowers / listFollowing: created_at desc, a
-   * `.lt` cursor, the one-extra-row hasMore idiom, then a second query to
-   * resolve the `joinColumn` end to profile rows (dropping any without one). */
+  /** Shared paginator for listFollowers / listFollowing: composite keyset
+   * ordering `(created_at, id)` desc, with the cursor encoded as a single opaque
+   * token. */
   private async pageFollows(
     scopeColumn: "follower_id" | "followee_id",
     scopeValue: string,
@@ -182,13 +182,19 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
     page: FollowPageRequest
   ): Promise<FollowPage> {
     const limit = Math.min(Math.max(Math.trunc(page.limit), 1), MAX_FOLLOW_PAGE_SIZE);
+    const cursor = typeof page.cursor === "string" ? decodeProfileFeedCursor(page.cursor) : page.cursor;
     let query = this.supabase
       .from("profile_follows")
       .select(`created_at, ${joinColumn}`)
       .eq(scopeColumn, scopeValue)
       .order("created_at", { ascending: false })
+      .order(joinColumn, { ascending: false })
       .limit(limit + 1);
-    if (page.cursor) query = query.lt("created_at", page.cursor);
+
+    if (cursor) {
+      const { ts, id } = cursor;
+      query = query.or(`created_at.lt.${ts},and(created_at.eq.${ts},${joinColumn}.lt.${id})`);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
@@ -214,7 +220,8 @@ export class SupabaseProfileFollowStore implements ProfileFollowStore {
       .map((edge) => profilesById.get(edge[joinColumn]))
       .filter((profile): profile is Record<string, unknown> => Boolean(profile))
       .map(followedProfile);
-    const nextCursor = pageEdges.length ? String(pageEdges[pageEdges.length - 1].created_at) : null;
+    const last = pageEdges[pageEdges.length - 1];
+    const nextCursor = hasMore && last ? encodeProfileFeedCursor({ ts: String(last.created_at), id: String(last[joinColumn]) }) : null;
     return { items, hasMore, nextCursor };
   }
 }

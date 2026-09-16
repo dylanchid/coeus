@@ -123,9 +123,29 @@ export class SyncedArchiveRepository implements ArchiveRepository {
 
   async save(data: ArchiveData): Promise<void> {
     const before = this.last ?? await this.local.load();
-    await this.local.save(data); this.last = data;
     const operations = operationsForChange(before, data);
-    if (operations.length) { this.queue.operations.push(...operations); this.persistQueue(); this.publishState(); }
+    if (operations.length) this.queue.operations.push(...operations);
+
+    try {
+      await this.local.save(data);
+    } catch (error) {
+      this.status = "error";
+      this.message = error instanceof Error ? error.message : "The archive could not be saved locally.";
+      this.publishState();
+      return;
+    }
+
+    const queueSaved = this.persistQueue();
+    if (!queueSaved && this.queue.operations.length) {
+      this.status = "error";
+      this.message = "Archive changes were saved locally but the sync queue could not be persisted. Please retry after freeing storage.";
+      this.last = before;
+      this.publishState();
+      return;
+    }
+
+    this.last = data;
+    if (operations.length) this.publishState();
     void this.synchronize();
   }
 
@@ -187,11 +207,26 @@ export class SyncedArchiveRepository implements ArchiveRepository {
     return { clientId: id("client"), operations: [], conflicts: [] };
   }
 
-  private persistQueue(): void { this.store?.setItem(QUEUE_KEY, JSON.stringify(this.queue)); }
+  private persistQueue(): boolean {
+    if (!this.store) return true;
+    try {
+      this.store.setItem(QUEUE_KEY, JSON.stringify(this.queue));
+      return true;
+    } catch {
+      this.recoveredCorruptQueue = true;
+      return false;
+    }
+  }
 
   private publishState(): void {
     const state = this.getSyncState();
-    this.store?.setItem(STATE_KEY, JSON.stringify(state));
+    if (this.store) {
+      try {
+        this.store.setItem(STATE_KEY, JSON.stringify(state));
+      } catch {
+        this.recoveredCorruptQueue = true;
+      }
+    }
     if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("coeus:archive-sync", { detail: state }));
   }
 

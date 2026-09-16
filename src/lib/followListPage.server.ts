@@ -1,5 +1,6 @@
 import "server-only";
 
+import { decodeProfileFeedCursor } from "./profileFeedCursor.ts";
 import { loadProfileIdentity } from "./profilePageLoader.server.ts";
 import { SupabaseProfileFollowStore, type FollowPage } from "./profileFollowStore.server.ts";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "./supabase.server.ts";
@@ -64,7 +65,7 @@ export async function loadFollowList(
   if (!section) return null;
 
   const store = new SupabaseProfileFollowStore(createAdminSupabaseClient());
-  const request = { cursor, limit: FOLLOW_LIST_PAGE_SIZE };
+  const request = { cursor: decodeProfileFeedCursor(cursor), limit: FOLLOW_LIST_PAGE_SIZE };
   const [page, count] = await Promise.all([
     direction === "followers"
       ? store.listFollowers(profile.id, request)

@@ -221,3 +221,46 @@ test("pending operations survive a reload into a fresh repository", async () => 
     assert.equal(reloaded.getSyncState().pending, pending);
   } finally { h.restore(); }
 });
+
+test("a queue persistence failure keeps the queued operations and pauses the sync state", async () => {
+  const values = new Map([["coeus.archive.v1", JSON.stringify(createDemoArchive())]]);
+  const failingSetItem = (key, value) => {
+    if (key === "coeus.archive.sync-queue.v1") throw new Error("QuotaExceededError");
+    values.set(key, value);
+  };
+  const store = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: failingSetItem,
+  };
+  const repo = new SyncedArchiveRepository(new LocalStorageArchiveRepository(store), store, {
+    scheduler: (fn, ms) => ({ fn, ms }),
+  });
+
+  const archive = createDemoArchive();
+  await repo.save({
+    version: 1,
+    items: [...archive.items, {
+      id: "new-item",
+      articleId: "new-article",
+      title: "Queued item",
+      url: "https://example.com/new-item",
+      sourceName: "Example",
+      topic: "technology",
+      summary: "A queued item that should remain pending when storage fails.",
+      author: "Example author",
+      publishedAt: "2026-01-01T00:00:00.000Z",
+      savedAt: "2026-08-10T00:00:00.000Z",
+      state: "unread",
+      starred: false,
+      collectionIds: [],
+      tags: [],
+      note: "",
+    }],
+    collections: archive.collections,
+    socialPosts: archive.socialPosts,
+  });
+
+  assert.equal(repo.getSyncState().status, "error");
+  assert.ok(repo.getSyncState().pending > 0);
+  assert.ok(repo.exportQueue().queue.operations.length > 0);
+});

@@ -86,6 +86,14 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Disposable credentials for the local Supabase stack; never used for
+      # deployed environments or production data.
+      DESTINATION_TOKEN_ENCRYPTION_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DESTINATION_OAUTH_STATE_SECRET: e2e-disposable-oauth-state-secret
+      NOTION_OAUTH_CLIENT_ID: e2e-client-id
+      NOTION_OAUTH_CLIENT_SECRET: e2e-client-secret
+      NOTION_OAUTH_REDIRECT_URI: http://localhost:3100/api/archive/destinations/notion/oauth/callback
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
