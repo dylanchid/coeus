@@ -20,6 +20,10 @@ function snapshotWith({ items, collections = [], socialPosts = [] } = {}) {
 
 const TINY_BUDGET = { ...ARCHIVE_BUDGET, maxItems: 2, maxCollections: 1, maxStringFieldChars: 20, maxSnapshotBytes: 400 };
 
+test("the production snapshot budget leaves headroom below Vercel's 4.5 MB response cap", () => {
+  assert.equal(ARCHIVE_BUDGET.maxSnapshotBytes, 4 * 1024 * 1024);
+});
+
 test("a within-budget snapshot has no violation", () => {
   assert.equal(checkArchiveBudget(snapshotWith({ items: [item("a")] })), null);
 });

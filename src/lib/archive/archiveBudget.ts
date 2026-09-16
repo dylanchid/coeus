@@ -13,7 +13,11 @@ export const ARCHIVE_BUDGET = {
   maxCollections: 2_000,
   maxSocialPosts: 5_000,
   /** Serialized size of the whole snapshot JSON. */
-  maxSnapshotBytes: 8 * 1024 * 1024,
+  /**
+   * Keep snapshots below Vercel's 4.5 MB non-streamed response ceiling while
+   * leaving room for JSON framing and headers in ordinary archive responses.
+   */
+  maxSnapshotBytes: 4 * 1024 * 1024,
   /** Any single string value inside an entity. */
   maxStringFieldChars: 20_000,
   /** Operations accepted in one sync batch (also enforced by parseArchiveSyncBatch). */

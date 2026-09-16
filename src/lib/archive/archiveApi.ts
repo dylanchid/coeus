@@ -22,8 +22,20 @@ function responseHeaders(revision?: number): HeadersInit {
   };
 }
 
+function jsonResponse(value: unknown, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json; charset=utf-8");
+  const body = JSON.stringify(value);
+  return new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(body));
+      controller.close();
+    },
+  }), { ...init, headers });
+}
+
 function errorResponse(error: string, status: number, details?: unknown): Response {
-  return Response.json({ error, ...(details === undefined ? {} : { details }) }, {
+  return jsonResponse({ error, ...(details === undefined ? {} : { details }) }, {
     status,
     headers: responseHeaders(),
   });
@@ -34,7 +46,7 @@ export async function handleArchiveGet(dependencies: ArchiveApiDependencies): Pr
   if (!ownerId) return errorResponse("Authentication required", 401);
   try {
     const archive = await dependencies.store.getOrCreate(ownerId);
-    return Response.json(archive, { headers: responseHeaders(archive.snapshot.revision) });
+    return jsonResponse(archive, { headers: responseHeaders(archive.snapshot.revision) });
   } catch {
     return errorResponse("Archive storage is unavailable", 503);
   }
@@ -54,7 +66,7 @@ export async function handleArchiveSync(
     return errorResponse("Archive storage is unavailable", 503);
   }
   if (!budget.allowed) {
-    return Response.json({ error: "Sync rate limit exceeded", retryAfterSeconds: budget.retryAfterSeconds }, {
+    return jsonResponse({ error: "Sync rate limit exceeded", retryAfterSeconds: budget.retryAfterSeconds }, {
       status: 429,
       headers: { ...responseHeaders(), "Retry-After": String(budget.retryAfterSeconds) },
     });
@@ -78,7 +90,7 @@ export async function handleArchiveSync(
   if (!parsed.ok) return errorResponse(parsed.error, 400);
   try {
     const result = await dependencies.store.sync(ownerId, parsed.value);
-    return Response.json(result, { headers: responseHeaders(result.snapshot.revision) });
+    return jsonResponse(result, { headers: responseHeaders(result.snapshot.revision) });
   } catch (error) {
     if (error instanceof ArchiveNotFoundError) return errorResponse("Archive not found", 404);
     if (error instanceof ArchiveRevisionAheadError) {
@@ -88,13 +100,13 @@ export async function handleArchiveSync(
       return errorResponse("Archive changed; retry the batch", 409);
     }
     if (error instanceof ArchiveRateLimitError) {
-      return Response.json({ error: "Sync rate limit exceeded", retryAfterSeconds: error.retryAfterSeconds }, {
+      return jsonResponse({ error: "Sync rate limit exceeded", retryAfterSeconds: error.retryAfterSeconds }, {
         status: 429,
         headers: { ...responseHeaders(), "Retry-After": String(error.retryAfterSeconds) },
       });
     }
     if (error instanceof ArchiveBudgetError) {
-      return Response.json({ error: error.message, budget: error.violation }, { status: 413, headers: responseHeaders() });
+      return jsonResponse({ error: error.message, budget: error.violation }, { status: 413, headers: responseHeaders() });
     }
     return errorResponse("Archive synchronization failed", 503);
   }

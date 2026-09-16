@@ -211,15 +211,18 @@ not required to keep the cap.
 
 | Bound | Value | Where |
 |---|---|---|
-| DB / `ARCHIVE_BUDGET.maxSnapshotBytes` | 8 MiB | `src/lib/archiveBudget.ts`, quota trigger |
+| DB / `ARCHIVE_BUDGET.maxSnapshotBytes` | 4 MiB | `src/lib/archive/archiveBudget.ts`, quota trigger |
 | Sync HTTP body | 2 MiB | `src/lib/archiveApi.ts` `MAX_SYNC_BODY_BYTES` |
 | Typical `localStorage` | ~5 MiB | browsers; not encoded in the app |
 | Vercel serverless response | often ~4.5 MB | platform; not encoded in the app |
 
-A snapshot the database will store can fail GET, fail sync (ops + entity
-payloads), or throw `QuotaExceededError` in the client. `handleArchiveGet`
+A snapshot the database will store can fail sync (ops + entity payloads), or
+throw `QuotaExceededError` in the client. `handleArchiveGet`
 maps any store error to 503, so a too-large or corrupt snapshot looks like
-downtime.
+downtime. The committed snapshot ceiling is now 4 MiB, below Vercel's 4.5 MB
+non-streamed body ceiling; archive GET/sync responses use streamed JSON, and
+export/recovery metadata responses are streamed because they include more than
+the current snapshot.
 
 Publish-one-post and content-capture still `select snapshot` for the current
 revision and search in process (`src/lib/postPublicationStore.server.ts`
@@ -227,18 +230,18 @@ revision and search in process (`src/lib/postPublicationStore.server.ts`
 
 **Pass 4 correction:** the Vercel limit is a **hard 4.5 MB on both the request
 body and the response body** (`413 FUNCTION_PAYLOAD_TOO_LARGE`, returned by the
-platform before app code runs). So a snapshot between 4.5 MiB and the 8 MiB DB
+platform before app code runs). So a snapshot between 4.5 MiB and the former 8 MiB DB
 budget is un-GET-able and reads to the client as a platform 413, not the app's
-503. Effective round-trip ceiling today is `min(4.5 MB response, 2 MiB sync
-body)`. Options: lower `maxSnapshotBytes` and the quota trigger to ≤ 4 MiB
-(simplest, and matches localStorage headroom), **or** stream `GET /api/archive`
-(a streamed response is not subject to the 4.5 MB cap, and Node-runtime
-streaming needs no config) if archives above 4 MiB must stay supported.
+503. Effective request ceiling remains 2 MiB for sync batches; the committed
+snapshot ceiling is 4 MiB and streamed JSON is used for archive/recovery
+responses. This keeps the localStorage and database snapshot budgets aligned
+without relying on a platform-specific response limit.
 
 **Pass 5 (S1-3 / S1-4 merged here, not new ids):**
 
-- `handleArchiveExport` `Response.json`s `{ current, revisions, contentSnapshots }`
-  — same 4.5 MB GET hole, extra payload. `handleArchiveRevisions` calls
+- `handleArchiveExport` returns `{ current, revisions, contentSnapshots }`
+  — extra payload beyond the current snapshot, now sent as streamed JSON.
+  `handleArchiveRevisions` calls
   `store.export()`, which still loads `archive.current` then returns only the
   revision list.
 - `checkArchiveBudget` runs in `archiveSyncStore.server.ts` `sync()` only.

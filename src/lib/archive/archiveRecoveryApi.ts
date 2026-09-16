@@ -7,7 +7,18 @@ export interface ArchiveRecoveryApiDependencies {
 }
 
 function headers(): HeadersInit { return { "Cache-Control": "private, no-store, max-age=0" }; }
-function error(message: string, status: number): Response { return Response.json({ error: message }, { status, headers: headers() }); }
+function jsonResponse(value: unknown, init: ResponseInit = {}): Response {
+  const responseHeaders = new Headers(init.headers);
+  responseHeaders.set("Content-Type", "application/json; charset=utf-8");
+  const body = JSON.stringify(value);
+  return new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(body));
+      controller.close();
+    },
+  }), { ...init, headers: responseHeaders });
+}
+function error(message: string, status: number): Response { return jsonResponse({ error: message }, { status, headers: headers() }); }
 
 async function owner(dependencies: ArchiveRecoveryApiDependencies): Promise<string | Response> {
   const userId = await dependencies.authenticate();
@@ -23,7 +34,7 @@ export async function handleArchiveExport(dependencies: ArchiveRecoveryApiDepend
   try {
     const archive = await dependencies.store.export(userId);
     const body: ArchiveExport = { format: "coeus.archive.export.v1", exportedAt: new Date().toISOString(), ...archive };
-    return Response.json(body, { headers: { ...headers(), "Content-Disposition": 'attachment; filename="coeus-archive.json"' } });
+    return jsonResponse(body, { headers: { ...headers(), "Content-Disposition": 'attachment; filename="coeus-archive.json"' } });
   } catch { return error("Archive export is unavailable", 503); }
 }
 
@@ -31,7 +42,7 @@ export async function handleArchiveRevisions(dependencies: ArchiveRecoveryApiDep
   const userId = await owner(dependencies); if (userId instanceof Response) return userId;
   try {
     const archive = await dependencies.store.export(userId);
-    return Response.json({ archiveId: archive.archiveId, currentRevision: archive.current.revision, revisions: archive.revisions }, { headers: headers() });
+    return jsonResponse({ archiveId: archive.archiveId, currentRevision: archive.current.revision, revisions: archive.revisions }, { headers: headers() });
   } catch { return error("Archive revisions are unavailable", 503); }
 }
 
@@ -41,7 +52,7 @@ export async function handleArchiveRestore(request: Request, dependencies: Archi
   try { body = await request.json(); } catch { return error("Request body must be valid JSON", 400); }
   const revision = body && typeof body === "object" ? (body as { revision?: unknown }).revision : undefined;
   if (!nonNegativeInteger(revision)) return error("revision must be a non-negative integer", 400);
-  try { return Response.json(await dependencies.store.restore(userId, revision), { headers: headers() }); }
+  try { return jsonResponse(await dependencies.store.restore(userId, revision), { headers: headers() }); }
   catch (cause) { return error(cause instanceof Error && cause.message === "Revision not found" ? cause.message : "Archive recovery failed", cause instanceof Error && cause.message === "Revision not found" ? 404 : 409); }
 }
 
@@ -51,7 +62,7 @@ export async function handleContentCapture(request: Request, dependencies: Archi
   try { body = await request.json(); } catch { return error("Request body must be valid JSON", 400); }
   const itemId = body && typeof body === "object" ? (body as { itemId?: unknown }).itemId : undefined;
   if (typeof itemId !== "string" || !itemId || itemId.length > 160) return error("itemId must be a non-empty string", 400);
-  try { return Response.json(await dependencies.store.capture(userId, itemId), { status: 201, headers: headers() }); }
+  try { return jsonResponse(await dependencies.store.capture(userId, itemId), { status: 201, headers: headers() }); }
   catch (cause) { return error(cause instanceof Error && cause.message === "Archive item not found" ? cause.message : "Content capture failed", cause instanceof Error && cause.message === "Archive item not found" ? 404 : 422); }
 }
 
