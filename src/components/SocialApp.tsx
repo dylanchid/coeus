@@ -87,7 +87,6 @@ export function DiscoverApp() {
   return (
     <AppShell
       section="discover"
-      subline="Collections, articles, and links shared by people—not ranked by an engagement algorithm."
     >
       <div className="social-page">
       <DiscoverViewTabs current="everyone" />
