@@ -11,6 +11,7 @@ import { useChrome } from "./ChromeProvider";
 import { PrimaryNav, SECTION_LABELS, type AppSection } from "./PrimaryNav";
 import { SettingsPanel } from "./SettingsPanel";
 import { SlashMenu } from "./SlashMenu";
+import { NotificationsButton } from "./NotificationsButton";
 import { AccountMenu } from "./AccountMenu";
 
 function downloadPrefs(prefs: UserPrefs) {
@@ -114,6 +115,7 @@ export function SiteHeader({
 
         <div className="site-tools">
           <PrimaryNav section={section} archiveCount={archiveCount} />
+          <NotificationsButton />
           {prefs ? (
             <>
               <button

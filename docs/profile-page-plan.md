@@ -659,10 +659,10 @@ filed notifications epic. 45 dependency edges, no cycles (`bd dep cycles` clean)
 Everything else parallelises around those four. Five Phase 1 tasks are unblocked at the
 outset: `1.1`, `1.2`, `1.3`, `1.4`, `1.6`.
 
-### Filed, not built
+### Notifications status
 
-`bareaga_web-80m` — notifications for a new follower, like, reply or repost. Phase 3 creates
-the events and deliberately stops. Doing it properly needs its own table, a read/unread model,
-a header surface, digest batching, and probably email — which this project has no sender for.
-Plan it when Phase 3 closes and there is real event volume to design against; notification
-design is mostly a batching and threshold problem, and both are unanswerable without data.
+`bareaga_web-80m` shipped the in-app notifications v1 for new followers, likes,
+replies, and reposts. It has its own table, read/unread state, keyset-paginated
+inbox, and header unread badge. Email delivery and digest batching remain explicit
+non-goals until event volume and an email sender justify them; see
+`docs/notifications.md`.

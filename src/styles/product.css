@@ -150,6 +150,137 @@
   font-size: 0.86rem;
 }
 
+.notifications-page {
+  width: min(52rem, 100%);
+  margin: 0 auto;
+}
+
+.notifications-heading {
+  padding: clamp(2.5rem, 7vw, 4.5rem) 0 2rem;
+}
+
+.notifications-kicker {
+  margin: 0 0 0.9rem;
+  color: var(--accent);
+  font-size: var(--text-kicker);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.notifications-heading h1 {
+  margin: 0;
+  font: 700 clamp(2.4rem, 6vw, 4.5rem)/0.98 var(--font-display);
+  letter-spacing: -0.06em;
+}
+
+.notifications-heading > p:last-child {
+  max-width: 38rem;
+  margin: 1rem 0 0;
+  color: var(--muted);
+}
+
+.notifications-inbox {
+  border-top: 1px solid var(--header-rule);
+}
+
+.notifications-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.notifications-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.notifications-read-button,
+.notifications-more {
+  border: 1px solid var(--header-rule);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.notifications-read-button {
+  padding: 0.45rem 0.7rem;
+}
+
+.notifications-read-button:disabled,
+.notifications-more:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.65;
+}
+
+.notifications-error {
+  margin: 0;
+  padding: 0.75rem 0;
+  color: var(--danger, #a33);
+  font-size: 0.82rem;
+}
+
+.notification-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notification-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.notification-row.is-unread {
+  padding-left: 0.8rem;
+  border-left: 3px solid var(--accent);
+}
+
+.notification-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.notification-copy strong {
+  font-weight: 700;
+}
+
+.notification-copy a {
+  color: var(--fg);
+  text-underline-offset: 3px;
+}
+
+.notification-row time {
+  color: var(--muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.notifications-empty {
+  margin: 0;
+  padding: 2rem 0;
+  color: var(--muted);
+}
+
+.notifications-more {
+  display: block;
+  margin: 1rem auto 0;
+  padding: 0.55rem 0.8rem;
+}
+
 @media (max-width: 700px) {
   .about-hero {
     padding-top: 2.25rem;

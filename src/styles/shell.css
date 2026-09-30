@@ -107,6 +107,22 @@
   text-underline-offset: 4px;
 }
 
+.notifications-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.notifications-button:hover,
+.notifications-button:focus-visible {
+  color: var(--fg);
+}
+
+
 .nav-count {
   display: inline-block;
   min-width: 1.15rem;
