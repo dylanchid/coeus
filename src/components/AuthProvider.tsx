@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { createBrowserSupabaseClient } from "@/lib/supabase.client";
 import type { Profile } from "@/lib/profile";
 
-export type OAuthProvider = "github" | "google";
+export type OAuthProvider = "apple" | "github" | "google" | "x";
 
 /**
  * "loading"      — still resolving the session on first paint

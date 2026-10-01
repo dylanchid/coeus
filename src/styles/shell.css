@@ -327,14 +327,18 @@
   min-width: 3.5rem;
 }
 
-.account-signin {
+button.account-signin {
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   min-height: 44px;
   padding: 0.35rem 0.5rem;
   border: 0;
-  background: transparent;
+  background: none;
   color: var(--muted);
   font: inherit;
   font-size: 0.78rem;
@@ -344,17 +348,17 @@
   cursor: pointer;
 }
 
-.account-signin:visited { color: var(--muted); }
+button.account-signin:visited { color: var(--muted); }
 
-.account-signin:hover {
+button.account-signin:hover {
   color: var(--fg);
 }
 
-.account-signin:focus {
+button.account-signin:focus {
   outline: none;
 }
 
-.account-signin:focus-visible {
+button.account-signin:focus-visible {
   outline: none;
   text-decoration: underline;
   text-underline-offset: 0.25em;

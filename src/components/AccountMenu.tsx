@@ -37,7 +37,12 @@ export function AccountMenu() {
           <span className="account-avatar is-placeholder" aria-hidden="true" />
         </button>
         {signinOpen ? (
-          <div className="profile-gate-backdrop">
+          <div
+            className="profile-gate-backdrop"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setSigninOpen(false);
+            }}
+          >
             <section
               ref={dialogRef}
               className="profile-gate-modal auth-modal"
@@ -46,10 +51,7 @@ export function AccountMenu() {
               aria-labelledby="signin-heading"
               tabIndex={-1}
             >
-              <button className="auth-modal-close" type="button" onClick={() => setSigninOpen(false)} aria-label="Close sign-in">
-                ×
-              </button>
-              <SignInPanel next={back} devSignIn={localDevSignIn} />
+              <SignInPanel next={back} devSignIn={localDevSignIn} compact />
             </section>
           </div>
         ) : null}
