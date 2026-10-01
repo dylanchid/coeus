@@ -5,6 +5,8 @@ For the authoritative *engineering* status of what is built, see [`HANDOFF.md`](
 **Owner:** Dylan Chidambaram
 **Related:** [`HANDOFF.md`](../HANDOFF.md) (authoritative engineering status), `/about` route (public-facing explanation), `bareaga_web-5bv` (shared collections — shipped 2026-09-04)
 
+**UX implementation companion:** [`docs/ux/`](./ux/README.md) contains the information architecture, screen-by-screen acceptance contract, user-flow research/test plan, and product-requirements traceability map. It distinguishes live behavior from proposed UX work; this PRD remains the source of product intent.
+
 ---
 
 ## 1. One-line pitch

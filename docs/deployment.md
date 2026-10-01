@@ -24,6 +24,7 @@ come from the Supabase dashboard and each third-party integration. See
 |---|---|
 | `SUPABASE_SECRET_KEY` | Service-role key. The BFF is the only path to application tables. |
 | `DESTINATION_TOKEN_ENCRYPTION_KEY` | 32 random bytes, base64. AES-256-GCM key for destination secrets at rest. |
+| `DESTINATION_QUEUE_ENABLED` | Set to `1` only after the Vercel Queue staging proof in `docs/destination-delivery-decision.md` passes. When unset/`0`, queue messages are neither published nor processed; cron and `after()` remain active. |
 | `DESTINATION_OAUTH_STATE_SECRET` | Signs/binds the Notion OAuth `state`. |
 | `NOTION_OAUTH_CLIENT_ID` / `NOTION_OAUTH_CLIENT_SECRET` | From the Notion integration. |
 | `NOTION_OAUTH_REDIRECT_URI` | Must exactly match the Notion integration's redirect URI (use `localhost`, not `127.0.0.1`, for local). |
@@ -53,6 +54,9 @@ promoting a build that depends on a new migration.
 - [`vercel.json`](../vercel.json) declares the daily cron
   (`/api/archive/destinations/worker`, `0 6 * * *`) that catches up destination
   delivery and runs the revision-retention and conversation-orphan sweeps.
+- `vercel.json` also registers the private `destination_delivery` Queue
+  consumer. Link the Vercel project and use `vercel env pull` for local queue
+  credentials; deployed functions authenticate to Queues automatically.
 - Node version is pinned by [`.nvmrc`](../.nvmrc).
 - Non-embeddable source previews use Defuddle to produce a source-attributed, bounded
   reader excerpt. Attach a private Vercel Blob store before Production so excerpts can
