@@ -38,22 +38,6 @@
   line-height: 1.5;
 }
 
-.reader-view-guide { margin-left: auto; }
-.reader-view-guide summary {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  color: var(--link);
-  font-size: 0.72rem;
-  cursor: pointer;
-}
-.reader-view-guide p {
-  max-width: 34rem;
-  margin: 0 0 0.6rem;
-  color: var(--muted);
-  font-size: 0.76rem;
-}
-
 .story-save:hover:not(:disabled) {
   color: var(--link);
   text-decoration: underline;
@@ -752,6 +736,101 @@
   color: var(--fg);
   font-weight: 700;
   text-decoration: none;
+}
+
+/* Section labels ("View", "Sources"): same type as the items, a touch heavier, no underline. */
+.topics button.toolbar-label,
+.view-switch button.toolbar-label {
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: none;
+  margin-right: 0.25rem;
+}
+
+.topics button.toolbar-label:hover,
+.view-switch button.toolbar-label:hover,
+.topics button.toolbar-label:focus-visible,
+.view-switch button.toolbar-label:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.topics .category-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-inline: 0.4rem;
+  text-decoration: none;
+}
+
+.category-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Category cloud: one flowing run of link-coloured tags, alternating tints, selected = inverted. */
+.category-panel {
+  flex: 1 1 100%;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.category-chips {
+  display: block;
+  line-height: 1.65;
+  font-size: 0.82rem;
+}
+
+.category-multi {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: 0.35rem;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.category-multi input {
+  margin: 0;
+  accent-color: var(--fg);
+}
+
+.category-chips button {
+  display: inline;
+  min-height: 0;
+  margin: 0;
+  padding: 0.05rem 0.35rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--link);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.category-chips button:nth-of-type(even) {
+  background: color-mix(in srgb, var(--link) 9%, transparent);
+}
+
+.category-chips button:hover {
+  color: var(--fg);
+}
+
+.category-chips button[aria-pressed="true"] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.category-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 
 .view-switch {

@@ -11,6 +11,7 @@ import {
   type SetStateAction,
 } from "react";
 import type { Topic } from "@/lib/sources";
+import type { SettingsTab } from "./SettingsPanel";
 import type { SourceFeed } from "@/lib/types";
 
 /**
@@ -33,7 +34,9 @@ type ChromeValue = {
   closeSlash: () => void;
   toggleSlash: () => void;
   settingsOpen: boolean;
-  openSettings: () => void;
+  /** Opens Settings; pass a tab to land on it (anything else keeps the last tab). */
+  openSettings: (tab?: SettingsTab) => void;
+  settingsTab: SettingsTab | null;
   closeSettings: () => void;
   toggleSettings: () => void;
   readerSlash: ReaderSlashContext | null;
@@ -45,6 +48,7 @@ const ChromeContext = createContext<ChromeValue | null>(null);
 export function ChromeProvider({ children }: { children: ReactNode }) {
   const [slashOpen, setSlashOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
   const [readerSlash, setReaderSlash] = useState<ReaderSlashContext | null>(null);
 
   const openSlash = useCallback(() => {
@@ -60,8 +64,9 @@ export function ChromeProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const openSettings = useCallback(() => {
+  const openSettings = useCallback((tab?: SettingsTab) => {
     setSlashOpen(false);
+    setSettingsTab(typeof tab === "string" ? tab : null);
     setSettingsOpen(true);
   }, []);
   const closeSettings = useCallback(() => setSettingsOpen(false), []);
@@ -81,6 +86,7 @@ export function ChromeProvider({ children }: { children: ReactNode }) {
       toggleSlash,
       settingsOpen,
       openSettings,
+      settingsTab,
       closeSettings,
       toggleSettings,
       readerSlash,
@@ -93,6 +99,7 @@ export function ChromeProvider({ children }: { children: ReactNode }) {
       toggleSlash,
       settingsOpen,
       openSettings,
+      settingsTab,
       closeSettings,
       toggleSettings,
       readerSlash,

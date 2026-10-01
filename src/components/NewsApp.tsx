@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { TOPICS, type Topic } from "@/lib/sources";
+import { TOPICS, sourceByIdMap, type Topic } from "@/lib/sources";
 import { countMatches, filterSources } from "@/lib/search";
 import { visibleSourceIds } from "@/lib/feedQuery";
 import type { Article, EmbedCompatibility, UserPrefs } from "@/lib/types";
@@ -49,8 +49,11 @@ async function resolveEmbedCompatibility(url: string): Promise<EmbedCompatibilit
 export function NewsApp() {
   const { prefs, updatePrefs } = usePreferences();
   const { archive, updateArchive } = useArchive();
-  const { slashOpen, closeSlash, setReaderSlash } = useChrome();
+  const { slashOpen, closeSlash, openSettings, setReaderSlash } = useChrome();
   const [topic, setTopic] = useState<Topic>("all");
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [multiSelect, setMultiSelect] = useState(true);
   const [search, setSearch] = useState("");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -226,9 +229,41 @@ export function NewsApp() {
     });
   }, [openOriginal, prefs?.articlePreviewMode]);
 
+  // Sub-categories are the finer `topics` tags on each loaded source; they
+  // narrow whichever top-level topic is active.
+  const categoryTagsBySource = useMemo(() => {
+    const defs = sourceByIdMap(prefs?.customSources);
+    return new Map(currentSources.map((source) => [source.id, defs.get(source.id)?.topics ?? []]));
+  }, [currentSources, prefs?.customSources]);
+  const categoryOptions = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const tags of categoryTagsBySource.values()) {
+      for (const tag of tags) if (!byKey.has(tag.toLowerCase())) byKey.set(tag.toLowerCase(), tag);
+    }
+    return [...byKey.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }, [categoryTagsBySource]);
+  const activeCategories = useMemo(
+    () => categories.filter((tag) => categoryOptions.some((option) => option.toLowerCase() === tag.toLowerCase())),
+    [categories, categoryOptions]
+  );
+  const categoryScoped = useMemo(() => {
+    if (activeCategories.length === 0) return currentSources;
+    const wanted = new Set(activeCategories.map((tag) => tag.toLowerCase()));
+    return currentSources.filter((source) =>
+      (categoryTagsBySource.get(source.id) ?? []).some((tag) => wanted.has(tag.toLowerCase()))
+    );
+  }, [currentSources, categoryTagsBySource, activeCategories]);
+  const toggleCategory = useCallback((tag: string) => {
+    setCategories((current) => {
+      const selected = current.some((item) => item.toLowerCase() === tag.toLowerCase());
+      if (selected) return current.filter((item) => item.toLowerCase() !== tag.toLowerCase());
+      return multiSelect ? [...current, tag] : [tag];
+    });
+  }, [multiSelect]);
+
   const visible = useMemo(
-    () => filterSources(currentSources, deferredSearch),
-    [currentSources, deferredSearch]
+    () => filterSources(categoryScoped, deferredSearch),
+    [categoryScoped, deferredSearch]
   );
   const savedArticleIds = useMemo(
     () => new Set((archive?.items ?? []).map((item) => item.articleId)),
@@ -240,8 +275,8 @@ export function NewsApp() {
     [currentSources]
   );
   const matchCount = useMemo(
-    () => countMatches(currentSources, deferredSearch),
-    [currentSources, deferredSearch]
+    () => countMatches(categoryScoped, deferredSearch),
+    [categoryScoped, deferredSearch]
   );
   const matchSourceCount = useMemo(
     () => visible.filter((source) => source.articles.length > 0).length,
@@ -291,13 +326,6 @@ export function NewsApp() {
         : prefs.homeView === "focus"
           ? "Focus"
           : "Ranked";
-  const viewExplanation = prefs.homeView === "grid"
-    ? "Grid groups stories by source in your chosen source order."
-    : prefs.homeView === "top"
-      ? "Top rotates recent stories across categories and sources without a popularity score."
-      : prefs.homeView === "focus"
-        ? "Focus orders every story by published time, newest first."
-        : "Ranked uses only your explicit keyword and source preferences, with score details available per story.";
 
   return (
     <AppShell
@@ -328,6 +356,14 @@ export function NewsApp() {
           className={`reader-filter-controls${mobileFiltersOpen ? " is-open" : ""}`}
         >
         <div className="view-switch" role="group" aria-label="Story view and ordering">
+          <button
+            type="button"
+            className="toolbar-label"
+            title="Open view settings"
+            onClick={() => openSettings("reading")}
+          >
+            View
+          </button>
           {(["grid", "top", "focus", "ranked"] as const).map((view) => (
             <button
               key={view}
@@ -373,6 +409,14 @@ export function NewsApp() {
           </div>
         ) : null}
         <nav className="topics" aria-label="Topics">
+          <button
+            type="button"
+            className="toolbar-label"
+            title="Open sources settings"
+            onClick={() => openSettings("sources")}
+          >
+            Sources
+          </button>
           {TOPICS.map((t, i) => (
             <span key={t}>
               {i > 0 ? <span className="sep"> · </span> : null}
@@ -385,6 +429,22 @@ export function NewsApp() {
               </button>
             </span>
           ))}
+          <button
+            type="button"
+            className="category-toggle"
+            aria-expanded={categoriesOpen}
+            aria-controls="reader-categories"
+            aria-label={
+              activeCategories.length
+                ? `Categories, ${activeCategories.length} selected`
+                : "Categories"
+            }
+            title="Browse all categories"
+            onClick={() => setCategoriesOpen((open) => !open)}
+          >
+            <span aria-hidden="true">{categoriesOpen ? "▴" : "▾"}</span>
+            {activeCategories.length ? <span className="category-count">{activeCategories.length}</span> : null}
+          </button>
           <span className="sep"> · </span>
           <button
             type="button"
@@ -395,16 +455,57 @@ export function NewsApp() {
           </button>
         </nav>
         </div>
-        <details className="reader-view-guide">
-          <summary>What does {viewLabel} do?</summary>
-          <p>{viewExplanation}</p>
-        </details>
+        {categoriesOpen ? (
+          <div
+            id="reader-categories"
+            className="category-panel"
+            role="group"
+            aria-label="Categories"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setCategoriesOpen(false);
+            }}
+          >
+            {categoryOptions.length ? (
+              <div className="category-chips">
+                <label className="category-multi">
+                  <input
+                    type="checkbox"
+                    checked={multiSelect}
+                    onChange={(event) => {
+                      setMultiSelect(event.target.checked);
+                      if (!event.target.checked) setCategories((current) => current.slice(0, 1));
+                    }}
+                  />
+                  Multi-Select
+                </label>
+                {categoryOptions.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={activeCategories.some((item) => item.toLowerCase() === tag.toLowerCase())}
+                    onClick={() => toggleCategory(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="category-empty">No categories for the loaded sources yet.</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <p className="feed-status" role="status" aria-live="polite" aria-atomic="true">
         <span>{statusText}</span>
         {loading || refreshing ? (
           <span className="status-working">Loading next batch…</span>
+        ) : null}
+        {activeCategories.length ? (
+          <span>
+            Filtered to {activeCategories.join(", ")} ·{" "}
+            <button type="button" onClick={() => setCategories([])}>clear</button>
+          </span>
         ) : null}
         {deferredSearch.trim() ? (
           <span>{matchCount} shown across {matchSourceCount} sources</span>

@@ -135,6 +135,7 @@ export function SiteHeader({
                 onClose={chrome.closeSettings}
                 onChange={updatePrefs}
                 initialTab={section === "reader" ? "reading" : "appearance"}
+                tab={chrome.settingsTab}
               />
             </>
           ) : null}
