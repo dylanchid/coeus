@@ -599,13 +599,13 @@ function renderAccountMenu(session: FakeSession, profile: unknown, signOutCalls:
   );
 }
 
-test("Account menu shows a Log in link with the return path when signed out", async () => {
+test("Account menu shows a Sign up / Log in link with the return path when signed out", async () => {
   renderAccountMenu(null, null);
-  const link = await screen.findByRole("link", { name: "Log in" });
+  const link = await screen.findByRole("link", { name: "Sign up / Log in" });
   assert.equal(link.getAttribute("href"), "/signin?next=%2Farchive");
 });
 
-test("Account menu shows the handle and opens Settings / Edit profile / Sign out", async () => {
+test("Account menu shows the avatar trigger and opens View / Edit profile / Sign out", async () => {
   const profile = { id: "u1", handle: "theman", displayName: "bareaga", bio: "Traveller", createdAt: "t", updatedAt: "t" };
   const signOutCalls: number[] = [];
   const { router } = renderAccountMenu({ user: { id: "u1", email: "u1@example.com" } }, profile, signOutCalls);
@@ -618,7 +618,7 @@ test("Account menu shows the handle and opens Settings / Edit profile / Sign out
   assert.ok(menu);
   assert.ok(screen.getByRole("menuitem", { name: "Edit profile" }));
   assert.ok(screen.getByRole("menuitem", { name: "View profile" }));
-  assert.ok(screen.getByRole("menuitem", { name: "Settings" }));
+  assert.equal(screen.queryByRole("menuitem", { name: "Settings" }), null); // lives in the ⋯ menu
 
   // Both profile items route to /@handle (Edit just opens the inline editor).
   fireEvent.click(screen.getByRole("menuitem", { name: "View profile" }));
@@ -627,11 +627,6 @@ test("Account menu shows the handle and opens Settings / Edit profile / Sign out
   fireEvent.click(await screen.findByRole("menuitem", { name: "Edit profile" }));
   assert.equal(router.push.mock.calls.at(-1)?.arguments[0], "/@theman?edit=1");
 
-  fireEvent.click(trigger);
-  await screen.findByRole("menu", { name: "Account" });
-
-  fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
-  assert.equal(screen.getByTestId("settings-open").textContent, "true");
   assert.equal(screen.queryByRole("menu"), null); // menu closes on selection
 
   fireEvent.click(trigger);

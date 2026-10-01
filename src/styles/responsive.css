@@ -24,8 +24,6 @@
 
   .site-header { margin-bottom: 0.35rem; padding-bottom: 0.4rem; }
   .site-subline { display: none; }
-  .chrome-btn--slash { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 44px; }
-  .chrome-btn-mobile-label { display: inline; font-size: 0.7rem; text-transform: uppercase; }
 
   .settings-overlay {
     position: fixed;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
+import { BellIcon } from "./HeaderIcons";
 
 const READ_EVENT = "coeus:notifications-read";
 
@@ -33,16 +34,17 @@ export function NotificationsButton() {
     };
   }, [status]);
 
-  if (status !== "ready") return null;
+  // Signed-out visitors are sent to log in first.
+  const href = status === "signed-out" ? `/signin?next=${encodeURIComponent("/notifications")}` : "/notifications";
 
   return (
     <Link
-      className="notifications-button"
-      href="/notifications"
+      className="header-icon-btn"
+      href={href}
       aria-label={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"}
     >
-      <span>Notifications</span>
-      {unreadCount ? <span className="nav-count">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
+      <BellIcon />
+      {unreadCount ? <span className="header-badge" aria-hidden="true">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
     </Link>
   );
 }
