@@ -5,6 +5,8 @@ import type { DestinationsStore } from "./destinationsStore.server.ts";
 export interface DestinationsApiDependencies {
   authenticate(): Promise<string | null>;
   store: DestinationsStore;
+  /** Best-effort post-connect dispatch. A connection must remain usable if it fails. */
+  onConnected?(ownerId: string): Promise<void>;
 }
 
 export interface DestinationsSyncApiDependencies {
@@ -94,6 +96,11 @@ export async function handleConnectDestination(request: Request, dependencies: D
       parsed.value.config as never,
       parsed.value.secret
     );
+    try {
+      await dependencies.onConnected?.(userId);
+    } catch {
+      // Connection is durable already; the daily worker remains the fallback.
+    }
     return Response.json(destination, { status: 201, headers: headers() });
   } catch (cause) {
     return mapStoreError(cause);

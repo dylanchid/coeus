@@ -5,13 +5,13 @@ import { applyArchiveSyncBatch, createInitialSyncSnapshot } from "./archiveSync.
 import { createDemoArchive } from "./archiveFixtures.ts";
 import { computeDirtyItems, runDestinationDelivery } from "./destinationDelivery.ts";
 
-function delivery(itemId, lastDeliveredRevision, externalRef) {
+function delivery(itemId, lastDeliveredRevision, externalRef, status = "delivered") {
   return {
     destinationId: "dest-1",
     itemId,
     externalRef,
     lastDeliveredRevision,
-    status: "delivered",
+    status,
     lastAttemptedAt: null,
     lastError: null,
     lastHttpStatus: null,
@@ -29,6 +29,14 @@ function deleteOp(operationId, entityId) {
 function batch(baseRevision, operations) {
   return { syncVersion: 1, archiveId: "archive-1", clientId: "device-a", baseRevision, operations };
 }
+
+test("failed delivery statuses retry items even when the archive revision is zero", () => {
+  const snapshot = createInitialSyncSnapshot(createDemoArchive());
+  const deliveries = snapshot.archive.items.map((item) => delivery(item.id, 0, null, "failed_auth"));
+  const actions = computeDirtyItems(snapshot, deliveries);
+  assert.equal(actions.length, 4);
+  assert.equal(actions[0].targetRevision, 0);
+});
 
 test("a newly connected destination is dirty for every existing item, even at revision 0", () => {
   const snapshot = createInitialSyncSnapshot(createDemoArchive());

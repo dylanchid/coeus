@@ -1,4 +1,6 @@
 import { handleConnectDestination, handleListDestinations } from "@/lib/destinationsApi";
+import { enqueueDestinationDelivery, newDestinationDeliveryRequest } from "@/lib/destinationQueue.server";
+import { logDelivery } from "@/lib/deliveryLog";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 import { instrument, newCorrelationId, requestCorrelationId } from "@/lib/serverLog";
@@ -17,8 +19,23 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const correlationId = requestCorrelationId(request);
   return instrument(
-    { route: "archive.destinations", operation: "handleConnectDestination", correlationId: requestCorrelationId(request) },
-    () => handleConnectDestination(request, { authenticate: authenticateArchiveRequest, store: store() }),
+    { route: "archive.destinations", operation: "handleConnectDestination", correlationId },
+    () => handleConnectDestination(request, {
+      authenticate: authenticateArchiveRequest,
+      store: store(),
+      onConnected: async (ownerId) => {
+        try {
+          await enqueueDestinationDelivery(newDestinationDeliveryRequest(ownerId, correlationId));
+        } catch (error) {
+          logDelivery("destination_delivery.queue.enqueue.error", {
+            correlationId,
+            ownerId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+    }),
   );
 }

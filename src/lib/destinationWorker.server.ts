@@ -68,8 +68,8 @@ async function deliverObsidianGit(
 
 /**
  * Notion pushes one page per item (no batch API), so this reuses the pure
- * runDestinationDelivery loop, which already stops at the first auth
- * failure instead of retry-storming a destination whose token is dead.
+ * runDestinationDelivery loop. The loop stops on the first auth or final
+ * transport/provider failure, preventing a retry storm before the next wake-up.
  */
 async function deliverNotion(
   target: WorkerDestination,

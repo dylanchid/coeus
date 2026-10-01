@@ -5,5 +5,12 @@
       "path": "/api/archive/destinations/worker",
       "schedule": "0 6 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/archive/destinations/queue/route.ts": {
+      "experimentalTriggers": [
+        { "type": "queue/v2beta", "topic": "destination_delivery", "retryAfterSeconds": 60 }
+      ]
+    }
+  }
 }

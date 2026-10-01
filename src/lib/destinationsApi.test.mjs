@@ -120,6 +120,25 @@ test("handleConnectDestination validates the body and creates a destination", as
   assert.equal(failure.status, 503);
 });
 
+test("handleConnectDestination requests a best-effort delivery wake-up only after it connects", async () => {
+  const store = new MemoryDestinationsStore();
+  const connected = [];
+  const response = await handleConnectDestination(
+    jsonRequest({ kind: "notion", displayName: "Notes", config: { databaseId: "db-1" }, secret: "secret-token" }),
+    { ...dependencies(store), onConnected: async (ownerId) => { connected.push(ownerId); } },
+  );
+  assert.equal(response.status, 201);
+  assert.deepEqual(connected, ["user-1"]);
+
+  store.failNext.connect = new Error("db down");
+  const failed = await handleConnectDestination(
+    jsonRequest({ kind: "notion", displayName: "Notes", config: { databaseId: "db-1" }, secret: "secret-token" }),
+    { ...dependencies(store), onConnected: async (ownerId) => { connected.push(ownerId); } },
+  );
+  assert.equal(failed.status, 503);
+  assert.deepEqual(connected, ["user-1"]);
+});
+
 function deleteRequest(purge = false) {
   return new Request(`http://localhost/api/archive/destinations/obsidian_git${purge ? "?purge=1" : ""}`, { method: "DELETE" });
 }

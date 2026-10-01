@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { handleArchiveSync } from "@/lib/archive/archiveApi";
 import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
 import { logDelivery } from "@/lib/deliveryLog";
+import { enqueueDestinationDelivery, newDestinationDeliveryRequest } from "@/lib/destinationQueue.server";
 import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
 import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
@@ -28,6 +29,22 @@ export async function POST(request: Request): Promise<Response> {
       store: new SupabaseArchiveSyncStore(supabase),
     })
   );
+
+  // Queue publication is deliberately before return (not inside after()), so
+  // Vercel can durably accept the wake-up even if this function is reclaimed.
+  // A failed publish never makes an already-committed archive sync fail; cron
+  // remains the reconciliation path and the failure is observable.
+  if (response.ok && ownerId) {
+    try {
+      await enqueueDestinationDelivery(newDestinationDeliveryRequest(ownerId, correlationId));
+    } catch (error) {
+      logDelivery("destination_delivery.queue.enqueue.error", {
+        correlationId,
+        ownerId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   // Push to any connected destinations without delaying the sync response.
   // Vercel Hobby cron only runs the /destinations/worker route once a day,

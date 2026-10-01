@@ -45,7 +45,7 @@ export function computeDirtyItems(
     const item = itemsById.get(itemId);
     if (!item) continue;
     const revision = fieldRevision(versions.fields);
-    if (!delivery || revision > delivery.lastDeliveredRevision) {
+    if (!delivery || delivery.status !== "delivered" || revision > delivery.lastDeliveredRevision) {
       actions.push({
         kind: "upsert",
         itemId,
@@ -67,9 +67,9 @@ export interface DeliveryOutcome {
 }
 
 /**
- * Push every dirty item through an injected adapter. Stops the batch on the
- * first auth failure rather than retry-storming a destination whose token is
- * already known to be dead; the caller flips the destination to auth_error.
+ * Push dirty items through an injected adapter. Stop on auth failure so a dead
+ * token is not retried, and stop after a final transport exception so the
+ * provider is not hammered before the next durable retry wake-up.
  */
 export async function runDestinationDelivery(
   snapshot: ArchiveSyncSnapshot,
@@ -79,11 +79,23 @@ export async function runDestinationDelivery(
 ): Promise<DeliveryOutcome[]> {
   const outcomes: DeliveryOutcome[] = [];
   for (const action of computeDirtyItems(snapshot, deliveries).slice(0, maxItems)) {
-    const result = action.kind === "upsert"
-      ? await adapter.pushUpsert(action.item, action.existingExternalRef)
-      : await adapter.pushDelete(action.itemId, action.existingExternalRef);
+    let result: DestinationPushResult;
+    let transportFailure = false;
+    try {
+      result = action.kind === "upsert"
+        ? await adapter.pushUpsert(action.item, action.existingExternalRef)
+        : await adapter.pushDelete(action.itemId, action.existingExternalRef);
+    } catch (error) {
+      // A final network/timeout failure is still an item outcome. Recording it
+      // lets the queue and UI distinguish a retryable push from a worker crash.
+      transportFailure = true;
+      result = {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
     outcomes.push({ itemId: action.itemId, action: action.kind, targetRevision: action.targetRevision, result });
-    if (result.authError) break;
+    if (result.authError || transportFailure) break;
   }
   return outcomes;
 }

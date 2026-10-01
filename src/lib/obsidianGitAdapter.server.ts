@@ -66,11 +66,17 @@ export class GitHubGitAdapter {
 
   async pushBatch(actions: GitBatchAction[]): Promise<Map<string, DestinationPushResult>> {
     if (!actions.length) return new Map();
-
     const outcomes = new Map<string, DestinationPushResult>();
+
     for (let start = 0; start < actions.length; start += GITHUB_TREE_CHUNK_SIZE) {
       const chunk = actions.slice(start, start + GITHUB_TREE_CHUNK_SIZE);
-      const chunkOutcomes = await this.pushChunk(chunk);
+      let chunkOutcomes: Map<string, DestinationPushResult>;
+      try {
+        chunkOutcomes = await this.pushChunk(chunk);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        chunkOutcomes = failAll(chunk, { ok: false, error: message });
+      }
       for (const [itemId, outcome] of chunkOutcomes) outcomes.set(itemId, outcome);
 
       // A failed ref update means later chunks cannot safely build on the

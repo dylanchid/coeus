@@ -126,6 +126,31 @@ test("a delivery that throws is captured, the lease is released, and the tick ne
   assert.equal(store.calls.release.length, 1, "the lease is released even after a failure");
 });
 
+test("an auth failure records failed_auth and disables further delivery", async () => {
+  const store = fakeStore();
+  const result = await runDestinationWorkerTick(okReader, store, {
+    fetcher: async () => new Response("unauthorized", { status: 401 }),
+    retryOptions: { retries: 0 },
+  });
+
+  assert.equal(result.results[0].authError, true);
+  assert.equal(store.calls.outcomes[0].outcomes[0].status, "failed_auth");
+  assert.deepEqual(store.calls.status, [{ ownerId: "owner-1", kind: "notion", status: "auth_error" }]);
+});
+
+test("a final network failure records failed_retryable for the next queue wake-up", async () => {
+  const store = fakeStore();
+  const result = await runDestinationWorkerTick(okReader, store, {
+    fetcher: async () => { throw new Error("provider unavailable"); },
+    retryOptions: { retries: 0 },
+  });
+
+  assert.equal(result.results[0].status, "failed");
+  assert.equal(result.results[0].failed, 1);
+  assert.equal(store.calls.outcomes[0].outcomes[0].status, "failed_retryable");
+  assert.deepEqual(store.calls.status, []);
+});
+
 test("an enumeration failure is reported without throwing", async () => {
   const store = fakeStore();
   store.activeDestinations = async () => {

@@ -1,6 +1,6 @@
 begin;
 
-select plan(39);
+select plan(50);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at)
 values
@@ -109,6 +109,15 @@ select is((select public.disconnect_destination(
 select is((select secret_ciphertext from public.destinations where kind = 'obsidian_git'), null, 'disconnect clears the secret ciphertext');
 select is((select status::text from public.destinations where kind = 'obsidian_git'), 'disabled', 'disconnect sets status to disabled');
 select is((select count(*) from public.destination_deliveries where item_id = 'item-1'), 1::bigint, 'disconnect preserves delivery history');
+select lives_ok(
+  $$ select public.record_delivery_outcome(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+    'obsidian_git'::public.destination_kind,
+    'item-3', null, 999, 'failed_auth'::public.destination_delivery_status, 401, 'expired token'
+  ) $$,
+  'records an auth failure before reconnect'
+);
 
 select results_eq(
   $$ select display_name from public.create_destination(
@@ -127,6 +136,7 @@ select results_eq(
 select is((select count(*) from public.destinations), 1::bigint, 'reconnect does not duplicate the destination row');
 select is((select secret_version from public.destinations where kind = 'obsidian_git'), 2::int, 'reconnect increments the secret version');
 select is((select external_ref from public.destination_deliveries where item_id = 'item-1'), 'articles/item-1.md', 'reconnect preserves prior delivery external refs');
+select is((select status::text from public.destination_deliveries where item_id = 'item-3'), 'pending', 'reconnect makes prior auth failures retryable');
 
 select is((select public.purge_destination(
   '11111111-1111-1111-1111-111111111111',
@@ -161,6 +171,71 @@ select lives_ok(
   'recreates a destination for the RLS checks'
 );
 
+-- Delivery leases are mutually exclusive, fenced by token on release, and
+-- support a separate cross-invocation rate window.
+select is((select public.acquire_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  300,
+  0
+)), true, 'acquires a free destination lease');
+select is((select public.acquire_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  300,
+  0
+)), false, 'a live lease blocks an overlapping worker');
+select is((select public.release_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  '{}'::jsonb
+)), false, 'a stale lease token cannot release another worker lease');
+select is((select delivery_lease_token::text from public.destinations where kind = 'notion'), 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'the live lease token is unchanged after a stale release');
+select is((select public.release_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '{}'::jsonb
+)), true, 'the lease owner can release its lease');
+select is((select public.acquire_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  300,
+  60
+)), false, 'the minimum interval blocks an immediate second run');
+select is((select public.acquire_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  300,
+  0
+)), true, 'a manual or queue run can bypass only the rate window');
+update public.destinations set delivery_lease_expires_at = now() - interval '1 second' where kind = 'notion';
+select is((select public.acquire_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  300,
+  0
+)), true, 'an expired lease can be reclaimed');
+select is((select public.release_destination_delivery_lease(
+  '11111111-1111-1111-1111-111111111111',
+  (select id from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'),
+  'notion'::public.destination_kind,
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  '{}'::jsonb
+)), false, 'the expired worker cannot release a reclaimed lease');
 select set_config('test.archive_id', (select id::text from public.archives where owner_id = '11111111-1111-1111-1111-111111111111'), false);
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
