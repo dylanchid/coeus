@@ -15,6 +15,10 @@
   line-height: 1.1;
 }
 
+.signin-head {
+  display: block;
+}
+
 .signin-lede,
 .welcome-lede {
   margin: 0 0 var(--space-lg);
@@ -28,7 +32,7 @@
   gap: var(--space-xs);
 }
 
-.signin-providers button,
+.signin-provider,
 .welcome-form button[type="submit"] {
   padding: 0.75rem 1rem;
   border: 1px solid var(--fg);
@@ -37,16 +41,65 @@
   font: inherit;
   font-size: var(--text-body);
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
-.signin-providers button:hover:not(:disabled),
+.signin-provider {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr 1.25rem;
+  align-items: center;
+  gap: var(--space-xs);
+  border-color: var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.signin-provider-label {
+  grid-column: 2;
+}
+
+/* Brand marks are single-colour PNGs: paint them through a mask so they follow
+   the active theme/palette. Google keeps its own colours. */
+.signin-provider-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+}
+
+.signin-provider[data-provider="apple"] { --icon: url("/apple-icon.png"); }
+.signin-provider[data-provider="github"] { --icon: url("/github-icon.png"); }
+/* The X asset is a white glyph on an opaque black tile, so mask by luminance to keep just the glyph. */
+.signin-provider[data-provider="x"] .signin-provider-icon {
+  mask: url("/x-social-media-logo-icon.png") center / contain no-repeat;
+  -webkit-mask: url("/x-social-media-logo-icon.png") center / contain no-repeat;
+  mask-mode: luminance;
+}
+.signin-provider[data-provider="google"] .signin-provider-icon {
+  background: url("/Google_Favicon_2025.svg.webp") center / contain no-repeat;
+  mask: none;
+  -webkit-mask: none;
+}
+
+.signin-provider:hover:not(:disabled),
 .welcome-form button[type="submit"]:hover:not(:disabled) {
   background: var(--fg);
   color: var(--bg);
 }
 
-.signin-providers button:disabled,
+.signin-provider:hover:not(:disabled) {
+  border-color: var(--fg);
+}
+
+.signin-provider:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+.signin-provider:disabled,
 .welcome-form button[type="submit"]:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -215,32 +268,14 @@
 
 .auth-modal {
   position: relative;
-  width: min(38rem, 100%);
+  width: min(26rem, 100%);
   max-height: min(46rem, calc(100vh - (2 * var(--space-lg))));
   overflow: auto;
-  padding: clamp(var(--space-lg), 4vw, var(--space-xl));
+  padding: clamp(var(--space-md), 5vw, var(--space-lg));
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--bg);
   box-shadow: 0 24px 80px color-mix(in srgb, var(--fg) 18%, transparent);
-}
-
-.auth-modal-close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  width: 2rem;
-  height: 2rem;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 1.35rem;
-  cursor: pointer;
-}
-
-.auth-modal-close:hover {
-  color: var(--fg);
 }
 
 .auth-modal .signin-panel {
@@ -248,19 +283,42 @@
   gap: var(--space-md);
 }
 
-.auth-modal .signin-panel h1 {
-  max-width: 100%;
-  margin-right: 2rem;
-  font-size: clamp(1.8rem, 5vw, 2.6rem);
+/* Only the Coeus wordmark uses Pochaevsk; everything else in the modal is clean sans. */
+.auth-modal {
+  font-family: var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-.auth-modal .signin-lede {
-  margin-bottom: var(--space-md);
+.auth-modal .signin-tagline {
+  margin: calc(-1 * var(--space-xs)) 0 var(--space-xs);
+  color: var(--muted);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+.auth-modal .signin-panel h1.signin-wordmark {
+  margin: 0 0 var(--space-xs);
+  font: 400 clamp(2.4rem, 8vw, 3.2rem)/1 var(--font-pochaevsk), Georgia, serif;
+  text-align: center;
+}
+
+.auth-modal button,
+.auth-modal input {
+  font-family: inherit;
+}
+
+.auth-modal .signin-provider {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.auth-modal .signin-error {
+  margin: 0;
 }
 
 .auth-modal .signin-dev {
   gap: var(--space-xs);
-  margin-top: var(--space-sm);
+  margin-top: var(--space-xs);
   padding: var(--space-sm);
 }
 

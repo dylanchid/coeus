@@ -4,8 +4,10 @@ import { useState, type FormEvent } from "react";
 import { useAuth, type OAuthProvider } from "./AuthProvider";
 
 const PROVIDERS: { id: OAuthProvider; label: string }[] = [
-  { id: "github", label: "GitHub" },
   { id: "google", label: "Google" },
+  { id: "apple", label: "Apple" },
+  { id: "github", label: "GitHub" },
+  { id: "x", label: "X" },
 ];
 
 /**
@@ -22,10 +24,13 @@ export function SignInPanel({
   next = "/archive",
   errorMessage,
   devSignIn = false,
+  compact = false,
 }: {
   next?: string;
   errorMessage?: string | null;
   devSignIn?: boolean;
+  /** Modal variant: the heading is the centred Coeus wordmark (full text stays as the accessible name); intro copy is dropped. */
+  compact?: boolean;
 }) {
   const { signIn, unavailable } = useAuth();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
@@ -44,11 +49,24 @@ export function SignInPanel({
 
   return (
     <section className="signin-panel" aria-labelledby="signin-heading">
-      <h1 id="signin-heading">Sign in to Coeus</h1>
-      <p className="signin-lede">
-        Your archive stays on this device until you sign in. Signing in syncs it, unlocks recovery, and lets you
-        publish collections and connect destinations.
-      </p>
+      <header className="signin-head">
+        {compact ? (
+          <h1 id="signin-heading" className="signin-wordmark">
+            <span aria-hidden="true">Coeus</span>
+            <span className="sr-only">Sign in to Coeus</span>
+          </h1>
+        ) : (
+          <h1 id="signin-heading">Sign in to Coeus</h1>
+        )}
+        {compact ? (
+          <p className="signin-tagline">The shared web</p>
+        ) : (
+          <p className="signin-lede">
+            Your archive stays on this device until you sign in. Signing in syncs it, unlocks recovery, and lets you
+            publish collections and connect destinations.
+          </p>
+        )}
+      </header>
 
       {error ? (
         <p className="signin-error" role="alert">
@@ -67,10 +85,15 @@ export function SignInPanel({
           <button
             key={provider.id}
             type="button"
+            className="signin-provider"
+            data-provider={provider.id}
             disabled={unavailable || pending !== null}
             onClick={() => void start(provider.id)}
           >
-            {pending === provider.id ? `Redirecting to ${provider.label}…` : `Continue with ${provider.label}`}
+            <span className="signin-provider-icon" aria-hidden="true" />
+            <span className="signin-provider-label">
+              {pending === provider.id ? `Redirecting to ${provider.label}…` : `Continue with ${provider.label}`}
+            </span>
           </button>
         ))}
       </div>
