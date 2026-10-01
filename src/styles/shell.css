@@ -333,17 +333,31 @@
   gap: 0.5rem;
   min-height: 44px;
   padding: 0.35rem 0.5rem;
+  border: 0;
+  background: transparent;
   color: var(--muted);
+  font: inherit;
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .account-signin:visited { color: var(--muted); }
 
 .account-signin:hover {
   color: var(--fg);
+}
+
+.account-signin:focus {
+  outline: none;
+}
+
+.account-signin:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
 }
 
 .account-trigger {

@@ -26,12 +26,14 @@ export async function createRequestSupabaseClient(): Promise<SupabaseClient> {
   );
 }
 
+export function adminSupabaseKey(): string {
+  return requiredEnvironment("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY");
+}
+
 export function createAdminSupabaseClient(): SupabaseClient {
-  return createClient(
-    requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL"),
-    requiredEnvironment("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
-    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
-  );
+  return createClient(requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL"), adminSupabaseKey(), {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
 }
 
 export async function authenticateArchiveRequest(): Promise<string | null> {

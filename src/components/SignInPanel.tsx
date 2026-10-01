@@ -19,7 +19,7 @@ const PROVIDERS: { id: OAuthProvider; label: string }[] = [
  * URIs configured upstream.
  */
 export function SignInPanel({
-  next = "/welcome",
+  next = "/archive",
   errorMessage,
   devSignIn = false,
 }: {

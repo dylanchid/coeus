@@ -23,7 +23,7 @@ export default async function SignInPage({
     <AppShell section="account">
       <div className="signin-page">
         <SignInPanel
-          next={safeInternalPath(firstValue(params.next), "/welcome")}
+          next={safeInternalPath(firstValue(params.next), "/archive")}
           errorMessage={firstValue(params.error) ?? null}
           devSignIn={devSignInEnabled()}
         />

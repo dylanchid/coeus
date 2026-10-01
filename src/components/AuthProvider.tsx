@@ -136,7 +136,7 @@ export function AuthProvider({
   }, [supabase, loadProfile]);
 
   const signIn = useCallback<AuthContextValue["signIn"]>(
-    async (provider, next = "/welcome") => {
+    async (provider, next = "/archive") => {
       if (!supabase) return { error: "Sign-in is not configured in this environment." };
       const redirectTo =
         typeof window !== "undefined"

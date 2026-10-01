@@ -187,6 +187,87 @@
   color: var(--muted);
 }
 
+.profile-gate-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+  backdrop-filter: blur(1px);
+}
+
+.profile-gate-modal {
+  width: min(42rem, 100%);
+  max-height: min(44rem, calc(100vh - (2 * var(--space-lg))));
+  overflow: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-xl));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--fg) 18%, transparent);
+}
+
+.profile-gate-modal .welcome-form {
+  margin: 0;
+}
+
+.auth-modal {
+  position: relative;
+  width: min(38rem, 100%);
+  max-height: min(46rem, calc(100vh - (2 * var(--space-lg))));
+  overflow: auto;
+  padding: clamp(var(--space-lg), 4vw, var(--space-xl));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg);
+  box-shadow: 0 24px 80px color-mix(in srgb, var(--fg) 18%, transparent);
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+
+.auth-modal-close:hover {
+  color: var(--fg);
+}
+
+.auth-modal .signin-panel {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.auth-modal .signin-panel h1 {
+  max-width: 100%;
+  margin-right: 2rem;
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+}
+
+.auth-modal .signin-lede {
+  margin-bottom: var(--space-md);
+}
+
+.auth-modal .signin-dev {
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm);
+}
+
+.auth-modal .signin-dev-note {
+  display: none;
+}
+
 .archive-account-state {
   margin: 0;
   color: var(--muted);

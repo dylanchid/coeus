@@ -46,6 +46,7 @@ const { DestinationsPanel } = await import("./DestinationsPanel");
 const { AuthProvider } = await import("./AuthProvider");
 const { SignInPanel } = await import("./SignInPanel");
 const { WelcomeForm } = await import("./WelcomeForm");
+const { ProfileGate } = await import("./ProfileGate");
 const { AccountMenu } = await import("./AccountMenu");
 const { ArchiveList } = await import("./ArchiveList");
 const { ProfileFollowButton } = await import("./ProfileFollowButton");
@@ -576,6 +577,26 @@ test("Welcome form applies the saved profile and routes onward", async () => {
   await waitFor(() => assert.equal(router.replace.mock.calls.at(-1)?.arguments[0], "/archive"));
 });
 
+test("Profile gate shows profile creation as a modal over the current page", async () => {
+  stubFetch((url) =>
+    url.endsWith("/api/account/profile")
+      ? new Response(JSON.stringify({ profile: null }), { status: 200 })
+      : new Response(null, { status: 404 }),
+  );
+  const { router } = renderWithRouter(
+    <AuthProvider client={fakeAuthClient({ user: { id: "u1", email: "ada@example.com" } }) as never}>
+      <button type="button">Page action behind modal</button>
+      <ProfileGate />
+    </AuthProvider>,
+    "/discover",
+  );
+
+  const dialog = await screen.findByRole("dialog", { name: "Choose your handle" });
+  assert.equal(dialog.getAttribute("aria-modal"), "true");
+  assert.ok(screen.getByRole("button", { name: "Page action behind modal" }));
+  assert.equal(router.replace.mock.calls.length, 0);
+});
+
 // —— Header account menu ————————————————————————————————————————————————
 
 function ChromeProbe() {
@@ -599,10 +620,12 @@ function renderAccountMenu(session: FakeSession, profile: unknown, signOutCalls:
   );
 }
 
-test("Account menu shows a Sign up / Log in link with the return path when signed out", async () => {
+test("Account menu opens sign-in as a modal over the current page", async () => {
   renderAccountMenu(null, null);
-  const link = await screen.findByRole("link", { name: "Sign up / Log in" });
-  assert.equal(link.getAttribute("href"), "/signin?next=%2Farchive");
+  fireEvent.click(await screen.findByRole("button", { name: "Sign up / Log in" }));
+  const dialog = await screen.findByRole("dialog", { name: "Sign in to Coeus" });
+  assert.equal(dialog.getAttribute("aria-modal"), "true");
+  assert.ok(screen.getByRole("button", { name: "Continue with GitHub" }));
 });
 
 test("Account menu shows the avatar trigger and opens View / Edit profile / Sign out", async () => {

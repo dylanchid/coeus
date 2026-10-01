@@ -20,7 +20,7 @@ export function decideProxyRedirect(pathname: string, signedIn: boolean): ProxyR
     return { pathname: "/signin", params: { next: "/welcome" } };
   }
   if (signedIn && pathname === "/signin") {
-    return { pathname: "/welcome" };
+    return { pathname: "/archive" };
   }
   return null;
 }

@@ -10,8 +10,8 @@ test("signed-out visitor to /welcome is sent to /signin with a next param", () =
   });
 });
 
-test("signed-in visitor to /signin is sent to /welcome with no params", () => {
-  assert.deepEqual(decideProxyRedirect("/signin", true), { pathname: "/welcome" });
+test("signed-in visitor to /signin is sent to /archive with no params", () => {
+  assert.deepEqual(decideProxyRedirect("/signin", true), { pathname: "/archive" });
 });
 
 test("signed-in visitor to /welcome passes through", () => {

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const next = safeInternalPath(url.searchParams.get("next"), "/welcome");
+  const next = safeInternalPath(url.searchParams.get("next"), "/archive");
   const providerError = url.searchParams.get("error_description") ?? url.searchParams.get("error");
 
   if (providerError) {

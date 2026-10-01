@@ -1,6 +1,6 @@
 import { runHealthChecks } from "@/lib/healthCheck";
 import { logEvent, requestCorrelationId } from "@/lib/serverLog";
-import { createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
+import { adminSupabaseKey, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function GET(request: Request): Promise<Response> {
   const report = await runHealthChecks({
     config: async () => {
       requiredEnvironment("NEXT_PUBLIC_SUPABASE_URL");
-      requiredEnvironment("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY");
+      adminSupabaseKey();
     },
     database: async () => {
       const supabase = createAdminSupabaseClient();

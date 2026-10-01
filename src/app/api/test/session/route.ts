@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
  * Test-only sign-in. Playwright's authenticated journeys — and local profile
  * work when OAuth redirect URIs aren't configured for localhost — need a
  * deterministic signed-in session without a real OAuth round trip, so this
- * route mints one: it upserts the requested user with the service key,
- * generates a magic-link token, and verifies it against a request-scoped
- * client — which writes the same `sb-*` cookies the OAuth callback would.
+ * route creates/reuses the requested test user through local email/password
+ * auth on a request-scoped client, which writes the same `sb-*` cookies the
+ * OAuth callback would.
  *
  * Armed only when `devSignInEnabled()` (E2E_TEST_LOGIN=1, non-production).
  */
@@ -49,50 +49,24 @@ export async function POST(request: Request): Promise<Response> {
       ? (body.userMetadata as Record<string, unknown>)
       : undefined;
 
-  const admin = createAdminSupabaseClient();
-
-  // GoTrue has no "get user by email", so page through until we find them. Test
-  // projects hold a handful of users, so one page is always enough.
-  const { data: existing, error: listError } = await admin.auth.admin.listUsers({ perPage: 200 });
-  if (listError) {
-    return Response.json({ error: listError.message }, { status: 502 });
-  }
-  let userId = existing.users.find((user) => user.email?.toLowerCase() === email)?.id ?? null;
-
-  if (!userId) {
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: userMetadata,
-    });
-    if (created?.user) {
-      userId = created.user.id;
-    } else {
-      // Two parallel Playwright workers can both create the same fixture user;
-      // the loser sees a duplicate-email error. Re-resolve before giving up.
-      const { data: retry } = await admin.auth.admin.listUsers({ perPage: 200 });
-      userId = retry?.users.find((user) => user.email?.toLowerCase() === email)?.id ?? null;
-      if (!userId) {
-        return Response.json({ error: createError?.message ?? "User creation failed" }, { status: 502 });
-      }
-    }
-  } else if (userMetadata) {
-    await admin.auth.admin.updateUserById(userId, { user_metadata: userMetadata });
-  }
-
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-  const tokenHash = link?.properties?.hashed_token;
-  if (linkError || !tokenHash) {
-    return Response.json({ error: linkError?.message ?? "Could not mint a session" }, { status: 502 });
-  }
-
   const supabase = await createRequestSupabaseClient();
-  const { error: verifyError } = await supabase.auth.verifyOtp({ type: "email", token_hash: tokenHash });
-  if (verifyError) {
-    return Response.json({ error: verifyError.message }, { status: 502 });
+  const password = `coeus-dev-${email}`;
+
+  const { error: signUpError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: userMetadata ? { data: userMetadata } : undefined,
+  });
+  if (signUpError && !/already|registered|exists/i.test(signUpError.message)) {
+    return Response.json({ error: signUpError.message }, { status: 502 });
   }
 
-  return Response.json({ userId, email });
+  const { data: session, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signInError || !session.user) {
+    return Response.json({ error: signInError?.message ?? "Could not mint a session" }, { status: 502 });
+  }
+
+  return Response.json({ userId: session.user.id, email });
 }
 
 /**
