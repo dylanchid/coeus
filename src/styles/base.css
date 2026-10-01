@@ -23,8 +23,8 @@
   --li-pad: 0.45rem;
 
   /* —— Layout + spacing scale (shared shell) —— */
-  --content-max: 1480px;
-  --pad-inline: clamp(1rem, 3.5vw, 1.35rem);
+  --content-max: min(96vw, 2400px);
+  --pad-inline: clamp(1rem, 2vw, 1.5rem);
   --header-py: 0.85rem;
   --space-3xs: 0.25rem;
   --space-2xs: 0.4rem;
@@ -62,7 +62,7 @@ html[data-theme="light"] {
   --error: #8b1e1e;
   --handle: #8a857c;
   --accent: #161512;
-  --header-rule: #161512;
+  --header-rule: #d9d3c7;
   --settings-bg: #fffcf5;
   --settings-border: #161512;
   color-scheme: light;
@@ -86,7 +86,7 @@ html[data-theme="dark"] {
     --error: #8b1e1e;
     --handle: #8a857c;
     --accent: #161512;
-    --header-rule: #161512;
+    --header-rule: #d9d3c7;
     --settings-bg: #fffcf5;
     --settings-border: #161512;
     color-scheme: light;
@@ -103,7 +103,7 @@ html[data-palette="paper"] {
   --mark: #f0d78c;
   --border: #d8d0be;
   --line: #e0d8c6;
-  --header-rule: #1c1914;
+  --header-rule: #e0d8c6;
   --settings-bg: #fffaf0;
   --settings-border: #1c1914;
   --error: #8b1e1e;
