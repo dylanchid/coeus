@@ -2,17 +2,22 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { UserPrefs } from "@/lib/types";
 import { useArchive, usePreferences } from "./AppProviders";
 import { useChrome } from "./ChromeProvider";
-import { PrimaryNav, SECTION_LABELS, type AppSection } from "./PrimaryNav";
+import { PrimaryNav, type AppSection } from "./PrimaryNav";
 import { SettingsPanel } from "./SettingsPanel";
-import { SlashMenu } from "./SlashMenu";
+import { HeaderSearch, FOCUS_HEADER_SEARCH_EVENT } from "./HeaderSearch";
+import { MessagesButton } from "./MessagesButton";
+import { SettingsMenu } from "./SettingsMenu";
 import { NotificationsButton } from "./NotificationsButton";
 import { AccountMenu } from "./AccountMenu";
+
+function focusHeaderSearch(command: boolean) {
+  window.dispatchEvent(new CustomEvent(FOCUS_HEADER_SEARCH_EVENT, { detail: { command } }));
+}
 
 function downloadPrefs(prefs: UserPrefs) {
   const blob = new Blob([JSON.stringify(prefs, null, 2)], {
@@ -39,7 +44,8 @@ export function SiteHeader({
   const chrome = useChrome();
   const router = useRouter();
 
-  const { slashOpen, toggleSlash, openSlash, toggleSettings } = chrome;
+  const { toggleSettings } = chrome;
+
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -52,23 +58,22 @@ export function SiteHeader({
           el.tagName === "SELECT" ||
           el.isContentEditable);
 
-      // ⌘K / Ctrl+K toggles the palette even while typing.
+      // ⌘K / Ctrl+K jumps to the search box in command mode, even while typing.
       if (
         (event.key === "k" || event.key === "K") &&
         (event.metaKey || event.ctrlKey) &&
         !event.altKey
       ) {
         event.preventDefault();
-        toggleSlash();
+        focusHeaderSearch(true);
         return;
       }
 
-      if (slashOpen) return; // SlashMenu owns keys while open
       if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
 
       if (event.key === "/") {
         event.preventDefault();
-        openSlash();
+        focusHeaderSearch(true);
       } else if (event.key === ",") {
         event.preventDefault();
         toggleSettings();
@@ -76,7 +81,7 @@ export function SiteHeader({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [prefs, slashOpen, toggleSlash, openSlash, toggleSettings]);
+  }, [prefs, toggleSettings]);
 
   const archiveCount = archive?.items.length ?? undefined;
   const persistenceError = prefsPersistence.status === "error"
@@ -91,45 +96,39 @@ export function SiteHeader({
     if (archivePersistence.status === "error") void retryArchive();
   };
 
+  const commandContext = prefs
+    ? {
+        prefs,
+        currentSection: section,
+        onPrefs: updatePrefs,
+        onOpenSettings: chrome.openSettings,
+        onExportPrefs: () => downloadPrefs(prefs),
+        onNavigate: (href: string) => router.push(href),
+        reader: chrome.readerSlash ?? undefined,
+      }
+    : null;
+
   return (
     <header className="site-header">
       <div className="site-header-bar">
-        <div className="site-identity">
-          <Link className="site-wordmark" href="/">
-            Coeus
-          </Link>
-          <Image
-            className="site-logo"
-            src="/coeus_logo.png"
-            alt=""
-            aria-hidden="true"
-            width={1536}
-            height={1024}
-            priority
-            unoptimized
-          />
-          {section !== "reader" ? (
-            <span className="site-section">/ {SECTION_LABELS[section]}</span>
-          ) : null}
-        </div>
+        <Link className="site-identity" href="/" aria-label="Coeus — home">
+          <span className="site-wordmark">Coeus</span>
+        </Link>
+
+        <PrimaryNav
+          section={section}
+          archiveCount={archiveCount}
+          search={<HeaderSearch commandContext={commandContext} />}
+        />
 
         <div className="site-tools">
-          <PrimaryNav section={section} archiveCount={archiveCount} />
+          <Link className="try-plus" href="/plus">Try+</Link>
+          <AccountMenu />
           <NotificationsButton />
-          {prefs ? (
+          <MessagesButton />
+          {prefs && commandContext ? (
             <>
-              <button
-                type="button"
-                className="chrome-btn chrome-btn--slash"
-                data-slash-toggle
-                aria-expanded={chrome.slashOpen}
-                aria-haspopup="dialog"
-                title="Slash menu (/ or ⌘K)"
-                onClick={toggleSlash}
-              >
-                <span aria-hidden="true">/</span>
-                <span className="chrome-btn-mobile-label">Commands</span>
-              </button>
+              <SettingsMenu onOpenSettings={chrome.openSettings} onExportPrefs={() => downloadPrefs(prefs)} />
               <SettingsPanel
                 open={chrome.settingsOpen}
                 prefs={prefs}
@@ -137,22 +136,8 @@ export function SiteHeader({
                 onChange={updatePrefs}
                 initialTab={section === "reader" ? "reading" : "appearance"}
               />
-              <SlashMenu
-                open={chrome.slashOpen}
-                onClose={chrome.closeSlash}
-                context={{
-                  prefs,
-                  currentSection: section,
-                  onPrefs: updatePrefs,
-                  onOpenSettings: chrome.openSettings,
-                  onExportPrefs: () => downloadPrefs(prefs),
-                  onNavigate: (href) => router.push(href),
-                  reader: chrome.readerSlash ?? undefined,
-                }}
-              />
             </>
           ) : null}
-          <AccountMenu />
         </div>
       </div>
 

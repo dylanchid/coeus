@@ -7,42 +7,30 @@
 .site-header {
   margin-bottom: var(--space-sm);
   padding-bottom: var(--header-py);
-  border-bottom: 1px solid var(--header-rule);
 }
 
 .site-header-bar {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
+  gap: 0.25rem 1.1rem;
 }
 
 .site-identity {
   display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  min-width: 0;
-}
-
-/* Woodcut mark sits snug to the right of the wordmark (transparent PNG,
-   intrinsic 1536×1024 → 3:2). Both dimensions are pinned explicitly and the
-   item is locked out of flex sizing: Safari otherwise lays a height-only
-   replaced flex child out at its natural width, which blows up the header. */
-.site-logo {
   flex: none;
-  align-self: center;
-  height: calc(var(--wordmark) * 1.5);
-  width: calc(var(--wordmark) * 2.25);
-  margin-left: 0.1rem;
-  object-fit: contain;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  color: var(--fg);
+  text-decoration: none;
 }
 
 .site-wordmark {
   color: var(--fg);
-  font: 700 var(--wordmark)/1 var(--font-display);
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
+  /* High-contrast Pochaevsk (Church Slavonic-style) serif, mixed case. */
+  font: 400 calc(var(--wordmark) * 1.1)/1 var(--font-pochaevsk), Georgia, serif;
+  letter-spacing: 0;
   text-decoration: none;
 }
 
@@ -50,20 +38,12 @@
   color: var(--fg);
 }
 
-.site-section {
-  color: var(--muted);
-  font-size: var(--text-meta);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
 .site-tools {
   position: relative;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.9rem;
+  gap: 0.15rem;
+  margin-left: auto;
 }
 
 .site-subline {
@@ -76,9 +56,11 @@
 /* —— Primary navigation —— */
 .primary-nav {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.2rem 0.9rem;
+  gap: 0.2rem 1.1rem;
+  min-width: 0;
 }
 
 .primary-nav-link {
@@ -107,22 +89,6 @@
   text-underline-offset: 4px;
 }
 
-.notifications-button {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  text-decoration: none;
-}
-
-.notifications-button:hover,
-.notifications-button:focus-visible {
-  color: var(--fg);
-}
-
-
 .nav-count {
   display: inline-block;
   min-width: 1.15rem;
@@ -135,122 +101,167 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* —— Chrome buttons (Settings, slash) —— */
-.chrome-btn {
-  min-height: 44px;
-  padding: 0.35rem 0.65rem;
+/* —— Header search: "/Search" box with the magnifier on the right —— */
+.header-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 14rem;
+  min-width: 10rem;
+  max-width: 24rem;
+}
+
+.header-search-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.4rem 2.5rem 0.4rem 0.8rem;
   border: 1px solid var(--header-rule);
-  background: transparent;
+  border-radius: 6px;
+  background: var(--settings-bg);
   color: var(--fg);
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  cursor: pointer;
+  font-size: 0.9rem;
 }
 
-.chrome-btn:hover,
-.chrome-btn[aria-expanded="true"] {
-  background: var(--fg);
-  color: var(--bg);
-  border-color: var(--fg);
-}
-
-.chrome-btn--slash {
-  min-width: 2.1rem;
-  padding: 0.28rem 0.55rem;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.chrome-btn-mobile-label { display: none; }
-
-/* —— Account control (header) —— */
-.account-slot {
-  display: inline-block;
-  min-height: 44px;
-  min-width: 3.5rem;
-}
-
-.account-signin {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0.35rem 0;
+.header-search-input::placeholder {
   color: var(--muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-decoration: none;
 }
 
-.account-signin:hover {
-  color: var(--fg);
+.header-search-input:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
 }
 
-.account-menu {
-  position: relative;
-}
-
-.account-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 0.25rem 0;
+.header-search-submit {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
   border: 0;
   background: transparent;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.8rem;
   cursor: pointer;
 }
 
-.account-trigger:hover,
-.account-trigger[aria-expanded="true"] {
+.header-search-submit:hover,
+.header-search-submit:focus-visible {
   color: var(--fg);
 }
 
-.account-avatar {
-  width: 1.5rem;
-  height: 1.5rem;
-  flex: none;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--header-rule);
-  background-color: var(--settings-bg);
-  background-size: cover;
-  background-position: center;
+.header-search-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  z-index: 40;
+  min-width: 18rem;
+  max-height: min(26rem, 70vh);
+  overflow-y: auto;
+  border: 1px solid var(--settings-border);
+  background: var(--settings-bg);
+}
+
+.header-search-group {
+  margin: 0;
+  padding: 0.5rem 0.8rem 0.2rem;
   color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.account-name {
-  max-width: 10rem;
-  overflow: hidden;
-  color: var(--fg);
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-.account-trigger[aria-expanded="true"] .account-name {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+.header-search-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
 }
 
-.account-caret {
-  font-size: 0.65rem;
+.header-search-item.is-active {
+  background: var(--fg);
+  color: var(--bg);
 }
 
-.account-dropdown {
+.header-search-hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.header-search-item.is-active .header-search-hint {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.header-search-empty,
+.header-search-error {
+  margin: 0;
+  padding: 0.7rem 0.8rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.header-search-error { color: var(--error); }
+
+/* —— Icon buttons (bell, messages, ⋯) —— */
+.header-icon-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.header-icon-btn:hover,
+.header-icon-btn:focus-visible,
+.header-icon-btn[aria-expanded="true"] {
+  color: var(--fg);
+}
+
+.header-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.header-badge {
+  position: absolute;
+  top: 5px;
+  right: 3px;
+  min-width: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— Header dropdowns (account, ⋯) —— */
+.header-menu {
+  position: relative;
+}
+
+.header-dropdown {
   position: absolute;
   right: 0;
   top: calc(100% + 0.3rem);
@@ -261,7 +272,7 @@
   background: var(--settings-bg);
 }
 
-.account-dropdown button {
+.header-dropdown button {
   padding: 0.6rem 0.8rem;
   border: 0;
   border-bottom: 1px solid var(--line);
@@ -273,19 +284,120 @@
   cursor: pointer;
 }
 
-.account-dropdown button:last-child {
+.header-dropdown button:last-child {
   border-bottom: 0;
 }
 
-.account-dropdown button:hover,
-.account-dropdown button:focus-visible {
+.header-dropdown button:hover,
+.header-dropdown button:focus-visible {
   background: var(--fg);
   color: var(--bg);
   outline: none;
 }
 
-.account-dropdown .account-signout {
+.header-dropdown .is-danger {
   color: var(--error);
+}
+
+/* —— Try+ upsell (freemium) —— */
+.try-plus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-right: 0.6rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.try-plus:visited { color: var(--muted); }
+
+.try-plus:hover,
+.try-plus:focus-visible {
+  color: var(--fg);
+}
+
+/* —— Account control (header) —— */
+.account-slot {
+  display: inline-block;
+  min-height: 44px;
+  min-width: 3.5rem;
+}
+
+.account-signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+}
+
+.account-signin:visited { color: var(--muted); }
+
+.account-signin:hover {
+  color: var(--fg);
+}
+
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 0.3rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.account-trigger:hover,
+.account-trigger[aria-expanded="true"] {
+  color: var(--fg);
+}
+
+.account-avatar {
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--header-rule);
+  border-radius: 50%;
+  background-color: var(--settings-bg);
+  background-size: cover;
+  background-position: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.account-avatar.is-placeholder {
+  border-color: transparent;
+  background-color: var(--line);
+}
+
+.account-name {
+  max-width: 10rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-caret {
+  display: inline-grid;
 }
 
 .persistence-status {
@@ -414,12 +526,18 @@
 
 @media (max-width: 700px) {
   .site-tools {
-    width: 100%;
-    justify-content: space-between;
+    margin-left: 0;
   }
 
   .primary-nav {
+    flex-basis: 100%;
+    order: 3;
     gap: 0.15rem 0.7rem;
+  }
+
+  .header-search {
+    flex-basis: 100%;
+    max-width: none;
   }
 
   .primary-nav-link {
@@ -435,4 +553,9 @@
   .site-footer-main {
     flex-direction: column;
   }
+}
+
+.account-trigger:hover .account-name,
+.account-trigger[aria-expanded="true"] .account-name {
+  color: var(--fg);
 }

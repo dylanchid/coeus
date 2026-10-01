@@ -17,7 +17,7 @@ import { useFeedQuery } from "@/hooks/useFeedQuery";
 import { useArchive, usePreferences } from "./AppProviders";
 import { useChrome } from "./ChromeProvider";
 import { AppShell } from "./AppShell";
-import { SearchBar } from "./SearchBar";
+import { FOCUS_HEADER_SEARCH_EVENT } from "./HeaderSearch";
 import { SourceGrid } from "./SourceGrid";
 import { StoryFeed } from "./StoryFeed";
 import { ShareSheet } from "./ShareSheet";
@@ -45,22 +45,9 @@ async function resolveEmbedCompatibility(url: string): Promise<EmbedCompatibilit
   }
 }
 
-function formatUpdated(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
 
 export function NewsApp() {
-  const { prefs, updatePrefs, flushPersistence } = usePreferences();
+  const { prefs, updatePrefs } = usePreferences();
   const { archive, updateArchive } = useArchive();
   const { slashOpen, closeSlash, setReaderSlash } = useChrome();
   const [topic, setTopic] = useState<Topic>("all");
@@ -70,15 +57,11 @@ export function NewsApp() {
   const [shareTarget, setShareTarget] = useState<{ article: Article; sourceName: string; topic: string } | null>(null);
   const [shareStatus, setShareStatus] = useState("");
   const [previewTarget, setPreviewTarget] = useState<{ article: Article; sourceName: string; sourceHomeUrl?: string; sourceTopic: string; compatibility: EmbedCompatibility } | null>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const searchHydrated = useRef(false);
 
   const focusSearch = useCallback(() => {
     closeSlash();
-    window.setTimeout(() => {
-      searchInputRef.current?.focus();
-      searchInputRef.current?.select();
-    }, 0);
+    window.dispatchEvent(new CustomEvent(FOCUS_HEADER_SEARCH_EVENT, { detail: { command: false } }));
   }, [closeSlash]);
 
   const deferredSearch = useDeferredValue(search);
@@ -108,7 +91,6 @@ export function NewsApp() {
   const hours = prefs?.hours ?? 24;
   const {
     sources: currentSources,
-    updatedAt,
     loading,
     refreshing,
     error,
@@ -320,29 +302,8 @@ export function NewsApp() {
   return (
     <AppShell
       section="reader"
-      subline={
-        <>
-          Headlines, bare. Search, arrange &amp; balance. Updated{" "}
-          {formatUpdated(updatedAt)}
-          {loading && currentSources.length === 0
-            ? " · loading…"
-            : refreshing
-              ? " · updating…"
-              : null}
-        </>
-      }
     >
       <div className="toolbar">
-        <SearchBar
-          ref={searchInputRef}
-          value={search}
-          matchCount={matchCount}
-          matchSourceCount={matchSourceCount}
-          totalCount={totalCount}
-          onChange={onSearchChange}
-          onBlur={flushPersistence}
-        />
-
         <div className="mobile-toolbar-row">
           <button type="button" onClick={() => changeTopic("all")}>
             {topic === "all"

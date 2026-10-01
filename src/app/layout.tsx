@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, IBM_Plex_Mono, Newsreader, Roboto_Slab, Syne } from "next/font/google";
+import { DM_Sans, IBM_Plex_Mono, Newsreader, Pochaevsk, Roboto_Slab, Syne } from "next/font/google";
 import { AppProviders } from "@/components/AppProviders";
 import "./globals.css";
 
@@ -10,12 +10,14 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans" });
 const newsreader = Newsreader({ subsets: ["latin"], variable: "--font-newsreader" });
+const pochaevsk = Pochaevsk({ subsets: ["latin"], weight: "400", variable: "--font-pochaevsk" });
 const robotoSlab = Roboto_Slab({ subsets: ["latin"], variable: "--font-roboto-slab" });
 const syne = Syne({ subsets: ["latin"], variable: "--font-syne" });
 const fontVariables = [
   ibmPlexMono.variable,
   dmSans.variable,
   newsreader.variable,
+  pochaevsk.variable,
   robotoSlab.variable,
   syne.variable,
 ].join(" ");
