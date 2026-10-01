@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 import { AuthProvider } from "./AuthProvider";
 import { ChromeProvider } from "./ChromeProvider";
+import { ProfileGate } from "./ProfileGate";
 import { usePreferencesProvider, type PreferencesContextValue } from "./usePreferencesProvider";
 import { useArchiveProvider, type ArchiveContextValue } from "./useArchiveProvider";
 
@@ -24,7 +25,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <PreferencesContext.Provider value={preferences}>
         <ArchiveContext.Provider value={archive}>
-          <ChromeProvider>{children}</ChromeProvider>
+          <ChromeProvider>
+            {children}
+            <ProfileGate />
+          </ChromeProvider>
         </ArchiveContext.Provider>
       </PreferencesContext.Provider>
     </AuthProvider>

@@ -296,10 +296,36 @@
   text-align: center;
 }
 
-.auth-modal .signin-panel h1.signin-wordmark {
+.auth-modal .signin-panel h1.signin-wordmark,
+.auth-modal .welcome-form .signin-wordmark {
   margin: 0 0 var(--space-xs);
   font: 400 clamp(2.4rem, 8vw, 3.2rem)/1 var(--font-pochaevsk), Georgia, serif;
   text-align: center;
+}
+
+/* Profile onboarding inside the modal: same type and rounded controls as sign-in. */
+.auth-modal .welcome-form h1 {
+  margin: 0 0 var(--space-3xs);
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.auth-modal .welcome-lede {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-meta);
+  text-align: center;
+}
+
+.auth-modal .welcome-field input,
+.auth-modal .welcome-field textarea {
+  border-radius: 10px;
+}
+
+.auth-modal .welcome-form button[type="submit"] {
+  width: 100%;
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 .auth-modal button,
