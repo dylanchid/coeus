@@ -14,7 +14,7 @@ type FieldErrors = Partial<Record<ProfileField, string>>;
  * account that already has a profile sees the same form prefilled. Signed-out
  * visitors are bounced to /signin.
  */
-export function WelcomeForm({ next: rawNext }: { next?: string }) {
+export function WelcomeForm({ next: rawNext, modal = false }: { next?: string; modal?: boolean }) {
   const next = safeInternalPath(rawNext, "/archive");
   const router = useRouter();
   const { status, profile, applyProfile } = useAuth();
@@ -84,6 +84,7 @@ export function WelcomeForm({ next: rawNext }: { next?: string }) {
       // Remount (picking up prefilled values) once an existing profile loads.
       key={profile?.id ?? "new"}
       editing={Boolean(profile)}
+      modal={modal}
       initial={{
         handle: profile?.handle ?? "",
         displayName: profile?.displayName ?? "",
@@ -99,6 +100,7 @@ export function WelcomeForm({ next: rawNext }: { next?: string }) {
 
 function ProfileFields({
   editing,
+  modal,
   initial,
   errors,
   formError,
@@ -106,6 +108,7 @@ function ProfileFields({
   onSubmit,
 }: {
   editing: boolean;
+  modal: boolean;
   initial: { handle: string; displayName: string; bio: string };
   errors: FieldErrors;
   formError: string | null;
@@ -119,6 +122,11 @@ function ProfileFields({
 
   return (
     <section className="welcome-form" aria-labelledby="welcome-heading">
+      {modal ? (
+        <p className="signin-wordmark" aria-hidden="true">
+          Coeus
+        </p>
+      ) : null}
       <h1 id="welcome-heading">{editing ? "Edit your profile" : "Choose your handle"}</h1>
       <p className="welcome-lede">
         {editing

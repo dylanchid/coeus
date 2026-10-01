@@ -16,9 +16,9 @@ test.describe("authenticated shell", () => {
   test("a signed-in account with no profile is sent through onboarding", async ({ freshUserPage: page }) => {
     await page.goto("/archive");
 
-    // ProfileGate redirects "needs-profile" to /welcome with a return path.
-    await expect(page).toHaveURL(/\/welcome\?next=/);
-    await expect(page.getByRole("heading", { name: /choose your handle/i })).toBeVisible({ timeout: 20_000 });
+    // ProfileGate blocks "needs-profile" with a modal over the current page.
+    await expect(page.getByRole("dialog", { name: /choose your handle/i })).toBeVisible({ timeout: 20_000 });
+    await expect(page).toHaveURL(/\/archive/);
 
     const handle = `fresh_${Date.now().toString(36)}`;
     await page.getByRole("textbox", { name: "Handle" }).fill(handle);

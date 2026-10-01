@@ -24,13 +24,13 @@ export function ProfileGate() {
     <div className="profile-gate-backdrop">
       <section
         ref={dialogRef}
-        className="profile-gate-modal"
+        className="profile-gate-modal auth-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-heading"
         tabIndex={-1}
       >
-        <WelcomeForm next={pathname || "/archive"} />
+        <WelcomeForm next={pathname || "/archive"} modal />
       </section>
     </div>
   );

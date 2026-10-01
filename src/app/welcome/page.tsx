@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
-import { WelcomeForm } from "@/components/WelcomeForm";
+import { WelcomeRedirect } from "@/components/WelcomeRedirect";
 
 export const metadata: Metadata = {
   title: "Welcome — Coeus",
@@ -20,7 +20,7 @@ export default async function WelcomePage({
   return (
     <AppShell section="account">
       <div className="welcome-page">
-        <WelcomeForm next={firstValue(params.next)} />
+        <WelcomeRedirect next={firstValue(params.next)} />
       </div>
     </AppShell>
   );
