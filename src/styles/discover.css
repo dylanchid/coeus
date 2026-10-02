@@ -154,3 +154,54 @@
 .following-feed-item p { margin: 0; color: var(--fg); line-height: 1.55; }
 .following-feed-kind { color: var(--accent); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; }
 .following-feed-meta { color: var(--muted); font-size: var(--text-meta); }
+
+/* —— Source detail (reader-preview frame) —— */
+.source-detail-main { display: grid; align-content: start; gap: 1.5rem; padding: 1.35rem; overflow-y: auto; border-right: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.source-detail-main h3 { margin: 0 0 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--line); color: var(--muted); font: 700 0.7rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; }
+.source-detail-note { margin: 0.4rem 0; color: var(--muted); font-size: 0.75rem; line-height: 1.5; }
+.source-detail-articles,
+.source-detail-collections { display: grid; gap: 0.7rem; margin: 0.6rem 0 0; padding: 0; list-style: none; }
+.source-detail-articles li,
+.source-detail-collections li { display: grid; gap: 0.15rem; }
+.source-detail-articles a,
+.source-detail-collections a { color: var(--fg); font: 700 0.85rem/1.35 var(--font); text-decoration: none; }
+.source-detail-articles a:hover,
+.source-detail-collections a:hover { color: var(--link); text-decoration: underline; }
+.source-detail-articles span,
+.source-detail-collections span { color: var(--muted); font-size: 0.68rem; }
+.source-detail-rating { display: grid; gap: 0.3rem; font-size: 0.7rem; color: var(--muted); }
+.source-detail-rating em { font-style: normal; opacity: 0.8; }
+.source-detail-rating select { min-height: 44px; padding: 0.5rem; border: 1px solid var(--line); border-radius: 0; background: var(--bg); color: var(--fg); font: 0.8rem var(--font); }
+@media (max-width: 760px) {
+  .source-detail-main { border-right: 0; border-bottom: 1px solid var(--line); padding: 1rem; }
+}
+.source-directory-title h2 .source-directory-name { appearance: none; -webkit-appearance: none; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; }
+.source-directory-title h2 .source-directory-name:hover { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+
+/* —— Half-star ratings —— */
+.star-rating { display: inline-flex; gap: 0.2rem; }
+.star-rating-star { --star: 2rem; position: relative; display: inline-block; width: var(--star); height: var(--star); }
+.star-rating.is-compact .star-rating-star { --star: 1.2rem; }
+.star-rating-star svg { display: block; width: var(--star); height: var(--star); }
+.star-rating .star-empty { position: absolute; inset: 0; fill: var(--line); }
+.star-rating .star-full { fill: var(--fg); }
+.star-crop { position: absolute; top: 0; bottom: 0; left: 0; overflow: hidden; }
+.star-rating-star button { position: absolute; top: 0; bottom: 0; width: 50%; padding: 0; border: 0; border-radius: 0; background: transparent; cursor: pointer; }
+.star-rating-star .is-left { left: 0; }
+.star-rating-star .is-right { right: 0; }
+.star-rating-star button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.source-directory-rating { display: grid; gap: 0.3rem; margin-top: 0.2rem; }
+
+/* —— Source ratings histogram —— */
+.source-ratings { display: grid; gap: 0.9rem; justify-items: start; }
+.source-ratings > header { display: flex; width: 100%; align-items: baseline; justify-content: space-between; padding-bottom: 0.4rem; border-bottom: 1px solid var(--line); color: var(--muted); font: 0.7rem var(--font); letter-spacing: 0.08em; text-transform: uppercase; }
+.source-ratings h3 { margin: 0; font: 700 0.7rem var(--font); letter-spacing: 0.08em; }
+.source-ratings-chart { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 0.6rem; }
+.source-ratings-chart ol { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); align-items: end; gap: 3px; height: 4.5rem; margin: 0; padding: 0; list-style: none; }
+.source-ratings-chart li { display: flex; height: 100%; align-items: flex-end; }
+.source-ratings-chart li span { display: block; width: 100%; background: var(--fg); opacity: 0.55; }
+.source-ratings-chart li:hover span { opacity: 1; }
+.source-ratings-low { color: var(--fg); font-size: 0.7rem; font-style: normal; line-height: 1; }
+.source-ratings-chart strong { display: grid; justify-items: end; gap: 0.2rem; color: var(--fg); font: 400 1.8rem/1 var(--font); }
+.source-ratings-chart strong small { font-size: 0.6rem; letter-spacing: 0.1em; }
+.source-ratings-note { margin: 0; color: var(--muted); font-size: 0.7rem; }

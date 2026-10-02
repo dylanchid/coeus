@@ -27,7 +27,7 @@ const LIMITS = [5, 10, 15, 25, 50] as const;
 const HOURS = [1, 3, 6, 12, 24, 48, 72] as const;
 const COLUMNS: ColumnCount[] = [1, 2, 3, 4];
 const SETTINGS_TABS = ["reading", "appearance", "sources", "advanced"] as const;
-type SettingsTab = (typeof SETTINGS_TABS)[number];
+export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 type Props = {
   open: boolean;
@@ -35,6 +35,8 @@ type Props = {
   onClose: () => void;
   onChange: (patch: Partial<UserPrefs>) => void;
   initialTab?: SettingsTab;
+  /** Tab requested by whoever opened the panel (e.g. the reader toolbar); applied each time it opens. */
+  tab?: SettingsTab | null;
 };
 
 function ChoiceRow<T extends string | number>({
@@ -194,6 +196,7 @@ export function SettingsPanel({
   onClose,
   onChange,
   initialTab = "reading",
+  tab = null,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -202,6 +205,12 @@ export function SettingsPanel({
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [sourceQuery, setSourceQuery] = useState("");
+  // Each time the panel opens with a requested tab, land on it (adjusted during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open && tab) setActiveTab(tab);
+  }
   const hidden = new Set(prefs.hiddenSources);
   const enabledSources = allSources(prefs.customSources).filter((source) =>
     prefs.sourceOrder.includes(source.id)

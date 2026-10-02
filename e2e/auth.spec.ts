@@ -43,6 +43,6 @@ test.describe("authenticated shell", () => {
     await signOut(page);
     await page.reload();
 
-    await expect(page.getByRole("link", { name: /log in/i })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /log in/i })).toBeVisible({ timeout: 20_000 });
   });
 });
