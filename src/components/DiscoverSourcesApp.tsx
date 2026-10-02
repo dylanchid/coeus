@@ -7,6 +7,8 @@ import { AddSourceForm } from "./AddSourceForm";
 import { usePreferences } from "./AppProviders";
 import { AppShell } from "./AppShell";
 import { ExternalLinkHint } from "./ExternalLinkHint";
+import { SourceDetail } from "./SourceDetail";
+import { StarRating } from "./StarRating";
 
 const CATEGORY_GROUPS = [
   { id: "tech", label: "Technology", items: ["AI", "security", "open source", "hardware", "programming"] },
@@ -124,6 +126,7 @@ export function SourcesApp() {
   const [sourceType, setSourceType] = useState("all");
   const [cadence, setCadence] = useState("all");
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const updatePrefs = (update: (current: UserPrefs) => UserPrefs) => {
     setSharedPrefs(update);
@@ -157,6 +160,8 @@ export function SourcesApp() {
   const activeFilterCount = [language, region, sourceType, cadence].filter(
     (value) => value !== "all"
   ).length;
+
+  const detailSource = detailId ? SOURCE_CATALOG.find((source) => source.id === detailId) : undefined;
 
   const toggleSource = (id: string) => {
     updatePrefs((current) => {
@@ -246,7 +251,7 @@ export function SourcesApp() {
         <section className="discover-results" aria-live="polite">
           <header>
             <p><strong>{filtered.length}</strong> {filtered.length === 1 ? "source" : "sources"}</p>
-            <p>Ratings are yours alone · Directory ranks are editorial</p>
+            <p>Community ratings need a sign-in · Directory ranks are editorial</p>
           </header>
           {filtered.length ? (
             <ol className="source-directory">
@@ -258,7 +263,9 @@ export function SourcesApp() {
                     <span className="source-directory-rank">{String(index + 1).padStart(2, "0")}</span>
                     <div className="source-directory-main">
                       <div className="source-directory-title">
-                        <h2>{source.name}</h2>
+                        <h2>
+                          <button type="button" className="source-directory-name" aria-haspopup="dialog" onClick={() => setDetailId(source.id)}>{source.name}</button>
+                        </h2>
                         <span>{source.region} · {source.language}</span>
                       </div>
                       <p>{source.description}</p>
@@ -270,13 +277,10 @@ export function SourcesApp() {
                     <div className="source-directory-meta">
                       <span className="feed-ready"><i aria-hidden="true" /> Feed available</span>
                       <span>{source.cadence} · {source.depth}</span>
-                      <label>
+                      <div className="source-directory-rating">
                         <span>Your rating</span>
-                        <select aria-label={`Your rating for ${source.name}`} value={rating} onChange={(event) => rateSource(source.id, Number(event.target.value))}>
-                          <option value="0">Unrated</option>
-                          {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value} / 5</option>)}
-                        </select>
-                      </label>
+                        <StarRating size="compact" value={rating} onChange={(value) => rateSource(source.id, value)} label={`Your rating for ${source.name}`} />
+                      </div>
                     </div>
                     <div className="source-directory-actions">
                       <button type="button" className={isEnabled ? "is-added" : undefined} onClick={() => toggleSource(source.id)}>{isEnabled ? "Added ✓" : "+ Add"}</button>
@@ -295,6 +299,16 @@ export function SourcesApp() {
         </section>
       </div>
       </div>
+      {detailSource ? (
+        <SourceDetail
+          source={detailSource}
+          isAdded={enabled.has(detailSource.id)}
+          rating={prefs.sourceRatings[detailSource.id] ?? 0}
+          onToggle={() => toggleSource(detailSource.id)}
+          onRate={(value) => rateSource(detailSource.id, value)}
+          onClose={() => setDetailId(null)}
+        />
+      ) : null}
     </AppShell>
   );
 }

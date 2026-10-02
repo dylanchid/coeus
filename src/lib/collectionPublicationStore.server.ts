@@ -41,6 +41,8 @@ export interface PublicCollectionReader {
    * reachable by direct link but never appears in a discovery listing.
    */
   listPublic(limit: number, offset: number): Promise<{ items: CollectionPublicationSummary[]; hasMore: boolean }>;
+  /** Public collections holding at least one item from the named source, newest first. */
+  listPublicBySource(sourceName: string, limit: number): Promise<CollectionPublicationSummary[]>;
 }
 
 export interface CollectionFollowStore {
@@ -168,6 +170,47 @@ export class SupabaseCollectionPublicationStore
       })),
       hasMore,
     };
+  }
+
+  async listPublicBySource(sourceName: string, limit: number): Promise<CollectionPublicationSummary[]> {
+    const name = sourceName.trim();
+    if (!name) return [];
+    const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), MAX_DISCOVER_PAGE_SIZE);
+    // Item rows are readable only for live public/unlisted publications; the
+    // second query re-applies visibility = 'public' so unlisted never leaks.
+    const { data: itemRows, error: itemError } = await this.supabase
+      .from("collection_publication_items")
+      .select("publication_id")
+      .eq("source_name", name)
+      .limit(500);
+    if (itemError) throw itemError;
+    const ids = [...new Set(((itemRows ?? []) as { publication_id: string }[]).map((row) => String(row.publication_id)))];
+    if (!ids.length) return [];
+    const { data, error } = await this.supabase
+      .from("collection_publications")
+      .select("id,slug,name,description,curator_note,attribution,published_at,updated_at")
+      .in("id", ids)
+      .eq("visibility", "public")
+      .is("unpublished_at", null)
+      .order("published_at", { ascending: false })
+      .limit(boundedLimit);
+    if (error) throw error;
+    const rows = (data ?? []) as Record<string, unknown>[];
+    const counts = new Map<string, number>();
+    for (const item of (await this.collectionItems(rows.map((row) => String(row.id)), "publication_id")) as { publication_id: string }[]) {
+      counts.set(item.publication_id, (counts.get(item.publication_id) ?? 0) + 1);
+    }
+    return rows.map((entry) => ({
+      id: String(entry.id),
+      slug: String(entry.slug),
+      name: String(entry.name),
+      description: String(entry.description ?? ""),
+      curatorNote: String(entry.curator_note ?? ""),
+      attribution: String(entry.attribution ?? ""),
+      publishedAt: String(entry.published_at),
+      updatedAt: String(entry.updated_at),
+      itemCount: counts.get(String(entry.id)) ?? 0,
+    }));
   }
 
   async follow(followerId: string, publicationId: string): Promise<void> {

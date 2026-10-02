@@ -121,6 +121,22 @@ export async function handleDiscoverCollections(
   }
 }
 
+/** Unauthenticated: public collections that include items from one source. */
+export async function handleCollectionsBySource(
+  request: Request,
+  dependencies: DiscoverCollectionsApiDependencies
+): Promise<Response> {
+  const url = new URL(request.url);
+  const name = (url.searchParams.get("name") ?? "").trim();
+  if (!name || name.length > 200) return errorResponse("A source name is required", 400);
+  try {
+    const collections = await dependencies.store.listPublicBySource(name, positiveInt(url.searchParams.get("limit"), 5) || 5);
+    return Response.json({ collections }, { headers: publicHeaders() });
+  } catch {
+    return errorResponse("Collections are unavailable", 503);
+  }
+}
+
 export async function handleFollowCollection(
   request: Request,
   dependencies: CollectionFollowApiDependencies
