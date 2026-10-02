@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  handleCollectionsBySource,
   handleDiscoverCollections,
   handleFollowCollection,
   handleListFollowed,
@@ -60,6 +61,11 @@ class MemoryPublicationStore {
 
   async getBySlug(slug) {
     return [...this.publications.values()].find((entry) => entry.slug === slug && !entry.unpublishedAt) ?? null;
+  }
+
+  async listPublicBySource(sourceName, limit) {
+    this.lastSourceQuery = { sourceName, limit };
+    return [];
   }
 
   async listPublic(limit, offset) {
@@ -240,6 +246,17 @@ test("handleDiscoverCollections returns 503 when the store fails", async () => {
   store.failNext.listPublic = new Error("db unavailable");
   const response = await handleDiscoverCollections(new Request("http://localhost/api/collections/discover"), { store });
   assert.equal(response.status, 503);
+});
+
+test("handleCollectionsBySource requires a name and forwards a bounded query", async () => {
+  const store = new MemoryPublicationStore();
+  const missing = await handleCollectionsBySource(new Request("http://localhost/api/sources/collections"), { store });
+  assert.equal(missing.status, 400);
+
+  const response = await handleCollectionsBySource(new Request("http://localhost/api/sources/collections?name=Aeon&limit=3"), { store });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { collections: [] });
+  assert.deepEqual(store.lastSourceQuery, { sourceName: "Aeon", limit: 3 });
 });
 
 test("handleFollowCollection requires auth, validates the publicationId, and follows", async () => {

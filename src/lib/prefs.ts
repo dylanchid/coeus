@@ -100,7 +100,8 @@ function sanitizeSourceRatings(value: unknown): Record<string, number> {
   const ratings: Record<string, number> = {};
   for (const id of catalogSourceIds()) {
     const rating = Number(raw[id]);
-    if (Number.isInteger(rating) && rating >= 1 && rating <= 5) {
+    // Half-star steps: 0.5, 1, … 5. Older whole-number ratings stay valid.
+    if (Number.isInteger(rating * 2) && rating >= 0.5 && rating <= 5) {
       ratings[id] = rating;
     }
   }
