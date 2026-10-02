@@ -133,8 +133,9 @@ select is(
 insert into public.profile_follows (follower_id, followee_id)
 values ('44444444-4444-4444-4444-444444444444', '11111111-1111-1111-1111-111111111111');
 select is(
-  (select actor_id from public.notifications where kind = 'follow' order by created_at desc limit 1),
-  null::uuid,
+  -- Not "latest by created_at": every row in this transaction shares one now().
+  (select count(*) from public.notifications where kind = 'follow' and actor_id is null),
+  1::bigint,
   'a pre-onboarding follow stores a null actor profile'
 );
 
