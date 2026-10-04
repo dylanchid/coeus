@@ -8,7 +8,7 @@ import {
   type LoadedReply,
   type ProfileInteractionCard,
   type ProfileReplyThread,
-} from "./conversationProfile.ts";
+} from "./conversations/conversationProfile.ts";
 import {
   DEFAULT_SECTION_SWITCHES,
   visibleSections,

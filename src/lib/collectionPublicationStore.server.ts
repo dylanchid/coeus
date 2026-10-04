@@ -12,7 +12,7 @@ import {
   type CollectionPublicationSummary,
   type PublishCollectionRequest,
 } from "./collectionPublication.ts";
-import { actorCanReachTarget } from "./conversation.ts";
+import { actorCanReachTarget } from "./conversations/conversation.ts";
 import {
   CollectionForbiddenError,
   CollectionNotFoundError,

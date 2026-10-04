@@ -23,7 +23,7 @@ import {
   toCardTarget,
   type CardTarget,
   type LoadedReply,
-} from "./conversationProfile.ts";
+} from "./conversations/conversationProfile.ts";
 import type { Viewer, Visibility } from "./visibility.ts";
 
 /** One reply on the thread page. Flattened to a chronological list — depth is a

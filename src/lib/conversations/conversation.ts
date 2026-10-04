@@ -13,7 +13,7 @@
  * `node --test` with no database.
  */
 
-import { canSee, type Viewer, type Visibility } from "./visibility.ts";
+import { canSee, type Viewer, type Visibility } from "../visibility.ts";
 
 /** What a like / repost / reply points at. Mirrors the `public.target_type` enum. */
 export type TargetType = "collection" | "post";

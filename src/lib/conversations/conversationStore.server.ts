@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CreateReplyRequest, ResolvedTarget, TargetRef, TargetType } from "./conversation.ts";
 import { ParentReplyMismatchError, ReplyNotFoundError, TargetNotFoundError } from "./conversationErrors.ts";
-import type { Visibility } from "./visibility.ts";
+import type { Visibility } from "../visibility.ts";
 
 export interface CreatedRepost {
   repostId: string;

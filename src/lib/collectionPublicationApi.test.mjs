@@ -11,7 +11,7 @@ import {
   handleUnfollowCollection,
   handleUnpublishCollection,
 } from "./collectionPublicationApi.ts";
-import { actorCanReachTarget } from "./conversation.ts";
+import { actorCanReachTarget } from "./conversations/conversation.ts";
 import { CollectionForbiddenError, CollectionNotFoundError } from "./collectionPublicationErrors.ts";
 import { filterFollowedCollections } from "./collectionPublication.ts";
 

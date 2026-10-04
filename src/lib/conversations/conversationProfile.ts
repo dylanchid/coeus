@@ -15,8 +15,8 @@
  * came back empty the row is an orphan and drops out here.
  */
 
-import { canSee, canSeeIndirect, type Viewer, type Visibility } from "./visibility.ts";
-import type { ProfileSectionSwitches } from "./profileSections.ts";
+import { canSee, canSeeIndirect, type Viewer, type Visibility } from "../visibility.ts";
+import type { ProfileSectionSwitches } from "../profileSections.ts";
 
 // ── loaded (raw) shapes ────────────────────────────────────────────────────
 

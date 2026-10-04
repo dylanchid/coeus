@@ -3,7 +3,7 @@
 import { memo, useMemo, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { formatEngagement } from "@/lib/engagement";
+import { formatEngagement } from "@/lib/conversations/engagement";
 import type { Article, SourceFeed } from "@/lib/types";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 

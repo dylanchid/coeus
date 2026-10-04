@@ -1,6 +1,6 @@
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { VisibilityGlyph } from "./VisibilityGlyph";
-import type { CardTarget, ProfileInteractionCard } from "@/lib/conversationProfile";
+import type { CardTarget, ProfileInteractionCard } from "@/lib/conversations/conversationProfile";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
