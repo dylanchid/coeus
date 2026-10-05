@@ -1,5 +1,5 @@
-import { handleUnfollowCollection } from "@/lib/collectionPublicationApi";
-import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
+import { handleUnfollowCollection } from "@/lib/publications/collectionPublicationApi";
+import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

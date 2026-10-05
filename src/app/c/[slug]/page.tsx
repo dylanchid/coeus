@@ -3,12 +3,12 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FollowButton } from "@/components/FollowButton";
-import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
+import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { canSee, type Viewer } from "@/lib/visibility";
 import { ExternalLinkHint } from "@/components/ExternalLinkHint";
-import type { CollectionPublication } from "@/lib/collectionPublication";
+import type { CollectionPublication } from "@/lib/publications/collectionPublication";
 
 export const dynamic = "force-dynamic";
 

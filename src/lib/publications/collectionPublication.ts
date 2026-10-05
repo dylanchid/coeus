@@ -1,6 +1,6 @@
-import { slugifyId } from "./sources.ts";
-import type { ArchiveCollection, ArchiveItem } from "./archiveTypes.ts";
-import { actorCanReachTarget } from "./conversations/conversation.ts";
+import { slugifyId } from "../sources.ts";
+import type { ArchiveCollection, ArchiveItem } from "../archive/archiveTypes.ts";
+import { actorCanReachTarget } from "../conversations/conversation.ts";
 
 /**
  * Object-level visibility, matching the four-value `public.visibility` Postgres

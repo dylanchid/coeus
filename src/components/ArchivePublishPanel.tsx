@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
+import type { CollectionPublication, PublicationVisibility } from "@/lib/publications/collectionPublication";
 import { VisibilitySelect } from "./VisibilitySelect";
 
 /** Key this component by collection id so its drafts reset on collection changes. */

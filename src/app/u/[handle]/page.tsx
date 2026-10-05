@@ -8,7 +8,7 @@ import { decodeProfileFeedCursor, PROFILE_FEED_PAGE_SIZE } from "@/lib/profileFe
 import { loadProfileIdentity } from "@/lib/profilePageLoader.server";
 import { SupabaseProfileStore } from "@/lib/profileStore.server";
 import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
-import { SupabasePostPublicationStore } from "@/lib/postPublicationStore.server";
+import { SupabasePostPublicationStore } from "@/lib/publications/postPublicationStore.server";
 import { SupabaseConversationProfileReader } from "@/lib/conversations/conversationProfileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import type { ReplyComposeTarget } from "@/components/ProfileReplies";

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "./archiveSync.ts";
+import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "../archiveSync.ts";
 import {
   derivePublicationSnapshot,
   filterFollowedCollections,
@@ -12,14 +12,14 @@ import {
   type CollectionPublicationSummary,
   type PublishCollectionRequest,
 } from "./collectionPublication.ts";
-import { actorCanReachTarget } from "./conversations/conversation.ts";
+import { actorCanReachTarget } from "../conversations/conversation.ts";
 import {
   CollectionForbiddenError,
   CollectionNotFoundError,
   SlugExhaustedError,
 } from "./collectionPublicationErrors.ts";
-import { readAllPages } from "./pagedRead.ts";
-import type { Visibility } from "./visibility.ts";
+import { readAllPages } from "../pagedRead.ts";
+import type { Visibility } from "../visibility.ts";
 
 export { CollectionForbiddenError, CollectionNotFoundError, SlugExhaustedError };
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDemoArchive } from "./archiveFixtures.ts";
+import { createDemoArchive } from "../archiveFixtures.ts";
 import {
   derivePublicationSnapshot,
   filterFollowedCollections,

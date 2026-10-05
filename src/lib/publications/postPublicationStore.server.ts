@@ -5,17 +5,17 @@
 // no route or component value-imports it. See the server-only-vs-node-test note.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseArchiveSyncSnapshot } from "./archiveSync.ts";
+import { parseArchiveSyncSnapshot } from "../archiveSync.ts";
 import { derivePostSnapshot, parsePostSnapshot, type Post, type PublishPostRequest } from "./post.ts";
 import { PostItemNotFoundError } from "./postErrors.ts";
-import type { OwnedPost } from "./publicProfile.ts";
+import type { OwnedPost } from "../publicProfile.ts";
 import {
   encodeProfileFeedCursor,
   type ProfileFeedPage,
   type ProfileFeedPageRequest,
-} from "./profileFeedCursor.ts";
-import type { Visibility } from "./visibility.ts";
-import type { Viewer } from "./visibility.ts";
+} from "../profileFeedCursor.ts";
+import type { Visibility } from "../visibility.ts";
+import type { Viewer } from "../visibility.ts";
 
 export { PostItemNotFoundError };
 

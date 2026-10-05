@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Article, SourceDef } from "@/lib/types";
-import type { CollectionPublicationSummary } from "@/lib/collectionPublication";
+import type { CollectionPublicationSummary } from "@/lib/publications/collectionPublication";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { useArchive } from "./AppProviders";
 import { ExternalLinkHint } from "./ExternalLinkHint";
