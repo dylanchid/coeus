@@ -3,7 +3,7 @@
 Status: accepted (2026-09-09). Defines `bareaga_web-4po`. This note describes
 the intended shape of `src/lib`; the code does not fully match it yet. Modules
 move toward it **opportunistically, in small reviewable slices** — there is no
-flag-day directory rewrite.
+flag-day directory rewrite. See [Migration status](#migration-status).
 
 ## Why
 
@@ -87,3 +87,25 @@ need one, the thing you need is a core type — lift it.
   `bareaga_web-56v`): domain-core modules may not import `server-only` / `next`
   / a `*.server` / a `*Api`, and shared component code may not value-import a
   `*.server` module.
+
+## Migration status
+
+Each domain lives in `src/lib/<domain>/`, and `test:unit` globs that folder.
+Domain slices (epic `bareaga_web-a2n`):
+
+| Domain | Folder | Bead | Notes |
+|---|---|---|---|
+| archive | `src/lib/archive/` | a2n.2 | Compatibility shims remain at `src/lib/archive*.ts`. |
+| feeds | `src/lib/feeds/` | a2n.1, a2n.7 | `feed*`, `followedFeed*`, `ranking`, `source*`, `search`, `summary`, `slashCommands`, `fuzzy`. |
+| destinations | `src/lib/destinations/` | a2n.3 | `deliveryLog` stays a root primitive. |
+| conversations | `src/lib/conversations/` | a2n.4 | |
+| publications | `src/lib/publications/` | a2n.5 | |
+| profiles | `src/lib/profiles/` | a2n.6 | |
+
+Still at the `src/lib` root and not yet assigned to a domain: `publicProfile`
+(shared derive layer for profiles + publications), `threadPage*`,
+`notifications*`, `articleIndex`, `articleMetadata`, `articlePreview*`,
+`embedCompatibility.server`, `readerExtract.server`, `readerView*`,
+`imageProxySignature.server`, `devAuth.server`, `storageGrowth`. Decide a home
+(or promote to a primitive) when work next touches them; add a row to the
+domain table in the same PR.
