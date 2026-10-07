@@ -1,5 +1,5 @@
 import { avatarInitials, generativeCover } from "@/lib/profiles/profileMedia";
-import type { PublicProfileView } from "@/lib/publicProfile";
+import type { PublicProfileView } from "@/lib/profiles/publicProfile";
 
 /**
  * Cover + overlapping avatar + identity (name, @handle, location). Server

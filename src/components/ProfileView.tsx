@@ -9,7 +9,7 @@ import { ProfileTabs } from "./ProfileTabs";
 import { ProfileFeedPagination } from "./ProfileFeedPagination";
 import type { ProfileTabId, ProfileTabStates, TabState } from "@/lib/profiles/profileTabs";
 import type { ProfileSectionSwitches } from "@/lib/profiles/profileSections";
-import type { ProfileCollectionCard, ProfilePostCard, PublicProfileView } from "@/lib/publicProfile";
+import type { ProfileCollectionCard, ProfilePostCard, PublicProfileView } from "@/lib/profiles/publicProfile";
 
 /** One cursor page of a paginated tab feed, resolved by the page for the
  * active Collections / Posts tab. `cards` is already viewer-filtered. */

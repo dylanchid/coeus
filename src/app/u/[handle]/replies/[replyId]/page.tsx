@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ProfileThread } from "@/components/ProfileThread";
-import { loadThreadPage } from "@/lib/threadPageLoader.server";
+import { loadThreadPage } from "@/lib/conversations/threadPageLoader.server";
 import { loadProfileIdentity } from "@/lib/profiles/profilePageLoader.server";
 
 export const dynamic = "force-dynamic";

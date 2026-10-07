@@ -1,17 +1,17 @@
 import "server-only";
 
-import { loadProfileIdentity } from "./profiles/profilePageLoader.server.ts";
+import { loadProfileIdentity } from "../profiles/profilePageLoader.server.ts";
 import {
   SupabaseConversationProfileReader,
   THREAD_PAGE_SIZE,
-} from "./conversations/conversationProfileStore.server.ts";
-import { SupabaseProfileFollowStore } from "./profiles/profileFollowStore.server.ts";
-import { authenticateArchiveRequest, createAdminSupabaseClient } from "./supabase.server.ts";
-import { visibleSections } from "./profiles/profileSections.ts";
-import { decodeProfileFeedCursor } from "./profiles/profileFeedCursor.ts";
+} from "./conversationProfileStore.server.ts";
+import { SupabaseProfileFollowStore } from "../profiles/profileFollowStore.server.ts";
+import { authenticateArchiveRequest, createAdminSupabaseClient } from "../supabase.server.ts";
+import { visibleSections } from "../profiles/profileSections.ts";
+import { decodeProfileFeedCursor } from "../profiles/profileFeedCursor.ts";
 import { deriveThreadView, type ThreadView } from "./threadPage.ts";
-import type { Profile } from "./profiles/profile.ts";
-import type { Viewer } from "./visibility.ts";
+import type { Profile } from "../profiles/profile.ts";
+import type { Viewer } from "../visibility.ts";
 
 /**
  * The data load for /@handle/replies/[replyId] — the dedicated thread page that
