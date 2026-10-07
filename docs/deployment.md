@@ -120,7 +120,7 @@ staged so the code tolerates both schemas across the rollback window.
 releases its lease on TTL expiry; no manual cleanup is required.
 
 **Sync rate limit / quotas** — tunable via the constants in
-[`src/lib/archiveBudget.ts`](../src/lib/archiveBudget.ts); a code deploy is the
+[`src/lib/archive/archiveBudget.ts`](../src/lib/archive/archiveBudget.ts); a code deploy is the
 only way to change them, so a rollback restores the previous limits.
 
 ## Accepted deferred risks
