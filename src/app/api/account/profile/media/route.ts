@@ -1,5 +1,5 @@
-import { handleUploadProfileMedia } from "@/lib/profileMediaApi";
-import { SupabaseProfileStore } from "@/lib/profileStore.server";
+import { handleUploadProfileMedia } from "@/lib/profiles/profileMediaApi";
+import { SupabaseProfileStore } from "@/lib/profiles/profileStore.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 

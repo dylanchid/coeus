@@ -1,4 +1,4 @@
-import { isPublicationVisibility, type PublicationVisibility } from "./publications/collectionPublication.ts";
+import { isPublicationVisibility, type PublicationVisibility } from "../publications/collectionPublication.ts";
 
 /**
  * The profile page's section switches: five booleans plus the Likes list's own

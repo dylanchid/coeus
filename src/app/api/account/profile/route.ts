@@ -1,5 +1,5 @@
-import { handleGetProfile, handleSaveProfile } from "@/lib/profileApi";
-import { SupabaseProfileStore } from "@/lib/profileStore.server";
+import { handleGetProfile, handleSaveProfile } from "@/lib/profiles/profileApi";
+import { SupabaseProfileStore } from "@/lib/profiles/profileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, newCorrelationId, requestCorrelationId } from "@/lib/serverLog";
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BIO_MAX, DISPLAY_NAME_MAX, validateProfileInput, type Profile, type ProfileField } from "@/lib/profile";
+import { BIO_MAX, DISPLAY_NAME_MAX, validateProfileInput, type Profile, type ProfileField } from "@/lib/profiles/profile";
 import { safeInternalPath } from "@/lib/safeRedirect";
 import { useAuth } from "./AuthProvider";
 

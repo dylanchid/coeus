@@ -1,4 +1,4 @@
-import type { ProfileSectionSwitches } from "@/lib/profileSections";
+import type { ProfileSectionSwitches } from "@/lib/profiles/profileSections";
 import type { PublicProfileView } from "@/lib/publicProfile";
 import type { CardTarget } from "@/lib/conversations/conversationProfile";
 import { SectionSwitches } from "./SectionSwitches";

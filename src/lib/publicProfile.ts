@@ -1,4 +1,4 @@
-import type { Profile, ProfileLink } from "./profile.ts";
+import type { Profile, ProfileLink } from "./profiles/profile.ts";
 import {
   deriveInteractionFeed,
   deriveReplyThreads,
@@ -14,7 +14,7 @@ import {
   visibleSections,
   type ProfileSectionSwitches,
   type VisibleSections,
-} from "./profileSections.ts";
+} from "./profiles/profileSections.ts";
 import { isListable, type Viewer, type Visibility } from "./visibility.ts";
 
 /**

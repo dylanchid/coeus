@@ -1,4 +1,4 @@
-import { VISIBILITIES, type Visibility } from "./visibility.ts";
+import { VISIBILITIES, type Visibility } from "../visibility.ts";
 
 /**
  * The colour-free glyph encoding for the four visibility tiers, shared by every

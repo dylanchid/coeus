@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { VISIBILITY_GLYPHS, visibilityChoices } from "./profileVisibilityGlyph.ts";
-import { VISIBILITIES } from "./visibility.ts";
+import { VISIBILITIES } from "../visibility.ts";
 
 test("every visibility tier maps to a non-empty glyph and label", () => {
   for (const visibility of VISIBILITIES) {

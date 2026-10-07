@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { avatarInitials } from "@/lib/profileMedia";
-import type { FollowedProfile } from "@/lib/profileFollow";
-import type { FollowDirection } from "@/lib/followListPage.server";
+import { avatarInitials } from "@/lib/profiles/profileMedia";
+import type { FollowedProfile } from "@/lib/profiles/profileFollow";
+import type { FollowDirection } from "@/lib/profiles/followListPage.server";
 
 /**
  * The followers / following list surface. Server component, zero client JS.

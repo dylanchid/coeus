@@ -6,7 +6,7 @@ import {
   deriveReplyThreads,
   likesSurface,
 } from "./conversationProfile.ts";
-import { DEFAULT_SECTION_SWITCHES } from "../profileSections.ts";
+import { DEFAULT_SECTION_SWITCHES } from "../profiles/profileSections.ts";
 
 const PROFILE_OWNER = { kind: "owner", id: "profile-owner" };
 const ANON = { kind: "anonymous" };

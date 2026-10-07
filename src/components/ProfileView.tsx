@@ -7,8 +7,8 @@ import { ProfileReplies, type ReplyComposeTarget } from "./ProfileReplies";
 import { ProfileSidebar } from "./ProfileSidebar";
 import { ProfileTabs } from "./ProfileTabs";
 import { ProfileFeedPagination } from "./ProfileFeedPagination";
-import type { ProfileTabId, ProfileTabStates, TabState } from "@/lib/profileTabs";
-import type { ProfileSectionSwitches } from "@/lib/profileSections";
+import type { ProfileTabId, ProfileTabStates, TabState } from "@/lib/profiles/profileTabs";
+import type { ProfileSectionSwitches } from "@/lib/profiles/profileSections";
 import type { ProfileCollectionCard, ProfilePostCard, PublicProfileView } from "@/lib/publicProfile";
 
 /** One cursor page of a paginated tab feed, resolved by the page for the

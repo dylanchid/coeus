@@ -1,5 +1,5 @@
-import { handleUnfollowProfile } from "@/lib/profileFollowApi";
-import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
+import { handleUnfollowProfile } from "@/lib/profiles/profileFollowApi";
+import { SupabaseProfileFollowStore } from "@/lib/profiles/profileFollowStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

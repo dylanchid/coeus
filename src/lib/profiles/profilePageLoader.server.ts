@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { SupabaseProfileStore } from "./profileStore.server.ts";
-import { createAdminSupabaseClient } from "./supabase.server.ts";
+import { createAdminSupabaseClient } from "../supabase.server.ts";
 
 /**
  * The one handle → profile lookup shared by every profile surface:

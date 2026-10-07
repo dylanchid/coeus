@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { profileTabs, type ProfileTabId, type ProfileTabStates } from "@/lib/profileTabs";
+import { profileTabs, type ProfileTabId, type ProfileTabStates } from "@/lib/profiles/profileTabs";
 import { ProfileFollowButton } from "./ProfileFollowButton";
 import type { ProfileFollowContext } from "./ProfileView";
 

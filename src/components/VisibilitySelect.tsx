@@ -1,6 +1,6 @@
 "use client";
 
-import { visibilityChoices } from "@/lib/profileVisibilityGlyph";
+import { visibilityChoices } from "@/lib/profiles/profileVisibilityGlyph";
 import type { Visibility } from "@/lib/visibility";
 
 /**

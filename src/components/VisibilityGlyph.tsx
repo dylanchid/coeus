@@ -1,4 +1,4 @@
-import { VISIBILITY_GLYPHS } from "@/lib/profileVisibilityGlyph";
+import { VISIBILITY_GLYPHS } from "@/lib/profiles/profileVisibilityGlyph";
 import type { Visibility } from "@/lib/visibility";
 
 /**

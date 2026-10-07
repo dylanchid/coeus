@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decodeProfileFeedCursor, encodeProfileFeedCursor, type ProfileFeedCursor } from "./profileFeedCursor.ts";
 import type { FollowedProfile } from "./profileFollow.ts";
-import { readAllPages } from "./pagedRead.ts";
+import { readAllPages } from "../pagedRead.ts";
 
 /** One page of a follower / following list. `nextCursor` is the composite
  * `(created_at, id)` cursor for the last row on this page. */

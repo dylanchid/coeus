@@ -3,7 +3,7 @@ import "server-only";
 import { decodeProfileFeedCursor } from "./profileFeedCursor.ts";
 import { loadProfileIdentity } from "./profilePageLoader.server.ts";
 import { SupabaseProfileFollowStore, type FollowPage } from "./profileFollowStore.server.ts";
-import { authenticateArchiveRequest, createAdminSupabaseClient } from "./supabase.server.ts";
+import { authenticateArchiveRequest, createAdminSupabaseClient } from "../supabase.server.ts";
 import { visibleSections } from "./profileSections.ts";
 import type { Profile } from "./profile.ts";
 

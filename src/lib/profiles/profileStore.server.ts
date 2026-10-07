@@ -7,10 +7,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { HandleChangeRateLimitedError, HandleQuarantinedError, HandleTakenError } from "./profileErrors.ts";
 import { HANDLE_PATTERN, normalizeHandle, validateProfileLinks, type Profile, type ProfileInput, type ProfileLink } from "./profile.ts";
-import { isPublicationVisibility } from "./publications/collectionPublication.ts";
+import { isPublicationVisibility } from "../publications/collectionPublication.ts";
 import type { ProfileSectionsPatch, ProfileSectionSwitches } from "./profileSections.ts";
-import type { OwnedPublication } from "./publicProfile.ts";
-import type { Viewer } from "./visibility.ts";
+import type { OwnedPublication } from "../publicProfile.ts";
+import type { Viewer } from "../visibility.ts";
 import {
   encodeProfileFeedCursor,
   type ProfileFeedPage,

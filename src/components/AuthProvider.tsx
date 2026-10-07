@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase.client";
-import type { Profile } from "@/lib/profile";
+import type { Profile } from "@/lib/profiles/profile";
 
 export type OAuthProvider = "apple" | "github" | "google" | "x";
 
