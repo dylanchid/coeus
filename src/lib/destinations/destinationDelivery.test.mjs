@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { applyArchiveSyncBatch, createInitialSyncSnapshot } from "./archiveSync.ts";
-import { createDemoArchive } from "./archiveFixtures.ts";
+import { applyArchiveSyncBatch, createInitialSyncSnapshot } from "../archive/archiveSync.ts";
+import { createDemoArchive } from "../archive/archiveFixtures.ts";
 import { computeDirtyItems, runDestinationDelivery } from "./destinationDelivery.ts";
 
 function delivery(itemId, lastDeliveredRevision, externalRef, status = "delivered") {

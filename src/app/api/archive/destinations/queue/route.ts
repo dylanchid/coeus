@@ -1,9 +1,9 @@
 import { QueueClient } from "@vercel/queue";
 import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
-import { destinationQueueEnabled, isDestinationDeliveryRequest, processDestinationDeliveryRequest } from "@/lib/destinationQueue.server";
+import { destinationQueueEnabled, isDestinationDeliveryRequest, processDestinationDeliveryRequest } from "@/lib/destinations/destinationQueue.server";
 import { logDelivery } from "@/lib/deliveryLog";
-import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
+import { runDestinationWorkerTick } from "@/lib/destinations/destinationWorker.server";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
 import { createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";

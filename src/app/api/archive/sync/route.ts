@@ -2,9 +2,9 @@ import { after } from "next/server";
 import { handleArchiveSync } from "@/lib/archive/archiveApi";
 import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
 import { logDelivery } from "@/lib/deliveryLog";
-import { enqueueDestinationDelivery, newDestinationDeliveryRequest } from "@/lib/destinationQueue.server";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
-import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
+import { enqueueDestinationDelivery, newDestinationDeliveryRequest } from "@/lib/destinations/destinationQueue.server";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
+import { runDestinationWorkerTick } from "@/lib/destinations/destinationWorker.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 

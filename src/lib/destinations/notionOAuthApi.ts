@@ -1,4 +1,4 @@
-import { createOAuthStateNonce, OAUTH_STATE_MAX_AGE_MS, signOAuthState, verifyOAuthState } from "./oauthState.server.ts";
+import { createOAuthStateNonce, OAUTH_STATE_MAX_AGE_MS, signOAuthState, verifyOAuthState } from "../oauthState.server.ts";
 import type { DestinationsStore } from "./destinationsStore.server.ts";
 import type { NotionOAuthStateStore } from "./notionOAuthStateStore.server.ts";
 

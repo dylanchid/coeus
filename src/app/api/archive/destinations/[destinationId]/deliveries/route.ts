@@ -1,5 +1,5 @@
-import { handleListDeliveries } from "@/lib/destinationsApi";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
+import { handleListDeliveries } from "@/lib/destinations/destinationsApi";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

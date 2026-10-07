@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { QueueClient } from "@vercel/queue";
-import { logDelivery } from "./deliveryLog.ts";
+import { logDelivery } from "../deliveryLog.ts";
 import { MAX_ITEMS_PER_TICK, type WorkerTickResult } from "./destinationWorker.server.ts";
 
 export const DESTINATION_DELIVERY_QUEUE = "destination_delivery";

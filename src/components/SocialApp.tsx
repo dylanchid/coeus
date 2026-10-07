@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { type ArchiveData, type ArchiveItem } from "@/lib/archive";
-import { isShareCancellation } from "@/lib/shareDestination";
+import { isShareCancellation } from "@/lib/destinations/shareDestination";
 import { useArchive } from "./AppProviders";
 import { AppShell } from "./AppShell";
 import { ExternalLinkHint } from "./ExternalLinkHint";

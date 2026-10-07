@@ -1,6 +1,6 @@
 import type { ObsidianGitConfig } from "./destinations.ts";
 import type { DestinationPushResult } from "./destinationAdapter.ts";
-import { fetchWithRetry, type RetryOptions } from "./httpRetry.ts";
+import { fetchWithRetry, type RetryOptions } from "../httpRetry.ts";
 
 export interface GitBatchAction {
   itemId: string;

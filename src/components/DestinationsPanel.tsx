@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Destination, DestinationDelivery, DestinationKind } from "@/lib/destinations";
+import type { Destination, DestinationDelivery, DestinationKind } from "@/lib/destinations/destinations";
 
 const NOTION_OAUTH_START_URL = "/api/archive/destinations/notion/oauth/start";
 
