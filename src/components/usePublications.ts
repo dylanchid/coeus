@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CollectionPublication, PublicationVisibility } from "@/lib/collectionPublication";
+import type { CollectionPublication, PublicationVisibility } from "@/lib/publications/collectionPublication";
 
 type RequestJson = (url: string, init?: RequestInit) => Promise<Response>;
 

@@ -8,7 +8,7 @@ import type { AuthStatus, AuthUser } from "./AuthProvider";
 import { ArchivePublishPanel } from "./ArchivePublishPanel";
 import { DestinationsPanel } from "./DestinationsPanel";
 import { VisibilitySelect } from "./VisibilitySelect";
-import type { CollectionPublication } from "@/lib/collectionPublication";
+import type { CollectionPublication } from "@/lib/publications/collectionPublication";
 
 type SidebarAuth = { status: AuthStatus; user: AuthUser | null; profile: { handle: string } | null };
 

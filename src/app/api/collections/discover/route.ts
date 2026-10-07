@@ -1,5 +1,5 @@
-import { handleDiscoverCollections } from "@/lib/collectionPublicationApi";
-import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
+import { handleDiscoverCollections } from "@/lib/publications/collectionPublicationApi";
+import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

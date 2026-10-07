@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
+import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";

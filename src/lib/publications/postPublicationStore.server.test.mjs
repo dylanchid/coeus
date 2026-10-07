@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { SupabasePostPublicationStore } from "./postPublicationStore.server.ts";
-import { decodeProfileFeedCursor } from "./profileFeedCursor.ts";
+import { decodeProfileFeedCursor } from "../profileFeedCursor.ts";
 
 /**
  * bt0 query-budget contract for the profile Posts tab. `listByAuthor` must

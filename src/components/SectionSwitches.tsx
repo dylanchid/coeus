@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { PublicationVisibility } from "@/lib/collectionPublication";
+import type { PublicationVisibility } from "@/lib/publications/collectionPublication";
 
 /**
  * The owner-only control strip in the profile sidebar: the five `show_*`

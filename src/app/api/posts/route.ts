@@ -1,5 +1,5 @@
-import { handleListPosts } from "@/lib/postPublicationApi";
-import { SupabasePostPublicationStore } from "@/lib/postPublicationStore.server";
+import { handleListPosts } from "@/lib/publications/postPublicationApi";
+import { SupabasePostPublicationStore } from "@/lib/publications/postPublicationStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, newCorrelationId } from "@/lib/serverLog";
 

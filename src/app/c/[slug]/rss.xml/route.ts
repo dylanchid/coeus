@@ -1,5 +1,5 @@
-import { renderCollectionRss } from "@/lib/collectionPublicationRss";
-import { SupabaseCollectionPublicationStore } from "@/lib/collectionPublicationStore.server";
+import { renderCollectionRss } from "@/lib/publications/collectionPublicationRss";
+import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";
