@@ -51,10 +51,10 @@ const eslintConfig = defineConfig([
           },
           {
             group: [
-              "@/lib/*.server", "@/lib/**/*.server",
-              "./*.server", "../**/*.server",
-              "@/lib/*Api", "@/lib/**/*Api",
-              "./*Api", "../**/*Api",
+              "@/lib/*.server", "@/lib/**/*.server", "@/lib/**/*.server.ts",
+              "./*.server", "./*.server.ts", "../**/*.server", "../**/*.server.ts",
+              "@/lib/*Api", "@/lib/**/*Api", "@/lib/**/*Api.ts",
+              "./*Api", "./*Api.ts", "../**/*Api", "../**/*Api.ts",
             ],
             allowTypeImports: true,
             message:
@@ -74,8 +74,8 @@ const eslintConfig = defineConfig([
         patterns: [
           {
             group: [
-              "@/lib/*.server", "@/lib/**/*.server",
-              "./*.server", "../**/*.server", "../lib/*.server",
+              "@/lib/*.server", "@/lib/**/*.server", "@/lib/**/*.server.ts",
+              "./*.server", "./*.server.ts", "../**/*.server", "../**/*.server.ts", "../lib/*.server",
             ],
             allowTypeImports: true,
             message:

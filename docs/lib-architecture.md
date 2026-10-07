@@ -108,10 +108,3 @@ automatically.
 What remains at the `src/lib` root is primitives (see the list above) plus
 `devAuth.server`, `imageProxySignature.server` and `storageGrowth`, which are
 single-purpose helpers with no domain.
-
-### Known gap in the boundary rule
-
-The `no-restricted-imports` patterns in `eslint.config.mjs` match extensionless
-specifiers (`./profileStore.server`). Most code imports with an explicit `.ts`
-suffix (`./profileStore.server.ts`), which the patterns do not match, so those
-imports are not checked. This predates the folder migration.
