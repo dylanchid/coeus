@@ -1,13 +1,13 @@
 import { lookup } from "node:dns/promises";
 
-import { BoundedCache } from "./feeds/feedCache.ts";
+import { BoundedCache } from "../feeds/feedCache.ts";
 import { extractArticleCard, type ArticleCard } from "./articleMetadata.ts";
 import { extractReaderView } from "./readerExtract.server.ts";
 import { cacheReaderView, getCachedReaderView, READER_VIEW_CACHE_MS } from "./readerViewCache.server.ts";
 import type { ReaderView } from "./readerView.ts";
 import { compatibilityFromHeaders, embedCompatibilityCache } from "./embedCompatibility.server.ts";
-import { fetchSafeContent } from "./safeContentFetch.server.ts";
-import { fetchValidatedHttps, validatedHttpsUrl, type AddressResolver } from "./safeOutboundFetch.server.ts";
+import { fetchSafeContent } from "../safeContentFetch.server.ts";
+import { fetchValidatedHttps, validatedHttpsUrl, type AddressResolver } from "../safeOutboundFetch.server.ts";
 import { isPreviewOptedOut, pageAppearsAccessRestricted, pageDisallowsPreview, PREVIEW_AGENT, robotsAllowsUrl } from "./articlePreviewPolicy.ts";
 
 // This module deliberately omits `import "server-only"`: its policy functions

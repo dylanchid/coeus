@@ -1,11 +1,11 @@
 import { lookup } from "node:dns/promises";
-import { BoundedCache } from "./feeds/feedCache.ts";
+import { BoundedCache } from "../feeds/feedCache.ts";
 import {
   fetchValidatedHttps,
   validatedHttpsUrl,
   type AddressResolver,
-} from "./safeOutboundFetch.server.ts";
-import type { EmbedCompatibility } from "./types.ts";
+} from "../safeOutboundFetch.server.ts";
+import type { EmbedCompatibility } from "../types.ts";
 
 const MAX_REDIRECTS = 5;
 const AUDIT_TIMEOUT_MS = 4_000;

@@ -1,4 +1,4 @@
-import { createReaderView } from "@/lib/articlePreview.server";
+import { createReaderView } from "@/lib/articles/articlePreview.server";
 import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 
