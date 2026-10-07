@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { NotionAdapter } from "./notionAdapter.server.ts";
-import { createDemoArchive } from "./archiveFixtures.ts";
+import { createDemoArchive } from "../archive/archiveFixtures.ts";
 
 const CONFIG = { databaseId: "db-1", workspaceName: "Acme" };
 const ITEM = createDemoArchive().items[0];

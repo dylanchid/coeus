@@ -1,7 +1,7 @@
-import { handleConnectDestination, handleListDestinations } from "@/lib/destinationsApi";
-import { enqueueDestinationDelivery, newDestinationDeliveryRequest } from "@/lib/destinationQueue.server";
+import { handleConnectDestination, handleListDestinations } from "@/lib/destinations/destinationsApi";
+import { enqueueDestinationDelivery, newDestinationDeliveryRequest } from "@/lib/destinations/destinationQueue.server";
 import { logDelivery } from "@/lib/deliveryLog";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 import { instrument, newCorrelationId, requestCorrelationId } from "@/lib/serverLog";
 

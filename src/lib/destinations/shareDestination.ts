@@ -1,4 +1,4 @@
-import type { ArchiveCollection } from "./archiveTypes.ts";
+import type { ArchiveCollection } from "../archive/archiveTypes.ts";
 
 export type ShareDestination = "social" | "friend" | "personal" | "public" | "community";
 

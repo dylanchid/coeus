@@ -1,4 +1,4 @@
-import type { ArchiveItem } from "./archiveTypes.ts";
+import type { ArchiveItem } from "../archive/archiveTypes.ts";
 
 export interface DestinationPushResult {
   ok: boolean;

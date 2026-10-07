@@ -1,5 +1,5 @@
-import type { ArchiveSyncSnapshot } from "./archiveSync.ts";
-import type { ArchiveItem } from "./archiveTypes.ts";
+import type { ArchiveSyncSnapshot } from "../archive/archiveSync.ts";
+import type { ArchiveItem } from "../archive/archiveTypes.ts";
 import type { DestinationAdapter, DestinationPushResult } from "./destinationAdapter.ts";
 import type { DestinationDelivery } from "./destinations.ts";
 

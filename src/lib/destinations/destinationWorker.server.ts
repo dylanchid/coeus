@@ -1,10 +1,10 @@
 import { computeDirtyItems, runDestinationDelivery } from "./destinationDelivery.ts";
-import { logDelivery, newCorrelationId } from "./deliveryLog.ts";
-import type { RetryOptions } from "./httpRetry.ts";
+import { logDelivery, newCorrelationId } from "../deliveryLog.ts";
+import type { RetryOptions } from "../httpRetry.ts";
 import { GitHubGitAdapter, type GitBatchAction } from "./obsidianGitAdapter.server.ts";
 import { NotionAdapter } from "./notionAdapter.server.ts";
-import { itemToObsidianNote } from "./archive/archiveExport.ts";
-import type { ArchiveSyncSnapshot } from "./archiveSync.ts";
+import { itemToObsidianNote } from "../archive/archiveExport.ts";
+import type { ArchiveSyncSnapshot } from "../archive/archiveSync.ts";
 import type { DestinationKind } from "./destinations.ts";
 import type { DeliveryOutcomeInput, DestinationWorkerStore, WorkerDestination } from "./destinationsStore.server.ts";
 import type { NotionConfig, ObsidianGitConfig } from "./destinations.ts";

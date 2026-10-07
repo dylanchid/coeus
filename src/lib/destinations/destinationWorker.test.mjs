@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createInitialSyncSnapshot } from "./archiveSync.ts";
-import { createDemoArchive } from "./archiveFixtures.ts";
+import { createInitialSyncSnapshot } from "../archive/archiveSync.ts";
+import { createDemoArchive } from "../archive/archiveFixtures.ts";
 import { MAX_ITEMS_PER_TICK, runDestinationWorkerTick } from "./destinationWorker.server.ts";
 
 const SNAPSHOT = createInitialSyncSnapshot(createDemoArchive());

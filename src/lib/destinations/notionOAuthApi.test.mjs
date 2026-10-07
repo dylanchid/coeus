@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { handleNotionOAuthCallback, handleNotionOAuthStart } from "./notionOAuthApi.ts";
-import { signOAuthState } from "./oauthState.server.ts";
+import { signOAuthState } from "../oauthState.server.ts";
 
 const SECRET = "test-oauth-state-secret";
 const CLIENT_ID = "client-1";

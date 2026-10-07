@@ -1,5 +1,5 @@
-import { handleNotionOAuthStart } from "@/lib/notionOAuthApi";
-import { SupabaseNotionOAuthStateStore } from "@/lib/notionOAuthStateStore.server";
+import { handleNotionOAuthStart } from "@/lib/destinations/notionOAuthApi";
+import { SupabaseNotionOAuthStateStore } from "@/lib/destinations/notionOAuthStateStore.server";
 import { instrument, newCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 

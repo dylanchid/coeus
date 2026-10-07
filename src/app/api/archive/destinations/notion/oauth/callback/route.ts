@@ -1,6 +1,6 @@
-import { handleNotionOAuthCallback } from "@/lib/notionOAuthApi";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
-import { SupabaseNotionOAuthStateStore } from "@/lib/notionOAuthStateStore.server";
+import { handleNotionOAuthCallback } from "@/lib/destinations/notionOAuthApi";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
+import { SupabaseNotionOAuthStateStore } from "@/lib/destinations/notionOAuthStateStore.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 

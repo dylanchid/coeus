@@ -1,5 +1,5 @@
-import { handleDisconnectDestination } from "@/lib/destinationsApi";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
+import { handleDisconnectDestination } from "@/lib/destinations/destinationsApi";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

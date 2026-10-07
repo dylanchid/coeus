@@ -1,7 +1,7 @@
-import type { ArchiveItem } from "./archiveTypes.ts";
+import type { ArchiveItem } from "../archive/archiveTypes.ts";
 import type { DestinationAdapter, DestinationPushResult } from "./destinationAdapter.ts";
 import type { NotionConfig } from "./destinations.ts";
-import { fetchWithRetry, type RetryOptions } from "./httpRetry.ts";
+import { fetchWithRetry, type RetryOptions } from "../httpRetry.ts";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";

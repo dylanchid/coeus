@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { decodeEncryptionKey, decryptSecret, encryptSecret } from "./destinationSecrets.ts";
 import { ArchiveNotFoundError, DestinationNotFoundError } from "./destinationsErrors.ts";
-import { readAllPages } from "./pagedRead.ts";
+import { readAllPages } from "../pagedRead.ts";
 import type {
   Destination,
   DestinationDelivery,

@@ -13,7 +13,7 @@ import {
   isShareCancellation,
   resolveCollectionId,
   type ShareDestination,
-} from "@/lib/shareDestination";
+} from "@/lib/destinations/shareDestination";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { useArchive } from "./AppProviders";
 

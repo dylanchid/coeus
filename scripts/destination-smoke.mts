@@ -25,8 +25,8 @@
  * or is archived immediately (Notion), so a scratch repo / scratch database
  * stays clean enough to reuse.
  */
-import { GitHubGitAdapter, type GitBatchAction } from "../src/lib/obsidianGitAdapter.server.ts";
-import { NotionAdapter } from "../src/lib/notionAdapter.server.ts";
+import { GitHubGitAdapter, type GitBatchAction } from "../src/lib/destinations/obsidianGitAdapter.server.ts";
+import { NotionAdapter } from "../src/lib/destinations/notionAdapter.server.ts";
 import { itemToObsidianNote } from "../src/lib/archive/archiveExport.ts";
 import type { ArchiveItem } from "../src/lib/archiveTypes.ts";
 

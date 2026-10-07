@@ -1,7 +1,7 @@
-import { handleTriggerSync } from "@/lib/destinationsApi";
-import { runDestinationWorkerTick } from "@/lib/destinationWorker.server";
+import { handleTriggerSync } from "@/lib/destinations/destinationsApi";
+import { runDestinationWorkerTick } from "@/lib/destinations/destinationWorker.server";
 import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
-import { SupabaseDestinationsStore } from "@/lib/destinationsStore.server";
+import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { authenticateArchiveRequest, createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.server";
 
