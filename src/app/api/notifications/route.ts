@@ -1,5 +1,5 @@
-import { handleListNotifications, handleMarkNotificationsRead } from "@/lib/notificationsApi";
-import { SupabaseNotificationStore } from "@/lib/notificationsStore.server";
+import { handleListNotifications, handleMarkNotificationsRead } from "@/lib/notifications/notificationsApi";
+import { SupabaseNotificationStore } from "@/lib/notifications/notificationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

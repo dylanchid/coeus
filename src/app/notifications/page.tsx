@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { NotificationsInbox } from "@/components/NotificationsInbox";
-import { SupabaseNotificationStore } from "@/lib/notificationsStore.server";
+import { SupabaseNotificationStore } from "@/lib/notifications/notificationsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 
 export const dynamic = "force-dynamic";

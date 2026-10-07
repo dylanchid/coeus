@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { notifyNotificationsRead } from "./NotificationsButton";
-import type { NotificationItem, NotificationPage } from "@/lib/notifications";
+import type { NotificationItem, NotificationPage } from "@/lib/notifications/notifications";
 function eventCopy(item: NotificationItem) {
   const actor = item.actor ? `@${item.actor.handle}` : "Someone";
   const verb = item.kind === "like" ? "liked" : item.kind === "reply" ? "replied to" : "reposted";
