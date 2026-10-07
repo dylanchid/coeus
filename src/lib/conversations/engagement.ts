@@ -1,4 +1,4 @@
-import type { Engagement } from "./types";
+import type { Engagement } from "../types";
 
 /** Compact label for UI: "107 pts · 61 comments" */
 export function formatEngagement(e: Engagement | undefined | null): string {

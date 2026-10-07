@@ -1,7 +1,7 @@
 import "server-only";
 
 import type Parser from "rss-parser";
-import type { Engagement } from "./types";
+import type { Engagement } from "../types";
 
 const POINTS_RE = /(?:^|\n|<p[^>]*>)\s*Points?\s*:\s*(\d+)/i;
 const COMMENTS_COUNT_RE = /(?:^|\n|<p[^>]*>)\s*(?:#\s*)?Comments?\s*:\s*(\d+)/i;

@@ -9,7 +9,7 @@ import { loadProfileIdentity } from "@/lib/profilePageLoader.server";
 import { SupabaseProfileStore } from "@/lib/profileStore.server";
 import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
 import { SupabasePostPublicationStore } from "@/lib/postPublicationStore.server";
-import { SupabaseConversationProfileReader } from "@/lib/conversationProfileStore.server";
+import { SupabaseConversationProfileReader } from "@/lib/conversations/conversationProfileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import type { ReplyComposeTarget } from "@/components/ProfileReplies";
 import type { Viewer } from "@/lib/visibility";

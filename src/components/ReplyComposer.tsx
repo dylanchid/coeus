@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { VisibilitySelect } from "./VisibilitySelect";
-import type { TargetType } from "@/lib/conversation";
+import type { TargetType } from "@/lib/conversations/conversation";
 import type { Visibility } from "@/lib/visibility";
 
 const MAX_BODY = 4000;

@@ -1,5 +1,5 @@
-import { handleLike, handleUnlike } from "@/lib/conversationApi";
-import { SupabaseConversationStore } from "@/lib/conversationStore.server";
+import { handleLike, handleUnlike } from "@/lib/conversations/conversationApi";
+import { SupabaseConversationStore } from "@/lib/conversations/conversationStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

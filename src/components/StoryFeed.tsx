@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { formatEngagement } from "@/lib/engagement";
+import { formatEngagement } from "@/lib/conversations/engagement";
 import { rankStories, type RankingReason } from "@/lib/ranking";
 import type {
   Article,

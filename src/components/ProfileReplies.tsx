@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { ReplyComposer } from "./ReplyComposer";
 import { VisibilityGlyph } from "./VisibilityGlyph";
-import type { CardTarget, ProfileReplyCard, ProfileReplyThread } from "@/lib/conversationProfile";
-import type { TargetType } from "@/lib/conversation";
+import type { CardTarget, ProfileReplyCard, ProfileReplyThread } from "@/lib/conversations/conversationProfile";
+import type { TargetType } from "@/lib/conversations/conversation";
 import type { Visibility } from "@/lib/visibility";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });

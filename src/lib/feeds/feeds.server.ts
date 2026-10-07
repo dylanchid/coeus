@@ -4,7 +4,7 @@ import Parser from "rss-parser";
 import {
   enrichHnEngagement,
   extractEngagementFromRssItem,
-} from "../engagement.server";
+} from "../conversations/engagement.server";
 import { sourceByIdMap } from "../sources";
 import type { Article, Engagement, SourceDef, SourceFeed } from "../types";
 import { fetchFeedText } from "../safeFeedFetch.server";
