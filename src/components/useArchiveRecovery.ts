@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ArchiveRevisionSummary, ContentSnapshotSummary } from "@/lib/archive/archiveRecovery";
-import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "@/lib/archiveSync";
+import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "@/lib/archive/archiveSync";
 
 type RequestJson = (url: string, init?: RequestInit) => Promise<Response>;
 

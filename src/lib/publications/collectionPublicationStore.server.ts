@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "../archiveSync.ts";
+import { parseArchiveSyncSnapshot, type ArchiveSyncSnapshot } from "../archive/archiveSync.ts";
 import {
   derivePublicationSnapshot,
   filterFollowedCollections,

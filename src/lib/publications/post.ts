@@ -1,4 +1,4 @@
-import type { ArchiveItem } from "../archiveTypes.ts";
+import type { ArchiveItem } from "../archive/archiveTypes.ts";
 import { isPublicationVisibility, type PublicationVisibility } from "./collectionPublication.ts";
 
 /**

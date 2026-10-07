@@ -20,7 +20,7 @@ const { AppRouterContext } = await import("next/dist/shared/lib/app-router-conte
 const { PathnameContext } = await import("next/dist/shared/lib/hooks-client-context.shared-runtime");
 const { AppProviders } = await import("./AppProviders");
 const { ArchiveWorkspace } = await import("./ArchiveApp");
-const { createDemoArchive } = await import("@/lib/archiveFixtures");
+const { createDemoArchive } = await import("@/lib/archive/archiveFixtures");
 const { LOCAL_ARCHIVE_STORAGE_KEY } = await import("@/lib/archive/localArchiveRepository");
 
 const defaultFetch = globalThis.fetch;

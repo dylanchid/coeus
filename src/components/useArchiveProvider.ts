@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { configureArchiveRepository } from "@/lib/archive/archiveRepository";
 import { SyncedArchiveRepository, type ArchiveSyncState } from "@/lib/archive/syncedArchiveRepository";
 import { PersistenceQueue, type PersistenceState } from "@/lib/persistenceQueue";
-import type { ArchiveData } from "@/lib/archiveTypes";
-import type { ArchiveSyncSnapshot } from "@/lib/archiveSync";
+import type { ArchiveData } from "@/lib/archive/archiveTypes";
+import type { ArchiveSyncSnapshot } from "@/lib/archive/archiveSync";
 
 type ArchiveUpdate = (current: ArchiveData) => ArchiveData;
 
