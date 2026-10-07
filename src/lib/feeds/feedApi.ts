@@ -1,7 +1,7 @@
 import { parseFeedBody, parseFeedQuery, type FeedBodyRequestQuery, type FeedRequestQuery } from "./feedContract.ts";
 import { getSource } from "./sources.ts";
-import type { SourceDef, SourceFeed } from "./types";
-import type { BudgetDecision } from "./fixedWindowBudget";
+import type { SourceDef, SourceFeed } from "../types";
+import type { BudgetDecision } from "../fixedWindowBudget";
 
 export const FEED_RESPONSE_CACHE_CONTROL =
   "public, max-age=30, s-maxage=90, stale-while-revalidate=300";

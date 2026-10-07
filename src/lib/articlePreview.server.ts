@@ -1,6 +1,6 @@
 import { lookup } from "node:dns/promises";
 
-import { BoundedCache } from "./feedCache.ts";
+import { BoundedCache } from "./feeds/feedCache.ts";
 import { extractArticleCard, type ArticleCard } from "./articleMetadata.ts";
 import { extractReaderView } from "./readerExtract.server.ts";
 import { cacheReaderView, getCachedReaderView, READER_VIEW_CACHE_MS } from "./readerViewCache.server.ts";

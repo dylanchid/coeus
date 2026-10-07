@@ -1,4 +1,4 @@
-import type { SourceDef } from "./types.ts";
+import type { SourceDef } from "../types.ts";
 
 /**
  * A feed's id is user-controlled for custom feeds, so it is not sufficient as

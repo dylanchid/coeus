@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TOPICS } from "@/lib/sources";
+import { TOPICS } from "@/lib/feeds/sources";
 import type { SourceDef, UserPrefs } from "@/lib/types";
 
 interface Preview {

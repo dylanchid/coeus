@@ -1,4 +1,4 @@
-import { slugifyId } from "../sources.ts";
+import { slugifyId } from "../feeds/sources.ts";
 import type { ArchiveCollection, ArchiveItem } from "../archive/archiveTypes.ts";
 import { actorCanReachTarget } from "../conversations/conversation.ts";
 

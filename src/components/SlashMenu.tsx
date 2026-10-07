@@ -17,7 +17,7 @@ import {
   type SlashBuildContext,
   type RankedSlashItem,
   type SlashItem,
-} from "@/lib/slashCommands";
+} from "@/lib/feeds/slashCommands";
 
 const EMPTY_SLASH_ITEMS: SlashItem[] = [];
 

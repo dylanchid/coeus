@@ -1,4 +1,4 @@
-import type { KeywordRule, SourceFeed } from "./types";
+import type { KeywordRule, SourceFeed } from "../types";
 
 export type RankingReason = {
   label: string;

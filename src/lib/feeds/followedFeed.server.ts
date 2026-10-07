@@ -6,8 +6,8 @@ import {
   type FollowedFeedCandidate,
   type FollowedFeedPage,
 } from "./followedFeed.ts";
-import type { Visibility } from "./visibility.ts";
-import { readAllPages } from "./pagedRead.ts";
+import type { Visibility } from "../visibility.ts";
+import { readAllPages } from "../pagedRead.ts";
 
 export type { FollowedFeedItem, FollowedFeedPage } from "./followedFeed.ts";
 

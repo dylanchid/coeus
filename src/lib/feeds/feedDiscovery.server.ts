@@ -1,6 +1,6 @@
 import { lookup } from "node:dns/promises";
 import Parser from "rss-parser";
-import { fetchFeedText, UnsafeFeedUrlError } from "./safeFeedFetch.server.ts";
+import { fetchFeedText, UnsafeFeedUrlError } from "../safeFeedFetch.server.ts";
 import { findFeedLink } from "./feedDiscovery.ts";
 
 const parser = new Parser({

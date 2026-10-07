@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import type { Topic } from "@/lib/sources";
+import type { Topic } from "@/lib/feeds/sources";
 import type { SettingsTab } from "./SettingsPanel";
 import type { SourceFeed } from "@/lib/types";
 

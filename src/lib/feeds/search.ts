@@ -1,4 +1,4 @@
-import type { Article, SourceFeed } from "./types";
+import type { Article, SourceFeed } from "../types";
 
 export function normalizeQuery(q: string): string {
   return q.trim().toLowerCase().replace(/\s+/g, " ");

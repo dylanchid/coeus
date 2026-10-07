@@ -1,8 +1,8 @@
 import "server-only";
 
-import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
-import { previewFeedUrl } from "@/lib/sourcePreview.server";
+import { previewFeedUrl } from "@/lib/feeds/sourcePreview.server";
 
 function safeHost(value: string): string {
   try { return new URL(value).host; } catch { return "invalid"; }

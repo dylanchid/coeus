@@ -8,7 +8,7 @@ import {
   groupRankedItems,
   type RankedSlashItem,
   type SlashBuildContext,
-} from "@/lib/slashCommands";
+} from "@/lib/feeds/slashCommands";
 import { usePreferences } from "./AppProviders";
 import { useChrome } from "./ChromeProvider";
 import { SearchIcon } from "./HeaderIcons";

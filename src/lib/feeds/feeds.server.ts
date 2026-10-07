@@ -5,7 +5,7 @@ import {
   enrichHnEngagement,
   extractEngagementFromRssItem,
 } from "../conversations/engagement.server";
-import { sourceByIdMap } from "../sources";
+import { sourceByIdMap } from "./sources";
 import type { Article, Engagement, SourceDef, SourceFeed } from "../types";
 import { fetchFeedText } from "../safeFeedFetch.server";
 import {
@@ -13,8 +13,8 @@ import {
   extractSummary,
   stripHtmlFast,
   vetCachedSummary,
-} from "../summary";
-import { BoundedCache, feedCacheKey } from "../feedCache";
+} from "./summary";
+import { BoundedCache, feedCacheKey } from "./feedCache";
 
 const parser = new Parser({
   timeout: 6_000,

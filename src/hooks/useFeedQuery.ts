@@ -12,8 +12,8 @@ import {
   mergeSourceFeed,
   runFeedQuery,
   visibleSourceIds,
-} from "@/lib/feedQuery";
-import { orderByIds, type Topic } from "@/lib/sources";
+} from "@/lib/feeds/feedQuery";
+import { orderByIds, type Topic } from "@/lib/feeds/sources";
 import type { SourceDef, SourceFeed } from "@/lib/types";
 
 const EMPTY_SOURCES: SourceFeed[] = [];

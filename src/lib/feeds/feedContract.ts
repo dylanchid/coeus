@@ -6,7 +6,7 @@ import {
   sanitizeCustomSources,
   type Topic,
 } from "./sources.ts";
-import type { SourceDef } from "./types.ts";
+import type { SourceDef } from "../types.ts";
 
 export const FEED_QUERY_LIMITS = {
   maxSources: 40,
