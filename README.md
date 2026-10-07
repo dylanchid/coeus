@@ -131,7 +131,7 @@ implemented. Anonymous users stay entirely on local storage.
 
 Per-account budgets are enforced at the database boundary (a trigger on the
 immutable revision table) and mirrored by the service-role sync store for
-clearer errors. Defaults live in [`src/lib/archiveBudget.ts`](src/lib/archiveBudget.ts)
+clearer errors. Defaults live in [`src/lib/archive/archiveBudget.ts`](src/lib/archive/archiveBudget.ts)
 and are meant as generous pre-launch ceilings, not usage shaping:
 
 | Budget | Default | Enforced by |
@@ -227,7 +227,7 @@ private `archive-snapshots` bucket.
 
 ## Adding a built-in source
 
-Edit [`src/lib/sources.ts`](src/lib/sources.ts) and provide the full `SourceDef` metadata. Source IDs are validated by `/api/feeds`; adding a catalog entry does not silently enable it for existing users.
+Edit [`src/lib/feeds/sources.ts`](src/lib/feeds/sources.ts) and provide the full `SourceDef` metadata. Source IDs are validated by `/api/feeds`; adding a catalog entry does not silently enable it for existing users.
 
 ## Deployment
 
