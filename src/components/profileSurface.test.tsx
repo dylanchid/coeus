@@ -62,7 +62,7 @@ function follower(overrides = {}) {
     ...overrides,
   };
 }
-const { deriveProfileView, DEFAULT_SECTION_SWITCHES } = await import("@/lib/publicProfile");
+const { deriveProfileView, DEFAULT_SECTION_SWITCHES } = await import("@/lib/profiles/publicProfile");
 
 function postCard(overrides = {}) {
   return {

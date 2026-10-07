@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ProfileView } from "@/components/ProfileView";
-import { deriveProfileView, deriveCollectionCards, derivePostCards } from "@/lib/publicProfile";
+import { deriveProfileView, deriveCollectionCards, derivePostCards } from "@/lib/profiles/publicProfile";
 import { resolveProfileTab } from "@/lib/profiles/profileTabs";
 import { decodeProfileFeedCursor, PROFILE_FEED_PAGE_SIZE } from "@/lib/profiles/profileFeedCursor";
 import { loadProfileIdentity } from "@/lib/profiles/profilePageLoader.server";

@@ -1,4 +1,4 @@
-import type { ProfileCollectionCard } from "@/lib/publicProfile";
+import type { ProfileCollectionCard } from "@/lib/profiles/publicProfile";
 
 function pieceLabel(count: number): string {
   return `${count} ${count === 1 ? "piece" : "pieces"}`;

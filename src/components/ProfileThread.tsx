@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { VisibilityGlyph } from "./VisibilityGlyph";
 import type { CardTarget } from "@/lib/conversations/conversationProfile";
-import type { ThreadView } from "@/lib/threadPage";
+import type { ThreadView } from "@/lib/conversations/threadPage";
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 

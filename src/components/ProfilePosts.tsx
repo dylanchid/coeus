@@ -1,6 +1,6 @@
 import { ExternalLinkHint } from "./ExternalLinkHint";
 import { VisibilityGlyph } from "./VisibilityGlyph";
-import type { ProfilePostCard } from "@/lib/publicProfile";
+import type { ProfilePostCard } from "@/lib/profiles/publicProfile";
 
 /**
  * The Posts tab feed column. Each row is one sourced clip: the commentary set

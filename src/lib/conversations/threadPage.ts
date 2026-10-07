@@ -23,8 +23,8 @@ import {
   toCardTarget,
   type CardTarget,
   type LoadedReply,
-} from "./conversations/conversationProfile.ts";
-import type { Viewer, Visibility } from "./visibility.ts";
+} from "./conversationProfile.ts";
+import type { Viewer, Visibility } from "../visibility.ts";
 
 /** One reply on the thread page. Flattened to a chronological list — depth is a
  * "replying to @handle" lead, never indentation, so the body measure holds at

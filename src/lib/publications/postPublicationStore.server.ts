@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseArchiveSyncSnapshot } from "../archiveSync.ts";
 import { derivePostSnapshot, parsePostSnapshot, type Post, type PublishPostRequest } from "./post.ts";
 import { PostItemNotFoundError } from "./postErrors.ts";
-import type { OwnedPost } from "../publicProfile.ts";
+import type { OwnedPost } from "../profiles/publicProfile.ts";
 import {
   encodeProfileFeedCursor,
   type ProfileFeedPage,

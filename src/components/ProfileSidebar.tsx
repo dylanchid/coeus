@@ -1,5 +1,5 @@
 import type { ProfileSectionSwitches } from "@/lib/profiles/profileSections";
-import type { PublicProfileView } from "@/lib/publicProfile";
+import type { PublicProfileView } from "@/lib/profiles/publicProfile";
 import type { CardTarget } from "@/lib/conversations/conversationProfile";
 import { SectionSwitches } from "./SectionSwitches";
 import { VisibilityGlyph } from "./VisibilityGlyph";

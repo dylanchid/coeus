@@ -1,4 +1,4 @@
-import type { Profile, ProfileLink } from "./profiles/profile.ts";
+import type { Profile, ProfileLink } from "./profile.ts";
 import {
   deriveInteractionFeed,
   deriveReplyThreads,
@@ -8,14 +8,14 @@ import {
   type LoadedReply,
   type ProfileInteractionCard,
   type ProfileReplyThread,
-} from "./conversations/conversationProfile.ts";
+} from "../conversations/conversationProfile.ts";
 import {
   DEFAULT_SECTION_SWITCHES,
   visibleSections,
   type ProfileSectionSwitches,
   type VisibleSections,
-} from "./profiles/profileSections.ts";
-import { isListable, type Viewer, type Visibility } from "./visibility.ts";
+} from "./profileSections.ts";
+import { isListable, type Viewer, type Visibility } from "../visibility.ts";
 
 /**
  * The public-safe boundary for the profile page. This is the profile analogue
