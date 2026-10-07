@@ -1,4 +1,4 @@
-import { fetchPreviewImage } from "@/lib/articlePreview.server";
+import { fetchPreviewImage } from "@/lib/articles/articlePreview.server";
 import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { verifyPreviewImageUrl } from "@/lib/imageProxySignature.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";

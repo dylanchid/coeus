@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Article, EmbedCompatibility } from "@/lib/types";
-import { inferArticleIndex, type ArticleIndex } from "@/lib/articleIndex";
+import { inferArticleIndex, type ArticleIndex } from "@/lib/articles/articleIndex";
 import { useModalDialog } from "@/hooks/useModalDialog";
 
 type Props = {

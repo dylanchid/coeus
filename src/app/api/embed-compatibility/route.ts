@@ -1,4 +1,4 @@
-import { embedCompatibilityCache } from "@/lib/embedCompatibility.server";
+import { embedCompatibilityCache } from "@/lib/articles/embedCompatibility.server";
 import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import type { EmbedCompatibility } from "@/lib/types";

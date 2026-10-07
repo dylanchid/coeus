@@ -1,4 +1,4 @@
-import { createArticleCard } from "@/lib/articlePreview.server";
+import { createArticleCard } from "@/lib/articles/articlePreview.server";
 import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { signPreviewImageUrl } from "@/lib/imageProxySignature.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";

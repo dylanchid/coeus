@@ -1,4 +1,4 @@
-import { purgeCachedReaderViewsForDomain } from "../src/lib/readerViewCache.server.ts";
+import { purgeCachedReaderViewsForDomain } from "../src/lib/articles/readerViewCache.server.ts";
 import nextEnv from "@next/env";
 
 nextEnv.loadEnvConfig(process.cwd());

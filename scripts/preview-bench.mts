@@ -19,8 +19,8 @@
 import { readFile } from "node:fs/promises";
 
 import { fetchSafeContent } from "../src/lib/safeContentFetch.server.ts";
-import { pageAppearsAccessRestricted, pageDisallowsPreview } from "../src/lib/articlePreviewPolicy.ts";
-import { extractReaderView, READER_ENGINE } from "../src/lib/readerExtract.server.ts";
+import { pageAppearsAccessRestricted, pageDisallowsPreview } from "../src/lib/articles/articlePreviewPolicy.ts";
+import { extractReaderView, READER_ENGINE } from "../src/lib/articles/readerExtract.server.ts";
 
 type Row = {
   url: string;
