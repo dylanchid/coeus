@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createFeedGetHandler, createFeedPostHandler } from "@/lib/feedApi";
-import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { createFeedGetHandler, createFeedPostHandler } from "@/lib/feeds/feedApi";
+import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { fetchFeeds } from "@/lib/feeds/feeds.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

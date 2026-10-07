@@ -1,6 +1,6 @@
 import "server-only";
 
-import { FixedWindowBudget, type BudgetDecision } from "./fixedWindowBudget";
+import { FixedWindowBudget, type BudgetDecision } from "../fixedWindowBudget";
 
 const REFRESH_SOURCE_BUDGET = 80;
 const REFRESH_WINDOW_MS = 60_000;

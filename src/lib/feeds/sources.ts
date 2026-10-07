@@ -1,4 +1,4 @@
-import type { SourceDef } from "./types";
+import type { SourceDef } from "../types";
 
 type SourceInput = Omit<
   SourceDef,

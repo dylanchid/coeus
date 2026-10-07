@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { formatEngagement } from "@/lib/conversations/engagement";
-import { rankStories, type RankingReason } from "@/lib/ranking";
+import { rankStories, type RankingReason } from "@/lib/feeds/ranking";
 import type {
   Article,
   HomeViewId,

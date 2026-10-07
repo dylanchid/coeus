@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ExternalLinkHint } from "./ExternalLinkHint";
-import type { FollowedFeedItem } from "@/lib/followedFeed";
+import type { FollowedFeedItem } from "@/lib/feeds/followedFeed";
 
 /**
  * The Discover "Following" view feed: collections and posts from people the

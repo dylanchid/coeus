@@ -1,4 +1,4 @@
-import { isListable, type Viewer, type Visibility } from "./visibility.ts";
+import { isListable, type Viewer, type Visibility } from "../visibility.ts";
 
 /**
  * The pure core of the Discover "Following" view (nfq.2.12): filter a set of

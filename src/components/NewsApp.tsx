@@ -8,9 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { TOPICS, sourceByIdMap, type Topic } from "@/lib/sources";
-import { countMatches, filterSources } from "@/lib/search";
-import { visibleSourceIds } from "@/lib/feedQuery";
+import { TOPICS, sourceByIdMap, type Topic } from "@/lib/feeds/sources";
+import { countMatches, filterSources } from "@/lib/feeds/search";
+import { visibleSourceIds } from "@/lib/feeds/feedQuery";
 import type { Article, EmbedCompatibility, UserPrefs } from "@/lib/types";
 import { archiveArticle } from "@/lib/archive";
 import { useFeedQuery } from "@/hooks/useFeedQuery";

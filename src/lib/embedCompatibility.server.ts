@@ -1,5 +1,5 @@
 import { lookup } from "node:dns/promises";
-import { BoundedCache } from "./feedCache.ts";
+import { BoundedCache } from "./feeds/feedCache.ts";
 import {
   fetchValidatedHttps,
   validatedHttpsUrl,

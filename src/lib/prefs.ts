@@ -17,7 +17,7 @@ import {
   defaultSourceOrder,
   sanitizeCustomSources,
   storedSourceOrder,
-} from "./sources";
+} from "./feeds/sources";
 
 const STORAGE_KEY = "coeus.prefs.v1";
 const LEGACY_BAREAGA_STORAGE_KEY = "bareaga.prefs.v1";

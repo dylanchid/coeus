@@ -1,6 +1,6 @@
-import { chunkIds } from "./clientCache.ts";
+import { chunkIds } from "../clientCache.ts";
 import { getSource, orderByIds, sourceTopic, type Topic } from "./sources.ts";
-import type { SourceDef, SourceFeed } from "./types.ts";
+import type { SourceDef, SourceFeed } from "../types.ts";
 
 export const FEED_BATCH_SIZE = 6;
 export const FEED_BATCH_CONCURRENCY = 2;

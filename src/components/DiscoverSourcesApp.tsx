@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SOURCE_CATALOG } from "@/lib/sources";
+import { SOURCE_CATALOG } from "@/lib/feeds/sources";
 import type { SourceDef, UserPrefs } from "@/lib/types";
 import { AddSourceForm } from "./AddSourceForm";
 import { usePreferences } from "./AppProviders";

@@ -1,5 +1,5 @@
-import { handleGetSourceRatings, handlePutSourceRating } from "@/lib/sourceRatingsApi";
-import { SupabaseSourceRatingsStore } from "@/lib/sourceRatingsStore.server";
+import { handleGetSourceRatings, handlePutSourceRating } from "@/lib/feeds/sourceRatingsApi";
+import { SupabaseSourceRatingsStore } from "@/lib/feeds/sourceRatingsStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 

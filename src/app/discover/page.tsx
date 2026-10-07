@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { DiscoverApp } from "@/components/SocialApp";
 import { DiscoverViewTabs } from "@/components/DiscoverViewTabs";
 import { FollowingFeed } from "@/components/FollowingFeed";
-import { SupabaseFollowedFeedReader } from "@/lib/followedFeed.server";
+import { SupabaseFollowedFeedReader } from "@/lib/feeds/followedFeed.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 
 export const metadata: Metadata = {

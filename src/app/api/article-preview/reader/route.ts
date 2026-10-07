@@ -1,5 +1,5 @@
 import { createReaderView } from "@/lib/articlePreview.server";
-import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 
 export const dynamic = "force-dynamic";

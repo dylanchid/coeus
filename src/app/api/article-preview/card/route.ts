@@ -1,5 +1,5 @@
 import { createArticleCard } from "@/lib/articlePreview.server";
-import { consumeFeedRefreshBudget } from "@/lib/feedRefreshGuard.server";
+import { consumeFeedRefreshBudget } from "@/lib/feeds/feedRefreshGuard.server";
 import { signPreviewImageUrl } from "@/lib/imageProxySignature.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 import { requiredEnvironment } from "@/lib/supabase.server";

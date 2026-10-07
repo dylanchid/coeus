@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RATING_BUCKETS, type SourceRatingSummary } from "@/lib/sourceRatings";
+import { RATING_BUCKETS, type SourceRatingSummary } from "@/lib/feeds/sourceRatings";
 import { StarRating } from "./StarRating";
 
 type Props = {

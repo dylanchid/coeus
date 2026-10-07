@@ -3,7 +3,7 @@ import {
   HOME_VIEW_OPTIONS,
   PALETTE_OPTIONS,
   STORY_REPRESENTATION_OPTIONS,
-} from "./prefs";
+} from "../prefs";
 import {
   DEFAULT_SOURCES,
   TOPICS,
@@ -20,7 +20,7 @@ import type {
   StoryRepresentationId,
   ThemeMode,
   UserPrefs,
-} from "./types";
+} from "../types";
 
 export type SlashGroup =
   | "Navigate"

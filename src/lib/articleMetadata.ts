@@ -1,4 +1,4 @@
-import { decodeHtmlEntities } from "./summary.ts";
+import { decodeHtmlEntities } from "./feeds/summary.ts";
 import { inferArticleIndex, type ArticleIndex } from "./articleIndex.ts";
 
 /**

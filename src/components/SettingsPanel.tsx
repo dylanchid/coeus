@@ -8,9 +8,9 @@ import {
   STORY_REPRESENTATION_OPTIONS,
   mergeWithDefaults,
 } from "@/lib/prefs";
-import { allSources, orderByIds } from "@/lib/sources";
+import { allSources, orderByIds } from "@/lib/feeds/sources";
 import type { SourceDef } from "@/lib/types";
-import { formatKeywordRules, parseKeywordRules } from "@/lib/ranking";
+import { formatKeywordRules, parseKeywordRules } from "@/lib/feeds/ranking";
 import { AddSourceForm } from "./AddSourceForm";
 import { useFocusReturn, useMediaQuery, useModalDialog } from "@/hooks/useModalDialog";
 import type {
