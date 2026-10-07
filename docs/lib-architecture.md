@@ -90,22 +90,28 @@ need one, the thing you need is a core type — lift it.
 
 ## Migration status
 
-Each domain lives in `src/lib/<domain>/`, and `test:unit` globs that folder.
-Domain slices (epic `bareaga_web-a2n`):
+Complete (epic `bareaga_web-a2n`). Each domain lives in `src/lib/<domain>/`, and
+`test:unit` globs `src/lib/*/*.test.mjs`, so a new domain folder is picked up
+automatically.
 
-| Domain | Folder | Bead | Notes |
+| Domain | Folder | Beads | Notes |
 |---|---|---|---|
-| archive | `src/lib/archive/` | a2n.2 | Compatibility shims remain at `src/lib/archive*.ts`. |
+| archive | `src/lib/archive/` | a2n.2 | Compatibility shims removed; `@/lib/archive` resolves to `archive/index.ts`. |
 | feeds | `src/lib/feeds/` | a2n.1, a2n.7 | `feed*`, `followedFeed*`, `ranking`, `source*`, `search`, `summary`, `slashCommands`, `fuzzy`. |
 | destinations | `src/lib/destinations/` | a2n.3 | `deliveryLog` stays a root primitive. |
-| conversations | `src/lib/conversations/` | a2n.4 | |
+| conversations | `src/lib/conversations/` | a2n.4, a2n.10 | Includes `threadPage*`. |
 | publications | `src/lib/publications/` | a2n.5 | |
-| profiles | `src/lib/profiles/` | a2n.6 | |
+| profiles | `src/lib/profiles/` | a2n.6, a2n.10 | Includes `publicProfile` (the shared derive layer). |
+| notifications | `src/lib/notifications/` | a2n.8 | |
+| articles | `src/lib/articles/` | a2n.9 | `article*`, `embedCompatibility`, `reader*`. |
 
-Still at the `src/lib` root and not yet assigned to a domain: `publicProfile`
-(shared derive layer for profiles + publications), `threadPage*`,
-`notifications*`, `articleIndex`, `articleMetadata`, `articlePreview*`,
-`embedCompatibility.server`, `readerExtract.server`, `readerView*`,
-`imageProxySignature.server`, `devAuth.server`, `storageGrowth`. Decide a home
-(or promote to a primitive) when work next touches them; add a row to the
-domain table in the same PR.
+What remains at the `src/lib` root is primitives (see the list above) plus
+`devAuth.server`, `imageProxySignature.server` and `storageGrowth`, which are
+single-purpose helpers with no domain.
+
+### Known gap in the boundary rule
+
+The `no-restricted-imports` patterns in `eslint.config.mjs` match extensionless
+specifiers (`./profileStore.server`). Most code imports with an explicit `.ts`
+suffix (`./profileStore.server.ts`), which the patterns do not match, so those
+imports are not checked. This predates the folder migration.
