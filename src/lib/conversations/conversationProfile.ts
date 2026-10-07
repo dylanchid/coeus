@@ -16,7 +16,7 @@
  */
 
 import { canSee, canSeeIndirect, type Viewer, type Visibility } from "../visibility.ts";
-import type { ProfileSectionSwitches } from "../profileSections.ts";
+import type { ProfileSectionSwitches } from "../profiles/profileSections.ts";
 
 // ── loaded (raw) shapes ────────────────────────────────────────────────────
 

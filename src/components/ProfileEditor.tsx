@@ -9,8 +9,8 @@ import {
   LOCATION_MAX,
   validateProfileLinks,
   type ProfileLink,
-} from "@/lib/profile";
-import { ALLOWED_MEDIA_TYPES, type MediaKind } from "@/lib/profileUpload";
+} from "@/lib/profiles/profile";
+import { ALLOWED_MEDIA_TYPES, type MediaKind } from "@/lib/profiles/profileUpload";
 
 type FieldErrors = Partial<Record<"bio" | "location" | "links", string>>;
 

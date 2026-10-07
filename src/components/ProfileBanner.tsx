@@ -1,4 +1,4 @@
-import { avatarInitials, generativeCover } from "@/lib/profileMedia";
+import { avatarInitials, generativeCover } from "@/lib/profiles/profileMedia";
 import type { PublicProfileView } from "@/lib/publicProfile";
 
 /**

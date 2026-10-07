@@ -13,7 +13,7 @@ import {
   encodeProfileFeedCursor,
   type ProfileFeedPage,
   type ProfileFeedPageRequest,
-} from "../profileFeedCursor.ts";
+} from "../profiles/profileFeedCursor.ts";
 import type { Visibility } from "../visibility.ts";
 import type { Viewer } from "../visibility.ts";
 

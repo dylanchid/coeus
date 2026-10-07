@@ -260,7 +260,7 @@ test("loadThreadPage walks the whole tree with no gap or repeat across pages", a
     const page = await reader.loadThreadPage("root", { cursor, limit: 8 });
     seen.push(...page.descendants.map((d) => d.id));
     if (!page.hasMore) break;
-    const { decodeProfileFeedCursor } = await import("../profileFeedCursor.ts");
+    const { decodeProfileFeedCursor } = await import("../profiles/profileFeedCursor.ts");
     cursor = decodeProfileFeedCursor(page.nextCursor);
   }
   assert.equal(seen.length, 36);

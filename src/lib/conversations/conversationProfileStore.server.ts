@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LoadedInteraction, LoadedReply, LoadedTarget } from "./conversationProfile.ts";
 import type { LoadedThreadReply } from "../threadPage.ts";
-import { encodeProfileFeedCursor, type ProfileFeedCursor } from "../profileFeedCursor.ts";
+import { encodeProfileFeedCursor, type ProfileFeedCursor } from "../profiles/profileFeedCursor.ts";
 import type { Visibility } from "../visibility.ts";
 
 const REPLY_ROOT_LIMIT = 50;

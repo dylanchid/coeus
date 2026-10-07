@@ -1,16 +1,16 @@
 import "server-only";
 
-import { loadProfileIdentity } from "./profilePageLoader.server.ts";
+import { loadProfileIdentity } from "./profiles/profilePageLoader.server.ts";
 import {
   SupabaseConversationProfileReader,
   THREAD_PAGE_SIZE,
 } from "./conversations/conversationProfileStore.server.ts";
-import { SupabaseProfileFollowStore } from "./profileFollowStore.server.ts";
+import { SupabaseProfileFollowStore } from "./profiles/profileFollowStore.server.ts";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "./supabase.server.ts";
-import { visibleSections } from "./profileSections.ts";
-import { decodeProfileFeedCursor } from "./profileFeedCursor.ts";
+import { visibleSections } from "./profiles/profileSections.ts";
+import { decodeProfileFeedCursor } from "./profiles/profileFeedCursor.ts";
 import { deriveThreadView, type ThreadView } from "./threadPage.ts";
-import type { Profile } from "./profile.ts";
+import type { Profile } from "./profiles/profile.ts";
 import type { Viewer } from "./visibility.ts";
 
 /**

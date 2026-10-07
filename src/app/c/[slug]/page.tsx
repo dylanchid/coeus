@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FollowButton } from "@/components/FollowButton";
 import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
-import { SupabaseProfileFollowStore } from "@/lib/profileFollowStore.server";
+import { SupabaseProfileFollowStore } from "@/lib/profiles/profileFollowStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { canSee, type Viewer } from "@/lib/visibility";
 import { ExternalLinkHint } from "@/components/ExternalLinkHint";

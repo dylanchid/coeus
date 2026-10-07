@@ -1,5 +1,5 @@
-import { handlePatchProfileSections } from "@/lib/profileApi";
-import { SupabaseProfileStore } from "@/lib/profileStore.server";
+import { handlePatchProfileSections } from "@/lib/profiles/profileApi";
+import { SupabaseProfileStore } from "@/lib/profiles/profileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { instrument, requestCorrelationId } from "@/lib/serverLog";
 
