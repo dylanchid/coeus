@@ -114,3 +114,18 @@ test("plain-text messages and string status codes are tolerated", () => {
   assert.deepEqual(parsed.logs, []);
   assert.equal(parsed.recognized, 1);
 });
+
+test("reads httpStatus from CLI 64 request records", () => {
+  const lines = [
+    JSON.stringify({ type: "log", data: { requestPath: "/api/feeds", message: structured("feeds.GET", { route: "feeds", statusClass: "2xx" }) } }),
+    JSON.stringify({ type: "summary", recordsReturned: 1, pagination: { hasMore: false } }),
+    JSON.stringify({ type: "request", data: { requestPath: "/api/feeds", requestMethod: "GET", httpStatus: 502 } }),
+    JSON.stringify({ type: "summary", recordsReturned: 1, pagination: { hasMore: false } }),
+  ];
+  const parsed = parseVercelLogLines(lines);
+  assert.deepEqual(parsed.requests, [{ path: "/api/feeds", statusCode: 502 }]);
+  assert.equal(parsed.logs.length, 1);
+  assert.equal(parsed.records, 2);
+  assert.equal(parsed.recognized, 2);
+  assert.equal(parsed.truncated, false);
+});

@@ -247,8 +247,9 @@ function structuredLine(message: string): ServerLogLine | undefined {
 
 /**
  * Maps `vercel logs --json` output onto evaluator input. Accepts both the flat
- * records older CLIs print and the `{"type":"log","data":{...}}` envelope (plus
- * a trailing `{"type":"summary"}`) that CLI 64 prints, so a CLI format change
+ * records older CLIs print and the `{"type":...,"data":{...}}` envelope (plus a
+ * trailing `{"type":"summary"}`) that CLI 64 prints for both its `runtime` and
+ * `requests` sources, so a CLI format change
  * shows up as `recognized === 0` instead of a silently clean window.
  */
 export function parseVercelLogLines(lines: Iterable<string>): ParsedVercelLogs {
@@ -265,13 +266,14 @@ export function parseVercelLogLines(lines: Iterable<string>): ParsedVercelLogs {
       if (asRecord(record.pagination)?.hasMore === true) parsed.truncated = true;
       continue;
     }
-    const entry = record.type === "log" ? asRecord(record.data) : record.type === undefined ? record : undefined;
+    // CLI 64 wraps each record as {"type":"log"|"request",...,"data":{...}}.
+    const entry = record.type === undefined ? record : asRecord(record.data);
     if (!entry) continue;
     parsed.records += 1;
 
     const proxy = asRecord(entry.proxy);
     const path = firstString(entry.requestPath, entry.path, proxy?.path);
-    const statusCode = firstStatus(entry.responseStatusCode, entry.statusCode, entry.status, proxy?.statusCode);
+    const statusCode = firstStatus(entry.httpStatus, entry.responseStatusCode, entry.statusCode, entry.status, proxy?.statusCode);
     if (path && statusCode !== undefined) parsed.requests.push({ path, statusCode });
 
     const messages = messagesOf(entry);

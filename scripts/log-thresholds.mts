@@ -38,8 +38,16 @@ function arg(name: string): string | undefined {
 const windowMinutes = Number(arg("window") ?? process.env.LOG_WINDOW_MINUTES ?? 30);
 const inputFile = arg("input");
 
+/**
+ * CLI 64 serves runtime log events (our structured lines) and CDN request
+ * records (path + httpStatus) as separate sources; the thresholds need both.
+ */
 function fetchLogLines(): string[] {
   if (inputFile) return readFileSync(inputFile, "utf8").split("\n").filter(Boolean);
+  return [...fetchSource("runtime"), ...fetchSource("requests")];
+}
+
+function fetchSource(source: "runtime" | "requests"): string[] {
 
   const token = process.env.VERCEL_TOKEN;
   if (!token) {
@@ -49,6 +57,7 @@ function fetchLogLines(): string[] {
   const args = [
     VERCEL_CLI,
     "logs",
+    source,
     "--json",
     "--since",
     `${windowMinutes}m`,
