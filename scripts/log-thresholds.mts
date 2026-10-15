@@ -85,7 +85,12 @@ if (records > 0 && requests.length === 0) {
     try {
       const record = JSON.parse(raw);
       const entry = record?.type === "log" ? record.data : record;
-      if (entry && typeof entry === "object" && record?.type !== "summary") Object.keys(entry).forEach((k) => fields.add(k));
+      if (entry && typeof entry === "object" && record?.type !== "summary") {
+        for (const [k, v] of Object.entries(entry)) {
+          fields.add(k);
+          if (v && typeof v === "object" && !Array.isArray(v)) Object.keys(v).forEach((nested) => fields.add(`${k}.${nested}`));
+        }
+      }
     } catch {
       // skip
     }
