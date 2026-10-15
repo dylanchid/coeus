@@ -1,0 +1,23 @@
+{
+  "runtimePublisher": {
+    "deploymentId": "dpl_EN1p77fbV2xtLxfr9zhdRw6UVgLd",
+    "publisherEnvironment": "production",
+    "results": [
+      {
+        "mode": "success",
+        "messageId": "2x-1M1i78Scw0N4yEAtbuur8T9ubDWT60bS"
+      },
+      {
+        "mode": "fail-once",
+        "messageId": "4J-1M1epPq6XouIC7Ngc5sSZ6Q03lFhBS2E"
+      }
+    ]
+  },
+  "localPublisher": {
+    "ts": "2026-10-15T04:01:16.057Z",
+    "deploymentId": "dpl_EN1p77fbV2xtLxfr9zhdRw6UVgLd",
+    "publisherEnvironment": "development",
+    "mode": "success",
+    "messageId": "6O-1M1hMGs9HJkkz2SMMDZ6VvSf2kO8xPsY"
+  }
+}
