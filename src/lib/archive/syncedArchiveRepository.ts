@@ -56,7 +56,7 @@ function changedFields(before: Record<string, unknown> | undefined, after: Recor
   return Object.keys(after).filter((key) => JSON.stringify(before?.[key]) !== JSON.stringify(after[key]));
 }
 
-function operationsForChange(before: ArchiveData, after: ArchiveData): ArchiveSyncOperation[] {
+function operationsForChange(before: ArchiveData, after: ArchiveData, includeDeletes = true): ArchiveSyncOperation[] {
   const result: ArchiveSyncOperation[] = [];
   for (const kind of ["item", "collection", "socialPost"] as const) {
     const previous = new Map(entities(before, kind).map((entity) => [entity.id, entity]));
@@ -67,7 +67,9 @@ function operationsForChange(before: ArchiveData, after: ArchiveData): ArchiveSy
       if (!fields.length) continue;
       result.push({ operationId: id("op"), action: "upsert", entityKind: kind, entityId, changedFields: fields as never, value: structuredClone(value) } as unknown as ArchiveSyncOperation);
     }
-    for (const entityId of previous.keys()) if (!next.has(entityId)) result.push({ operationId: id("op"), action: "delete", entityKind: kind, entityId });
+    if (includeDeletes) {
+      for (const entityId of previous.keys()) if (!next.has(entityId)) result.push({ operationId: id("op"), action: "delete", entityKind: kind, entityId });
+    }
   }
   return result;
 }
@@ -265,7 +267,12 @@ export class SyncedArchiveRepository implements ArchiveRepository {
       this.queue.archiveId = remote.archiveId; this.queue.base = parsed.value;
       const currentLocal = this.last ?? await this.local.load();
       // First account connection uploads a local archive as operations; it never overwrites a remote snapshot.
-      if (!this.queue.operations.length && !empty(currentLocal)) this.queue.operations.push(...operationsForChange(parsed.value.archive, currentLocal));
+      if (!this.queue.operations.length && !empty(currentLocal)) {
+        // A first connection is a merge from this device into the account.
+        // The local sample archive must never delete items that already exist
+        // remotely; explicit local deletes are still emitted on later saves.
+        this.queue.operations.push(...operationsForChange(parsed.value.archive, currentLocal, false));
+      }
       while (this.queue.operations.length) {
         const base = this.queue.base;
         const body = { syncVersion: 1, archiveId: this.queue.archiveId, clientId: this.queue.clientId, baseRevision: base.revision, operations: this.queue.operations.slice(0, 500) };
