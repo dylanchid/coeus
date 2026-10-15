@@ -23,12 +23,12 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-import {
-  evaluateLogThresholds,
-  worstSeverity,
-  type RequestLine,
-  type ServerLogLine,
-} from "../src/lib/logThresholds.ts";
+import { evaluateLogThresholds, parseVercelLogLines, worstSeverity } from "../src/lib/logThresholds.ts";
+
+// Pinned: an unpinned CLI changed its JSON shape and left this check silently
+// reading zero records. Bump deliberately and re-run the parser tests.
+const VERCEL_CLI = "vercel@64.2.0";
+const LOG_LIMIT = 5000;
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -47,7 +47,7 @@ function fetchLogLines(): string[] {
     process.exit(2);
   }
   const args = [
-    "vercel@latest",
+    VERCEL_CLI,
     "logs",
     "--json",
     "--since",
@@ -55,7 +55,7 @@ function fetchLogLines(): string[] {
     "--environment",
     "production",
     "--limit",
-    "5000",
+    String(LOG_LIMIT),
     "--token",
     token,
   ];
@@ -66,62 +66,20 @@ function fetchLogLines(): string[] {
   return out.split("\n").filter(Boolean);
 }
 
-/** Best-effort: the CLI's JSON shape has shifted over versions, so probe a few field names. */
-function messageOf(entry: Record<string, unknown>): string | undefined {
-  const candidates = [entry.message, entry.text, (entry.payload as Record<string, unknown>)?.text, entry.log];
-  const hit = candidates.find((v) => typeof v === "string");
-  return hit as string | undefined;
-}
-function pathOf(entry: Record<string, unknown>): string | undefined {
-  const p = entry.path ?? entry.requestPath ?? (entry.proxy as Record<string, unknown>)?.path;
-  return typeof p === "string" ? p : undefined;
-}
-function statusOf(entry: Record<string, unknown>): number | undefined {
-  const s = entry.statusCode ?? entry.status ?? (entry.proxy as Record<string, unknown>)?.statusCode;
-  return typeof s === "number" ? s : undefined;
-}
+const { logs, requests, records, recognized, truncated } = parseVercelLogLines(fetchLogLines());
+console.log(`Scanned ${logs.length} structured log line(s) and ${requests.length} request(s) over ${windowMinutes}m (${recognized}/${records} records recognized).`);
 
-const logs: ServerLogLine[] = [];
-const requests: RequestLine[] = [];
-
-for (const raw of fetchLogLines()) {
-  let entry: Record<string, unknown>;
-  try {
-    entry = JSON.parse(raw);
-  } catch {
-    continue;
-  }
-
-  const path = pathOf(entry);
-  const statusCode = statusOf(entry);
-  if (path && typeof statusCode === "number") requests.push({ path, statusCode });
-
-  const message = messageOf(entry);
-  if (!message) continue;
-  const start = message.indexOf("{");
-  if (start < 0) continue;
-  try {
-    const structured = JSON.parse(message.slice(start));
-    if (structured && typeof structured.event === "string") {
-      logs.push({
-        event: structured.event,
-        route: structured.route,
-        operation: structured.operation,
-        statusClass: structured.statusClass,
-        durationMs: typeof structured.durationMs === "number" ? structured.durationMs : undefined,
-      });
-    }
-  } catch {
-    // not one of our structured lines
-  }
+// A clean result is only meaningful if the records were understood. If the CLI
+// returned records but none matched a known shape, its JSON format changed:
+// fail loudly instead of reporting a silently empty window.
+if (records > 0 && recognized === 0) {
+  console.error(`Unrecognized \`vercel logs --json\` format: none of ${records} record(s) parsed. Update parseVercelLogLines in src/lib/logThresholds.ts.`);
+  process.exit(2);
 }
+if (truncated) console.warn(`Warning: the CLI returned only part of this window (limit ${LOG_LIMIT}); breaches may be undercounted.`);
 
 const breaches = evaluateLogThresholds({ windowMinutes, logs, requests });
 const severity = worstSeverity(breaches);
-
-console.log(
-  `Scanned ${logs.length} structured log line(s) and ${requests.length} request(s) over ${windowMinutes}m.`,
-);
 
 if (!severity) {
   console.log("✓ No threshold breaches.");

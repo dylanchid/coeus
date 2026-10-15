@@ -183,3 +183,103 @@ export function worstSeverity(breaches: readonly Breach[]): Severity | null {
   if (breaches.length) return "warn";
   return null;
 }
+
+export interface ParsedVercelLogs {
+  logs: ServerLogLine[];
+  requests: RequestLine[];
+  /** Log records seen, excluding summaries and unparseable lines. */
+  records: number;
+  /** Records that carried a request path/status or at least one message. */
+  recognized: number;
+  /** The CLI reported more records than it returned. */
+  truncated: boolean;
+}
+
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): JsonRecord | undefined {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : undefined;
+}
+
+function firstString(...values: unknown[]): string | undefined {
+  return values.find((v): v is string => typeof v === "string");
+}
+
+function firstStatus(...values: unknown[]): number | undefined {
+  for (const v of values) {
+    const n = typeof v === "string" && /^\d{3}$/.test(v) ? Number(v) : v;
+    if (typeof n === "number" && Number.isInteger(n)) return n;
+  }
+  return undefined;
+}
+
+/** Every message string on a record: the top-level one plus each nested `logs[]` entry. */
+function messagesOf(entry: JsonRecord): string[] {
+  const out = new Set<string>();
+  const top = firstString(entry.message, entry.text, asRecord(entry.payload)?.text, entry.log);
+  if (top) out.add(top);
+  if (Array.isArray(entry.logs)) {
+    for (const nested of entry.logs) {
+      const message = firstString(asRecord(nested)?.message);
+      if (message) out.add(message);
+    }
+  }
+  return [...out];
+}
+
+function structuredLine(message: string): ServerLogLine | undefined {
+  const start = message.indexOf("{");
+  if (start < 0) return undefined;
+  try {
+    const structured = JSON.parse(message.slice(start)) as JsonRecord;
+    if (typeof structured.event !== "string") return undefined;
+    return {
+      event: structured.event,
+      route: firstString(structured.route),
+      operation: firstString(structured.operation),
+      statusClass: firstString(structured.statusClass),
+      durationMs: typeof structured.durationMs === "number" ? structured.durationMs : undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Maps `vercel logs --json` output onto evaluator input. Accepts both the flat
+ * records older CLIs print and the `{"type":"log","data":{...}}` envelope (plus
+ * a trailing `{"type":"summary"}`) that CLI 64 prints, so a CLI format change
+ * shows up as `recognized === 0` instead of a silently clean window.
+ */
+export function parseVercelLogLines(lines: Iterable<string>): ParsedVercelLogs {
+  const parsed: ParsedVercelLogs = { logs: [], requests: [], records: 0, recognized: 0, truncated: false };
+  for (const raw of lines) {
+    let record: JsonRecord | undefined;
+    try {
+      record = asRecord(JSON.parse(raw));
+    } catch {
+      continue;
+    }
+    if (!record) continue;
+    if (record.type === "summary") {
+      if (asRecord(record.pagination)?.hasMore === true) parsed.truncated = true;
+      continue;
+    }
+    const entry = record.type === "log" ? asRecord(record.data) : record.type === undefined ? record : undefined;
+    if (!entry) continue;
+    parsed.records += 1;
+
+    const proxy = asRecord(entry.proxy);
+    const path = firstString(entry.requestPath, entry.path, proxy?.path);
+    const statusCode = firstStatus(entry.responseStatusCode, entry.statusCode, entry.status, proxy?.statusCode);
+    if (path && statusCode !== undefined) parsed.requests.push({ path, statusCode });
+
+    const messages = messagesOf(entry);
+    if (messages.length || (path && statusCode !== undefined)) parsed.recognized += 1;
+    for (const message of messages) {
+      const line = structuredLine(message);
+      if (line) parsed.logs.push(line);
+    }
+  }
+  return parsed;
+}
