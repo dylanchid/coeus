@@ -1,4 +1,4 @@
-import { QueueClient } from "@vercel/queue";
+import { handleCallback } from "@vercel/queue";
 import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
 import { destinationQueueEnabled, isDestinationDeliveryRequest, processDestinationDeliveryRequest } from "@/lib/destinations/destinationQueue.server";
 import { logDelivery } from "@/lib/deliveryLog";
@@ -8,10 +8,8 @@ import { createAdminSupabaseClient, requiredEnvironment } from "@/lib/supabase.s
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
-const queue = new QueueClient({ region: process.env.VERCEL_REGION ?? "iad1" });
-
 /** Private Vercel Queue callback; vercel.json registers the only caller. */
-export const POST = queue.handleCallback(async (payload, metadata) => {
+const callback = handleCallback(async (payload, metadata) => {
   if (!isDestinationDeliveryRequest(payload)) throw new Error("Invalid destination delivery queue payload");
   logDelivery("destination_delivery.queue.received", {
     correlationId: payload.correlationId,
@@ -44,7 +42,9 @@ export const POST = queue.handleCallback(async (payload, metadata) => {
 }, {
   visibilityTimeoutSeconds: 300,
   retry: (error, metadata) => {
-    logDelivery("destination_delivery.queue.retry", {
+    // The SDK also calls this hook when acknowledgement fails after a
+    // successful handler, so it is not proof that processing will retry.
+    logDelivery("destination_delivery.queue.callback.error", {
       correlationId: metadata.messageId,
       messageId: metadata.messageId,
       deliveryCount: metadata.deliveryCount,
@@ -52,3 +52,18 @@ export const POST = queue.handleCallback(async (payload, metadata) => {
     });
   },
 });
+
+export function POST(request: Request): Promise<Response> {
+  const messageId = request.headers.get("ce-vqsmessageid");
+  const receiptHandle = request.headers.get("ce-vqsreceipthandle");
+  const deadline = request.headers.get("ce-vqsvisibilitydeadline");
+  logDelivery("destination_delivery.queue.callback", {
+    correlationId: messageId ?? "unparsed-callback",
+    messageId,
+    callbackType: request.headers.get("ce-type"),
+    hasReceiptHandle: receiptHandle !== null,
+    visibilityRemainingSeconds: deadline === null ? null : Math.round((Date.parse(deadline) - Date.now()) / 1000),
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
+  });
+  return callback(request);
+}

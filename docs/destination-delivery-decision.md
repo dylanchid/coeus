@@ -1,6 +1,7 @@
 # Destination delivery dispatch decision
 
-**Status:** accepted for a staging proof; production rollout is conditional on the exit criteria below.  
+**Status:** accepted for a staging proof; basic Queue acknowledgment and retry pass with matching OIDC environments. The full production gate remains open.
+
 **Date:** 2026-09-11  
 **Owner:** `bareaga_web-m31`
 
@@ -42,9 +43,15 @@ Message payloads must contain no encrypted destination token, external API secre
 
 ## Staging proof and production gate
 
+### Staging checkpoint (2026-10-15)
+
+The isolated `coeus-queue-staging` project delivers compact messages to the configured `queue/v2beta` route in `iad1`. Initial probes completed their workers but failed acknowledgment with HTTP 409; retry callbacks without receipts failed `ReceiveMessageById` with HTTP 404. The local publishing token inspected during follow-up was scoped to **development**, while the deployed callback used **production**. A deployment ID does not change the token's environment. Queue API requests are scoped by team, project and environment. [Queue authentication](https://vercel.com/docs/queues/api#authentication)
+
+A standalone synthetic comparison on deployment `dpl_EN1p77fbV2xtLxfr9zhdRw6UVgLd` isolated this environment mismatch: a production runtime publisher acknowledged with HTTP 204, while a development publisher targeting the same callback reproduced HTTP 409 and retry lookup 404. A production-published message deliberately failed its first handler invocation, then reentered at delivery count 2 after its 300-second lease and acknowledged with HTTP 204. Development-published probes could be fetched and acknowledged by a development poller, explaining the earlier apparent polling/push difference. The original broad platform-failure draft is superseded by the [corrected investigation and sanitized evidence](support/vercel-queue/report.md). Use a runtime publisher or matching OIDC identity for further staging proofs. Keep `DESTINATION_QUEUE_ENABLED` off in the real production project until the full gate below passes; preserve `after()` and cron. Tracking: `bareaga_web-9hz.1` and `bareaga_web-9hz.1.1`.
+
 Vercel Queues is currently beta, so this is not a no-risk platform commitment. Before removing `after()` as a primary trigger, prove all of the following in staging:
 
-- Queue publish and the private push consumer work from the project/region that hosts Coeus, with production-equivalent environment variables.
+- Queue publish and the private push consumer work from the project, OIDC environment and region that host Coeus, with production-equivalent environment variables.
 - A 5,000-item Notion and Obsidian destination drains through chained 100-item ticks without duplicate external writes, including a simulated consumer timeout and redelivery.
 - Queue retry and the daily cron can overlap without changing the resulting delivery watermarks or producing duplicate outcome rows.
 - Consumer metrics expose age, retries, and failures; an alert fires for a message near its configured retention deadline.
