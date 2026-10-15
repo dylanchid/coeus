@@ -19,6 +19,7 @@ const EMPTY_ARCHIVE: ArchiveData = {
 };
 
 const MAX_COMMIT_ATTEMPTS = 3;
+const STORED_OPERATION_LOOKUP_CHUNK_SIZE = 100;
 
 interface StoredArchive {
   archiveId: string;
@@ -217,12 +218,17 @@ export class SupabaseArchiveSyncStore implements ArchiveSyncStore {
 
   private async storedOperations(archiveId: string, operationIds: string[]): Promise<StoredOperation[]> {
     if (!operationIds.length) return [];
-    const { data, error } = await this.supabase
-      .from("archive_operations")
-      .select("operation_id,accepted,conflicts")
-      .eq("archive_id", archiveId)
-      .in("operation_id", operationIds);
-    if (error) throw error;
-    return (data ?? []) as unknown as StoredOperation[];
+    const stored: StoredOperation[] = [];
+    for (let start = 0; start < operationIds.length; start += STORED_OPERATION_LOOKUP_CHUNK_SIZE) {
+      const ids = operationIds.slice(start, start + STORED_OPERATION_LOOKUP_CHUNK_SIZE);
+      const { data, error } = await this.supabase
+        .from("archive_operations")
+        .select("operation_id,accepted,conflicts")
+        .eq("archive_id", archiveId)
+        .in("operation_id", ids);
+      if (error) throw error;
+      stored.push(...((data ?? []) as unknown as StoredOperation[]));
+    }
+    return stored;
   }
 }

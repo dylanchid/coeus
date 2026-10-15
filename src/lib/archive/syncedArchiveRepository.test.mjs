@@ -32,6 +32,46 @@ test("first authenticated sync uploads the retained local archive as operations"
   } finally { globalThis.fetch = originalFetch; }
 });
 
+test("first authenticated sync preserves remote-only items", async () => {
+  const local = createDemoArchive();
+  const remoteOnly = {
+    id: "remote-only",
+    articleId: "remote-only-article",
+    title: "Already on another device",
+    url: "https://example.com/remote-only",
+    sourceName: "Example",
+    topic: "technology",
+    summary: "A remote archive item must survive first connection.",
+    author: "Example",
+    publishedAt: "2026-01-01T00:00:00.000Z",
+    savedAt: "2026-01-02T00:00:00.000Z",
+    state: "unread",
+    starred: false,
+    collectionIds: [],
+    tags: [],
+    note: "",
+  };
+  let snapshot = createInitialSyncSnapshot({ ...local, items: [remoteOnly] });
+  const submitted = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options = {}) => {
+    if (url === "/api/archive") return Response.json({ archiveId: "archive-1", snapshot });
+    const batch = JSON.parse(options.body);
+    submitted.push(...batch.operations);
+    const result = applyArchiveSyncBatch(snapshot, batch);
+    snapshot = result.snapshot;
+    return Response.json(result);
+  };
+  try {
+    const repo = new SyncedArchiveRepository(new LocalStorageArchiveRepository(memoryStorage(local)), memoryStorage(local));
+    await repo.load();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(submitted.some((operation) => operation.action === "delete"), false);
+    assert.ok(snapshot.archive.items.some((item) => item.id === "remote-only"));
+    assert.equal(repo.getSyncStatus(), "synced");
+  } finally { globalThis.fetch = originalFetch; }
+});
+
 const EMPTY_ARCHIVE = { version: 1, items: [], collections: [], socialPosts: [] };
 const flush = () => new Promise((resolve) => setTimeout(resolve, 10));
 

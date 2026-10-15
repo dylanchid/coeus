@@ -33,7 +33,7 @@ globalThis.fetch = async () => new Response(null, { status: 401 });
 
 const React = await import("react");
 const { useState } = React;
-const { cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
+const { act, cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { DEFAULT_PREFS } = await import("@/lib/prefs");
 const { SlashMenu } = await import("./SlashMenu");
 const { SettingsPanel } = await import("./SettingsPanel");
@@ -676,8 +676,8 @@ test("Account menu supports menu keyboard navigation and restores trigger focus 
   assert.equal(document.activeElement, trigger);
 });
 
-test("Archive list limits mounted cards and defers collection options until Organize is opened", () => {
-  const visible = Array.from({ length: 21 }, (_, index) => ({
+test("Archive list virtualizes 5,000 items and defers collection options until Organize is opened", async () => {
+  const visible = Array.from({ length: 5000 }, (_, index) => ({
     id: `item-${index}`,
     articleId: `article-${index}`,
     title: `Item ${index}`,
@@ -695,16 +695,40 @@ test("Archive list limits mounted cards and defers collection options until Orga
     note: "",
   }));
   const collections = Array.from({ length: 3 }, (_, index) => ({ id: `collection-${index}`, name: `Collection ${index}`, description: "", visibility: "private" as const, kind: "personal" as const, createdAt: "2026-01-01T00:00:00.000Z" }));
-  render(<ArchiveList data={{ version: 1, items: visible, collections, socialPosts: [] }} query="" setQuery={() => undefined} filter="all" setFilter={() => undefined} sort="newest" setSort={() => undefined} counts={{ all: 21, unread: 21, starred: 0, annotated: 0 }} visible={visible} patchItem={() => undefined} recoveryBusy={false} captureContent={async () => undefined} onNotice={() => undefined} shareNotice="" showPostPanels={false} postsByItem={new Map()} />);
+  // jsdom has no layout, so every row would measure 0px tall and the window
+  // would keep filling with rows. Give cards a realistic height instead.
+  const rect = Object.getOwnPropertyDescriptor(window.Element.prototype, "getBoundingClientRect")!;
+  window.Element.prototype.getBoundingClientRect = function (this: Element) {
+    return this.classList.contains("archive-item") ? ({ width: 800, height: 230, top: 0, left: 0, right: 800, bottom: 230, x: 0, y: 0, toJSON() {} } as DOMRect) : this.classList.contains("archive-list") ? ({ width: 800, height: 0, top: -window.scrollY, left: 0, right: 800, bottom: 0, x: 0, y: -window.scrollY, toJSON() {} } as DOMRect) : (rect.value as () => DOMRect).call(this);
+  };
+  const offset = Object.getOwnPropertyDescriptor(window.HTMLElement.prototype, "offsetHeight")!;
+  Object.defineProperty(window.HTMLElement.prototype, "offsetHeight", { configurable: true, get(this: HTMLElement) { return this.classList.contains("archive-item") ? 230 : 0; } });
+  try {
+  render(<ArchiveList data={{ version: 1, items: visible, collections, socialPosts: [] }} query="" setQuery={() => undefined} filter="all" setFilter={() => undefined} sort="newest" setSort={() => undefined} counts={{ all: 5000, unread: 5000, starred: 0, annotated: 0 }} visible={visible} patchItem={() => undefined} recoveryBusy={false} captureContent={async () => undefined} onNotice={() => undefined} shareNotice="" showPostPanels={false} postsByItem={new Map()} />);
 
-  assert.equal(screen.getAllByRole("listitem").length, 20);
-  assert.equal(document.querySelectorAll(".archive-item-tools option").length, 20); // one "No collection" option per mounted card
+  const mounted = screen.getAllByRole("listitem");
+  assert.ok(mounted.length > 0 && mounted.length < 50, `expected a windowed subset, mounted ${mounted.length}`);
+  assert.equal(mounted[0]!.getAttribute("aria-setsize"), "5000");
+  assert.equal(mounted[0]!.getAttribute("aria-posinset"), "1");
+  assert.equal(document.querySelectorAll(".archive-item-tools option").length, mounted.length); // one "No collection" option per mounted card
   const organize = screen.getAllByText("Organize")[0]!.closest("details")!;
   organize.open = true;
   fireEvent(organize, new Event("toggle", { bubbles: true }));
-  assert.equal(document.querySelectorAll(".archive-item-tools option").length, 23);
-  fireEvent.click(screen.getByRole("button", { name: "Show 1 more pieces" }));
-  assert.equal(screen.getAllByRole("listitem").length, 21);
+  assert.equal(document.querySelectorAll(".archive-item-tools option").length, mounted.length + 3);
+  assert.equal(screen.queryByRole("button", { name: /more pieces/ }), null);
+
+  // A row holding focus stays mounted after it scrolls out of the window.
+  const star = screen.getByRole("button", { name: "Star Item 0" });
+  star.focus();
+  await waitFor(() => assert.equal(document.activeElement, star));
+  Object.defineProperty(window, "scrollY", { configurable: true, value: 100_000 });
+  await act(async () => { window.dispatchEvent(new window.Event("scroll")); await new Promise((r) => setTimeout(r, 50)); });
+  await waitFor(() => assert.ok(screen.getAllByRole("listitem").some((li) => Number(li.getAttribute("aria-posinset")) > 400)));
+  assert.ok(screen.getByRole("button", { name: "Star Item 0" }).isConnected);
+  } finally {
+    window.Element.prototype.getBoundingClientRect = rect.value;
+    Object.defineProperty(window.HTMLElement.prototype, "offsetHeight", offset);
+  }
 });
 
 test("Account menu prompts an onboarding-incomplete account to finish its profile", async () => {
