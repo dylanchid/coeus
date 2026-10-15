@@ -66,7 +66,8 @@ function fetchLogLines(): string[] {
   return out.split("\n").filter(Boolean);
 }
 
-const { logs, requests, records, recognized, truncated } = parseVercelLogLines(fetchLogLines());
+const rawLines = fetchLogLines();
+const { logs, requests, records, recognized, truncated } = parseVercelLogLines(rawLines);
 console.log(`Scanned ${logs.length} structured log line(s) and ${requests.length} request(s) over ${windowMinutes}m (${recognized}/${records} records recognized).`);
 
 // A clean result is only meaningful if the records were understood. If the CLI
@@ -75,6 +76,21 @@ console.log(`Scanned ${logs.length} structured log line(s) and ${requests.length
 if (records > 0 && recognized === 0) {
   console.error(`Unrecognized \`vercel logs --json\` format: none of ${records} record(s) parsed. Update parseVercelLogLines in src/lib/logThresholds.ts.`);
   process.exit(2);
+}
+if (records > 0 && requests.length === 0) {
+  // Request-status signals need a path and status on each record. Print field
+  // names only (never values) so a renamed field is easy to spot.
+  const fields = new Set<string>();
+  for (const raw of rawLines) {
+    try {
+      const record = JSON.parse(raw);
+      const entry = record?.type === "log" ? record.data : record;
+      if (entry && typeof entry === "object" && record?.type !== "summary") Object.keys(entry).forEach((k) => fields.add(k));
+    } catch {
+      // skip
+    }
+  }
+  console.warn(`Warning: no request path/status found in ${records} record(s). Fields seen: ${[...fields].sort().join(", ")}`);
 }
 if (truncated) console.warn(`Warning: the CLI returned only part of this window (limit ${LOG_LIMIT}); breaches may be undercounted.`);
 
