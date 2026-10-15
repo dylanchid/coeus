@@ -17,7 +17,7 @@
     "test:ui": "node --import tsx --test --test-timeout=60000 --test-force-exit src/components/*.test.tsx",
     "test:e2e": "playwright test",
     "test:db": "supabase test db",
-    "audit:ci": "npm audit --audit-level=high",
+    "audit:ci": "node --import tsx scripts/audit-policy.mts",
     "smoke:destinations": "node --import tsx scripts/destination-smoke.mts",
     "smoke:security-headers": "node --import tsx scripts/security-headers-smoke.mts",
     "smoke:health": "node --import tsx scripts/health-smoke.mts",

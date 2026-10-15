@@ -31,7 +31,8 @@ branch protection):
 
 - **quality** — `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm test`
   (unit + jsdom UI), `npm run build`, and `npm run audit:ci` (fails on `high`+
-  advisories). The build receives only public, non-secret placeholder
+  advisories, except dated dev-only exceptions in
+  [`scripts/audit-policy.mts`](scripts/audit-policy.mts)). The build receives only public, non-secret placeholder
   `NEXT_PUBLIC_*` values; no production secret is present in CI.
 - **database** — pins the Supabase CLI (`2.75.0`), runs `supabase start` (Docker
   is preinstalled on GitHub-hosted `ubuntu-latest`; migrations apply on start),
