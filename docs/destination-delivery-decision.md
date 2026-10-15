@@ -1,6 +1,6 @@
 # Destination delivery dispatch decision
 
-**Status:** accepted for a staging proof; basic Queue acknowledgment and retry pass with matching OIDC environments. The full production gate remains open.
+**Status:** accepted for a staging proof; Queue acknowledgment and retry pass with matching OIDC environments, and the Coeus app path settles its own messages on staging. The full production gate remains open.
 
 **Date:** 2026-09-11  
 **Owner:** `bareaga_web-m31`
@@ -48,6 +48,20 @@ Message payloads must contain no encrypted destination token, external API secre
 The isolated `coeus-queue-staging` project delivers compact messages to the configured `queue/v2beta` route in `iad1`. Initial probes completed their workers but failed acknowledgment with HTTP 409; retry callbacks without receipts failed `ReceiveMessageById` with HTTP 404. The local publishing token inspected during follow-up was scoped to **development**, while the deployed callback used **production**. A deployment ID does not change the token's environment. Queue API requests are scoped by team, project and environment. [Queue authentication](https://vercel.com/docs/queues/api#authentication)
 
 A standalone synthetic comparison on deployment `dpl_EN1p77fbV2xtLxfr9zhdRw6UVgLd` isolated this environment mismatch: a production runtime publisher acknowledged with HTTP 204, while a development publisher targeting the same callback reproduced HTTP 409 and retry lookup 404. A production-published message deliberately failed its first handler invocation, then reentered at delivery count 2 after its 300-second lease and acknowledged with HTTP 204. Development-published probes could be fetched and acknowledged by a development poller, explaining the earlier apparent polling/push difference. The original broad platform-failure draft is superseded by the [corrected investigation and sanitized evidence](support/vercel-queue/report.md). Use a runtime publisher or matching OIDC identity for further staging proofs. Keep `DESTINATION_QUEUE_ENABLED` off in the real production project until the full gate below passes; preserve `after()` and cron. Tracking: `bareaga_web-9hz.1` and `bareaga_web-9hz.1.1`.
+
+### App-path proof (2026-10-15)
+
+Coeus itself, not the standalone repro, now publishes and settles Queue messages on `coeus-queue-staging` with its own production runtime identity. Deployment `dpl_H2L1Eq4dgj9cwAgMikvXshFv3r5a` (this branch) received three messages from real `POST /api/archive/sync` requests made by a signed-in user: the first-connect merge at 20:28:31 UTC and two archive edits at 20:30. Each followed the same path: `destination_delivery.queue.enqueued` on the sync request, then a callback on the same deployment about one second later with a receipt and 299 seconds of visibility, then `queue.received` at `deliveryCount: 1` in `iad1` carrying the same request and correlation IDs, then `destination_delivery.tick`, then HTTP 200. No `callback.error` was logged. SDK 0.8.0 calls that hook when acknowledgment fails, so its absence means each acknowledgment succeeded. Logs pulled at 20:38 UTC, after every 300-second lease had expired, show no redelivery and no receipt-less callback. The account had no destinations, so each tick processed zero items; draining real items is the next gate (`bareaga_web-9hz.4`). Tracking: `bareaga_web-9hz.3`.
+
+### Staging setup notes
+
+`coeus-queue-staging` uses its own Supabase project, separate from production. `/api/test/session` refuses `VERCEL_ENV=production`, so staging proofs need a real OAuth sign-in. To enable one on a new staging Supabase project:
+
+1. Create a GitHub OAuth app. Homepage URL: the staging alias. Authorization callback URL: `https://<staging-project-ref>.supabase.co/auth/v1/callback`.
+2. In the staging Supabase dashboard, enable **Authentication → Sign In / Providers → GitHub** with that app's client ID and secret.
+3. In **Authentication → URL Configuration**, set the Site URL to the staging alias and add `<staging alias>/**` to Redirect URLs, so Supabase can return to `/auth/callback`.
+
+Destination proofs need the same treatment: a Notion integration whose redirect is `<staging alias>/api/archive/destinations/notion/oauth/callback`, with `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET` and `NOTION_OAUTH_REDIRECT_URI` set as Production environment variables on the staging Vercel project.
 
 Vercel Queues is currently beta, so this is not a no-risk platform commitment. Before removing `after()` as a primary trigger, prove all of the following in staging:
 
