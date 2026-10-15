@@ -7,7 +7,7 @@
     }
   ],
   "functions": {
-    "app/api/archive/destinations/queue/route.ts": {
+    "src/app/api/archive/destinations/queue/route.ts": {
       "experimentalTriggers": [
         { "type": "queue/v2beta", "topic": "destination_delivery", "retryAfterSeconds": 60 }
       ]
