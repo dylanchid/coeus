@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateLogThresholds, worstSeverity } from "./logThresholds.ts";
+import { evaluateLogThresholds, parseVercelLogLines, worstSeverity } from "./logThresholds.ts";
 
 const ok = (route, n, extra = {}) =>
   Array.from({ length: n }, () => ({ event: `${route}.op`, route, statusClass: "2xx", ...extra }));
@@ -63,4 +63,69 @@ test("destination delivery errors are normalised to an hourly rate", () => {
   const breaches = evaluateLogThresholds({ windowMinutes: 15, logs });
   assert.equal(breaches.length, 1);
   assert.equal(breaches[0].severity, "warn");
+});
+
+const structured = (event, extra = {}) => JSON.stringify({ ts: "2026-10-15T20:28:31.833Z", event, ...extra });
+
+test("parses flat CLI records, including every nested log message", () => {
+  const line = JSON.stringify({
+    id: "78v28",
+    level: "info",
+    message: structured("archive.sync.handleArchiveSync", { route: "archive.sync", statusClass: "2xx", durationMs: 337 }),
+    requestPath: "/api/archive/sync",
+    responseStatusCode: 200,
+    logs: [
+      { level: "info", message: structured("archive.sync.handleArchiveSync", { route: "archive.sync", statusClass: "2xx", durationMs: 337 }) },
+      { level: "info", message: structured("destination_delivery.queue.enqueued") },
+    ],
+  });
+  const parsed = parseVercelLogLines([line]);
+  assert.deepEqual(parsed.requests, [{ path: "/api/archive/sync", statusCode: 200 }]);
+  assert.deepEqual(parsed.logs.map((l) => l.event), ["archive.sync.handleArchiveSync", "destination_delivery.queue.enqueued"]);
+  assert.equal(parsed.logs[0].durationMs, 337);
+  assert.equal(parsed.records, 1);
+  assert.equal(parsed.recognized, 1);
+  assert.equal(parsed.truncated, false);
+});
+
+test("parses the CLI 64 envelope and flags a truncated window", () => {
+  const lines = [
+    JSON.stringify({ type: "log", data: { requestPath: "/api/feeds", responseStatusCode: 500, message: structured("feeds.GET", { route: "feeds", statusClass: "error" }) } }),
+    JSON.stringify({ type: "summary", recordsReturned: 1, pagination: { hasMore: true, next: "cursor" } }),
+  ];
+  const parsed = parseVercelLogLines(lines);
+  assert.deepEqual(parsed.requests, [{ path: "/api/feeds", statusCode: 500 }]);
+  assert.equal(parsed.logs[0].statusClass, "error");
+  assert.equal(parsed.records, 1);
+  assert.equal(parsed.truncated, true);
+});
+
+test("an unknown record shape is counted but not recognized", () => {
+  const parsed = parseVercelLogLines([JSON.stringify({ type: "log", data: { body: { msg: "x" } } }), "not json", ""]);
+  assert.equal(parsed.records, 1);
+  assert.equal(parsed.recognized, 0);
+  assert.deepEqual(parsed.logs, []);
+  assert.deepEqual(parsed.requests, []);
+});
+
+test("plain-text messages and string status codes are tolerated", () => {
+  const parsed = parseVercelLogLines([JSON.stringify({ path: "/", statusCode: "304", message: "GET / 304" })]);
+  assert.deepEqual(parsed.requests, [{ path: "/", statusCode: 304 }]);
+  assert.deepEqual(parsed.logs, []);
+  assert.equal(parsed.recognized, 1);
+});
+
+test("reads httpStatus from CLI 64 request records", () => {
+  const lines = [
+    JSON.stringify({ type: "log", data: { requestPath: "/api/feeds", message: structured("feeds.GET", { route: "feeds", statusClass: "2xx" }) } }),
+    JSON.stringify({ type: "summary", recordsReturned: 1, pagination: { hasMore: false } }),
+    JSON.stringify({ type: "request", data: { requestPath: "/api/feeds", requestMethod: "GET", httpStatus: 502 } }),
+    JSON.stringify({ type: "summary", recordsReturned: 1, pagination: { hasMore: false } }),
+  ];
+  const parsed = parseVercelLogLines(lines);
+  assert.deepEqual(parsed.requests, [{ path: "/api/feeds", statusCode: 502 }]);
+  assert.equal(parsed.logs.length, 1);
+  assert.equal(parsed.records, 2);
+  assert.equal(parsed.recognized, 2);
+  assert.equal(parsed.truncated, false);
 });
