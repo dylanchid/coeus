@@ -22,12 +22,12 @@
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
-  color: var(--fg);
+  color: var(--text-primary);
   text-decoration: none;
 }
 
 .site-wordmark {
-  color: var(--fg);
+  color: var(--text-primary);
   /* High-contrast Pochaevsk (Church Slavonic-style) serif, mixed case. */
   font: 400 calc(var(--wordmark) * 1.1)/1 var(--font-pochaevsk), Georgia, serif;
   letter-spacing: 0;
@@ -35,7 +35,7 @@
 }
 
 .site-wordmark:visited {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .site-tools {
@@ -49,7 +49,7 @@
 .site-subline {
   margin: 0.55rem 0 0;
   max-width: 48rem;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.88rem;
 }
 
@@ -68,7 +68,7 @@
   align-items: center;
   min-height: 44px;
   padding: 0.35rem 0;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -76,15 +76,15 @@
 }
 
 .primary-nav-link:visited {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .primary-nav-link:hover {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .primary-nav-link[aria-current="page"] {
-  color: var(--fg);
+  color: var(--text-primary);
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -94,8 +94,8 @@
   min-width: 1.15rem;
   margin-left: 0.3rem;
   padding: 0.04rem 0.2rem;
-  border: 1px solid var(--line);
-  color: var(--fg);
+  border: 1px solid var(--rule-subtle);
+  color: var(--text-primary);
   text-align: center;
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
@@ -115,20 +115,20 @@
   width: 100%;
   min-height: 40px;
   padding: 0.4rem 2.5rem 0.4rem 0.8rem;
-  border: 1px solid var(--header-rule);
+  border: 1px solid var(--rule-strong);
   border-radius: 6px;
-  background: var(--settings-bg);
-  color: var(--fg);
+  background: var(--surface-raised);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.9rem;
 }
 
 .header-search-input::placeholder {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 .header-search-input:focus-visible {
-  outline: 2px solid var(--fg);
+  outline: 2px solid var(--text-primary);
   outline-offset: 1px;
 }
 
@@ -142,13 +142,13 @@
   width: 2.5rem;
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
 .header-search-submit:hover,
 .header-search-submit:focus-visible {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .header-search-results {
@@ -160,14 +160,14 @@
   min-width: 18rem;
   max-height: min(26rem, 70vh);
   overflow-y: auto;
-  border: 1px solid var(--settings-border);
-  background: var(--settings-bg);
+  border: 1px solid var(--rule-panel);
+  background: var(--surface-raised);
 }
 
 .header-search-group {
   margin: 0;
   padding: 0.5rem 0.8rem 0.2rem;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -182,7 +182,7 @@
   padding: 0.5rem 0.8rem;
   border: 0;
   background: transparent;
-  color: var(--fg);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.85rem;
   text-align: left;
@@ -190,12 +190,12 @@
 }
 
 .header-search-item.is-active {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
 }
 
 .header-search-hint {
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.75rem;
 }
 
@@ -208,11 +208,11 @@
 .header-search-error {
   margin: 0;
   padding: 0.7rem 0.8rem;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.82rem;
 }
 
-.header-search-error { color: var(--error); }
+.header-search-error { color: var(--text-danger); }
 
 /* —— Icon buttons (bell, messages, ⋯) —— */
 .header-icon-btn {
@@ -224,7 +224,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
   text-decoration: none;
 }
@@ -232,7 +232,7 @@
 .header-icon-btn:hover,
 .header-icon-btn:focus-visible,
 .header-icon-btn[aria-expanded="true"] {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .header-icon-btn:disabled {
@@ -247,8 +247,8 @@
   min-width: 1rem;
   padding: 0 0.25rem;
   border-radius: 999px;
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
   font-size: 0.62rem;
   font-weight: 700;
   line-height: 1rem;
@@ -268,16 +268,16 @@
   z-index: 40;
   display: grid;
   min-width: 12rem;
-  border: 1px solid var(--settings-border);
-  background: var(--settings-bg);
+  border: 1px solid var(--rule-panel);
+  background: var(--surface-raised);
 }
 
 .header-dropdown button {
   padding: 0.6rem 0.8rem;
   border: 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--rule-subtle);
   background: transparent;
-  color: var(--fg);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.8rem;
   text-align: left;
@@ -290,13 +290,13 @@
 
 .header-dropdown button:hover,
 .header-dropdown button:focus-visible {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
   outline: none;
 }
 
 .header-dropdown .is-danger {
-  color: var(--error);
+  color: var(--text-danger);
 }
 
 /* —— Try+ upsell (freemium) —— */
@@ -305,7 +305,7 @@
   align-items: center;
   min-height: 44px;
   margin-right: 0.6rem;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -313,11 +313,11 @@
   white-space: nowrap;
 }
 
-.try-plus:visited { color: var(--muted); }
+.try-plus:visited { color: var(--text-secondary); }
 
 .try-plus:hover,
 .try-plus:focus-visible {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 /* —— Account control (header) —— */
@@ -339,7 +339,7 @@ button.account-signin {
   padding: 0.35rem 0.5rem;
   border: 0;
   background: none;
-  color: var(--muted);
+  color: var(--text-secondary);
   font: inherit;
   font-size: 0.78rem;
   text-transform: uppercase;
@@ -348,10 +348,10 @@ button.account-signin {
   cursor: pointer;
 }
 
-button.account-signin:visited { color: var(--muted); }
+button.account-signin:visited { color: var(--text-secondary); }
 
 button.account-signin:hover {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 button.account-signin:focus {
@@ -372,13 +372,13 @@ button.account-signin:focus-visible {
   padding: 0 0.3rem;
   border: 0;
   background: transparent;
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
 .account-trigger:hover,
 .account-trigger[aria-expanded="true"] {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .account-avatar {
@@ -387,12 +387,12 @@ button.account-signin:focus-visible {
   flex: none;
   display: grid;
   place-items: center;
-  border: 1px solid var(--header-rule);
+  border: 1px solid var(--rule-strong);
   border-radius: 50%;
-  background-color: var(--settings-bg);
+  background-color: var(--surface-raised);
   background-size: cover;
   background-position: center;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -400,13 +400,13 @@ button.account-signin:focus-visible {
 
 .account-avatar.is-placeholder {
   border-color: transparent;
-  background-color: var(--line);
+  background-color: var(--rule-subtle);
 }
 
 .account-name {
   max-width: 10rem;
   overflow: hidden;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -420,11 +420,11 @@ button.account-signin:focus-visible {
 
 .persistence-status {
   margin: 0.45rem 0 0;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: var(--text-meta);
 }
 
-.persistence-status.is-error { color: var(--error); }
+.persistence-status.is-error { color: var(--text-danger); }
 .persistence-status button {
   min-height: 44px;
   padding: 0 0.35rem;
@@ -439,12 +439,12 @@ button.account-signin:focus-visible {
 /* —— Shared page hero —— */
 .page-hero {
   padding: var(--space-lg) 0 var(--space-xl);
-  border-bottom: 1px solid var(--header-rule);
+  border-bottom: 1px solid var(--rule-strong);
 }
 
 .page-hero-kicker {
   margin: 0 0 1.2rem;
-  color: var(--accent);
+  color: var(--text-accent);
   font-size: var(--text-kicker);
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -475,7 +475,7 @@ button.account-signin:focus-visible {
 .page-hero-lede {
   margin: 0;
   max-width: 34rem;
-  color: var(--muted);
+  color: var(--text-secondary);
   font-size: clamp(0.92rem, 1.5vw, 1.15rem);
   line-height: 1.55;
 }
@@ -484,8 +484,8 @@ button.account-signin:focus-visible {
 .site-footer {
   margin-top: var(--space-xl);
   padding-top: var(--header-py);
-  border-top: 1px solid var(--header-rule);
-  color: var(--muted);
+  border-top: 1px solid var(--rule-strong);
+  color: var(--text-secondary);
   font-size: 0.78rem;
 }
 
@@ -505,20 +505,20 @@ button.account-signin:focus-visible {
 }
 
 .site-footer-note strong {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .site-footer a {
-  color: var(--muted);
+  color: var(--text-secondary);
 }
 
 /* —— Shared boxed-button idiom —— */
 .btn {
   min-height: 44px;
   padding: 0.4rem 0.7rem;
-  border: 1px solid var(--fg);
+  border: 1px solid var(--text-primary);
   background: transparent;
-  color: var(--fg);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -528,8 +528,8 @@ button.account-signin:focus-visible {
 
 .btn:hover,
 .btn[aria-pressed="true"] {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
 }
 
 .btn:disabled {
@@ -538,8 +538,8 @@ button.account-signin:focus-visible {
 }
 
 .btn--solid {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
 }
 
 @media (max-width: 700px) {
@@ -575,5 +575,5 @@ button.account-signin:focus-visible {
 
 .account-trigger:hover .account-name,
 .account-trigger[aria-expanded="true"] .account-name {
-  color: var(--fg);
+  color: var(--text-primary);
 }

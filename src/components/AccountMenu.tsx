@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useModalDialog } from "@/hooks/useModalDialog";
 import { useAuth } from "./AuthProvider";
 import { HeaderMenu } from "./HeaderMenu";
 import { CaretIcon } from "./HeaderIcons";
 import { SignInPanel } from "./SignInPanel";
+import { UiDialog } from "./ui/Dialog";
 
 const localDevSignIn = process.env.NODE_ENV !== "production";
 
@@ -20,9 +20,6 @@ export function AccountMenu() {
   const router = useRouter();
   const pathname = usePathname() || "/";
   const [signinOpen, setSigninOpen] = useState(false);
-  const dialogRef = useRef<HTMLElement>(null);
-
-  useModalDialog({ active: signinOpen, containerRef: dialogRef, onClose: () => setSigninOpen(false) });
 
   if (status === "loading") {
     return <span className="account-slot" aria-hidden="true" />;
@@ -31,31 +28,19 @@ export function AccountMenu() {
   if (status === "signed-out") {
     const back = pathname.startsWith("/signin") || pathname === "/welcome" ? "/archive" : pathname;
     return (
-      <>
-        <button className="account-signin" type="button" onClick={() => setSigninOpen(true)}>
+      <UiDialog.Root open={signinOpen} onOpenChange={setSigninOpen}>
+        <UiDialog.Trigger className="account-signin">
           <span>Sign up / Log in</span>
           <span className="account-avatar is-placeholder" aria-hidden="true" />
-        </button>
-        {signinOpen ? (
-          <div
-            className="profile-gate-backdrop"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setSigninOpen(false);
-            }}
-          >
-            <section
-              ref={dialogRef}
-              className="profile-gate-modal auth-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="signin-heading"
-              tabIndex={-1}
-            >
-              <SignInPanel next={back} devSignIn={localDevSignIn} compact />
-            </section>
-          </div>
-        ) : null}
-      </>
+        </UiDialog.Trigger>
+        <UiDialog.Portal>
+          <UiDialog.Backdrop className="profile-gate-backdrop" />
+          <UiDialog.Popup className="profile-gate-modal auth-modal" aria-modal="true" aria-labelledby="signin-heading">
+            <UiDialog.Close className="ui-button ui-button--quiet ui-dialog-close" aria-label="Close sign-in">×</UiDialog.Close>
+            <SignInPanel next={back} devSignIn={localDevSignIn} compact />
+          </UiDialog.Popup>
+        </UiDialog.Portal>
+      </UiDialog.Root>
     );
   }
 

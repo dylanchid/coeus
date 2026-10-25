@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useAuth, type OAuthProvider } from "./AuthProvider";
+import { UiButton } from "./ui/Button";
 
 const PROVIDERS: { id: OAuthProvider; label: string }[] = [
   { id: "google", label: "Google" },
@@ -82,9 +83,10 @@ export function SignInPanel({
 
       <div className="signin-providers">
         {PROVIDERS.map((provider) => (
-          <button
+          <UiButton
             key={provider.id}
             type="button"
+            variant="unstyled"
             className="signin-provider"
             data-provider={provider.id}
             disabled={unavailable || pending !== null}
@@ -94,7 +96,7 @@ export function SignInPanel({
             <span className="signin-provider-label">
               {pending === provider.id ? `Redirecting to ${provider.label}…` : `Continue with ${provider.label}`}
             </span>
-          </button>
+          </UiButton>
         ))}
       </div>
 

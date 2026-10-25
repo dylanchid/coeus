@@ -25,22 +25,29 @@ npm run audit:ci
 
 ## Continuous integration
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request
-and every push to `main`. Two jobs must pass before merge (mark them required in
-branch protection):
+[`CI`](.github/workflows/ci.yml) classifies changed files on every pull request.
+It skips unrelated jobs while keeping their check names stable for branch
+protection. A push to `main` repeats the Node job as a backstop:
 
-- **quality** — `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm test`
+- **quality** — runs when app code, tests, dependencies, assets, or build config
+  change. It runs `npm ci`, `npm run lint`, `npx tsc --noEmit`, `npm test`
   (unit + jsdom UI), `npm run build`, and `npm run audit:ci` (fails on `high`+
   advisories, except dated dev-only exceptions in
   [`scripts/audit-policy.mts`](scripts/audit-policy.mts)). The build receives only public, non-secret placeholder
   `NEXT_PUBLIC_*` values; no production secret is present in CI.
-- **database** — pins the Supabase CLI (`2.75.0`), runs `supabase start` (Docker
+- **database** — runs when `supabase/` or CI config changes. It pins the Supabase CLI (`2.75.0`), runs `supabase start` (Docker
   is preinstalled on GitHub-hosted `ubuntu-latest`; migrations apply on start),
   then `supabase test db` for the pgTAP suite.
-- **e2e** — installs Chromium and runs Playwright’s public, unauthenticated
-  browser journeys. Authenticated provider journeys remain deliberately out of
-  this job until CI has a disposable Supabase Auth seed and a Notion OAuth mock;
-  no real provider credentials are ever used in browser tests.
+- **e2e** — runs when app code, browser tests, migrations, dependencies, or
+  runtime config change. It installs Chromium, starts disposable Supabase, and
+  runs public and authenticated Playwright journeys. No production credentials
+  are used.
+
+Documentation and agent-instruction edits only run the change classifier. A
+server script edit runs the Node job without starting Docker or Chromium. The
+database and browser jobs run on relevant PRs, not again after merge. For local
+work, run the checks affected by the edit first; use the full suite when a
+change crosses boundaries or before a higher-risk release.
 
 Node is pinned via `.nvmrc` and consumed by `actions/setup-node`
 (`node-version-file`). To reproduce CI locally you need Docker Desktop running.

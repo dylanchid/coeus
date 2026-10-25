@@ -10,6 +10,8 @@
 | [Screen specifications](./screen-specifications.md) | What each screen contains, does, and says in every important state | Design, engineering, QA |
 | [User-flow research and test plan](./user-flow-research-and-test-plan.md) | Why the priority journeys are shaped this way and how to validate them | Product, research, QA |
 | [Requirements traceability](./requirements-traceability.md) | Which product principle and requirement each surface fulfills, and what remains | Product, engineering |
+| [Art direction](../art-direction.md) | Which type, density, and visual references guide the next UI phase | Design, engineering |
+| [Design system](../design-system.md) | Which token roles, scales, breakpoints, and review cases to implement | Design, engineering, QA |
 
 ## Source of truth and notation
 

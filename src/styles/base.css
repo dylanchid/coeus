@@ -22,6 +22,24 @@
   --col-pad: 0;
   --li-pad: 0.45rem;
 
+  /* Semantic color roles. These alias the existing palette values so each
+     theme and user palette keeps its current appearance during migration. */
+  --surface-page: var(--bg);
+  --surface-raised: var(--settings-bg);
+  --surface-inverse: var(--fg);
+  --text-primary: var(--fg);
+  --text-secondary: var(--muted);
+  --text-inverse: var(--bg);
+  --text-accent: var(--accent);
+  --text-link: var(--link);
+  --text-visited: var(--visited);
+  --text-danger: var(--error);
+  --rule-subtle: var(--line);
+  --rule-strong: var(--header-rule);
+  --rule-panel: var(--settings-border);
+  --focus-ring: var(--accent);
+  --highlight: var(--mark);
+
   /* —— Layout + spacing scale (shared shell) —— */
   --content-max: min(96vw, 2400px);
   --pad-inline: clamp(1rem, 2vw, 1.5rem);

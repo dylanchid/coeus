@@ -278,6 +278,9 @@
   box-shadow: 0 24px 80px color-mix(in srgb, var(--fg) 18%, transparent);
 }
 
+/* Base UI portals position the sign-in popup independently of the backdrop. */
+.ui-dialog-popup.auth-modal { position: fixed; }
+
 .auth-modal .signin-panel {
   display: grid;
   gap: var(--space-md);

@@ -12,6 +12,7 @@ Object.assign(globalThis, {
   self: dom.window,
   document: dom.window.document,
   HTMLElement: dom.window.HTMLElement,
+  Element: dom.window.Element,
   Node: dom.window.Node,
   DOMException: dom.window.DOMException,
   CustomEvent: dom.window.CustomEvent,
@@ -29,6 +30,8 @@ dom.window.requestAnimationFrame = (callback) => {
   return 1;
 };
 dom.window.cancelAnimationFrame = () => undefined;
+globalThis.requestAnimationFrame = dom.window.requestAnimationFrame;
+globalThis.cancelAnimationFrame = dom.window.cancelAnimationFrame;
 globalThis.fetch = async () => new Response(null, { status: 401 });
 
 const React = await import("react");
@@ -622,10 +625,16 @@ function renderAccountMenu(session: FakeSession, profile: unknown, signOutCalls:
 
 test("Account menu opens sign-in as a modal over the current page", async () => {
   renderAccountMenu(null, null);
-  fireEvent.click(await screen.findByRole("button", { name: "Sign up / Log in" }));
+  const trigger = await screen.findByRole("button", { name: "Sign up / Log in" });
+  fireEvent.click(trigger);
   const dialog = await screen.findByRole("dialog", { name: "Sign in to Coeus" });
   assert.equal(dialog.getAttribute("aria-modal"), "true");
   assert.ok(screen.getByRole("button", { name: "Continue with GitHub" }));
+  assert.ok(screen.getByRole("button", { name: "Close sign-in" }));
+
+  fireEvent.keyDown(document, { key: "Escape" });
+  await waitFor(() => assert.equal(screen.queryByRole("dialog", { name: "Sign in to Coeus" }), null));
+  assert.equal(document.activeElement, trigger);
 });
 
 test("Account menu shows the avatar trigger and opens View / Edit profile / Sign out", async () => {

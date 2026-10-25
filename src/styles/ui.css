@@ -1,0 +1,40 @@
+/* Shared Base UI primitives. Screen classes can add layout without owning behavior. */
+.ui-button {
+  min-height: 44px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-button--outline,
+.ui-button--solid,
+.ui-button--danger {
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+}
+
+.ui-button--outline { background: transparent; color: var(--text-primary); }
+.ui-button--solid { background: var(--surface-inverse); color: var(--text-inverse); }
+.ui-button--quiet { padding: 0.35rem 0.55rem; border: 0; background: transparent; color: var(--text-secondary); }
+.ui-button--danger { border-color: var(--text-danger); background: transparent; color: var(--text-danger); }
+
+.ui-button--outline:hover:not(:disabled),
+.ui-button--danger:hover:not(:disabled) { background: var(--surface-inverse); color: var(--text-inverse); }
+.ui-button--quiet:hover:not(:disabled) { color: var(--text-primary); }
+.ui-button--solid:hover:not(:disabled) { opacity: 0.85; }
+.ui-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.ui-button:disabled,
+.ui-button[data-disabled] { opacity: 0.55; cursor: not-allowed; }
+
+.ui-dialog-backdrop { position: fixed; inset: 0; z-index: 1000; }
+.ui-dialog-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  transform: translate(-50%, -50%);
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}
+.ui-dialog-close { position: absolute; top: 0.35rem; right: 0.35rem; width: 44px; padding: 0; font-size: 1.5rem; line-height: 1; }
