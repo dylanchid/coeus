@@ -63,12 +63,15 @@ promoting a build that depends on a new migration.
   survive function instances. For a verified publisher opt-out, add its domain to
   `COEUS_PREVIEW_OPTOUT_DOMAINS`, then run
   `npm run purge:preview-reader-cache -- publisher.example` with the same Blob token.
-- CI (`.github/workflows/ci.yml`) must be green: `npm test`, `tsc --noEmit`,
-  `lint`, `build`, `npm run audit:ci`, and the Supabase pgTAP suite.
+- CI (`.github/workflows/ci.yml`) must be green for the jobs selected by the
+  changed files. For a migration, confirm the pgTAP job passed; for an app or
+  integration change, confirm the browser job passed. The Node job includes
+  tests, lint, typecheck, build, and the dependency audit.
 
 ## Deploy flow
 
-1. Merge to `main`. CI runs the full gate.
+1. Merge to `main` after the relevant PR gates pass. CI repeats the Node gate
+   on the resulting `main` push.
 2. Vercel builds a Production deployment from `main`.
 3. If the change includes a migration, `supabase db push` **first**.
 4. Post-deploy smoke against the live origin:
