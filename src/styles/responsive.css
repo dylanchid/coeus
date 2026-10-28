@@ -50,6 +50,12 @@
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 
+  .settings-panel.ui-dialog-popup {
+    box-sizing: border-box;
+    max-width: 100%;
+    transform: none;
+  }
+
   .search-label {
     display: none;
   }

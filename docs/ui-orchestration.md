@@ -68,7 +68,7 @@ slash-command wiring, reorder, share/save.
 Characterization first: search hydrates from `prefs` once; `/` focuses the
 search input; a topic change persists; back-to-top appears past the threshold.
 
-## `SettingsPanel.tsx` (569 → target ≤ 200 line shell + one file per tab)
+## `SettingsPanel.tsx` (569 → 103-line shell + one file per tab) — **done (`bareaga_web-x0x`, 2026-10-25)**
 
 Modal shell + tab router + source-directory search + import/export status, with
 `RankingControls` (~90 lines) and `ChoiceRow` / `ToggleRow` inline.
@@ -85,6 +85,12 @@ panel.
 
 Characterization first: Escape closes; focus is trapped within the panel; tab
 switch swaps the body; import status message renders.
+
+The mobile sheet now uses the shared `UiDialog` with `useModalDialog` for its
+focus and scroll contract. Desktop remains a popover region. Reading,
+Appearance, Sources, and Advanced each have their own panel; row and ranking
+controls are separate. UI and mobile browser tests cover the interaction
+contract.
 
 ## Follow-ups
 
