@@ -187,6 +187,96 @@ test("mobile Settings behaves as a modal sheet", async () => {
   window.matchMedia = originalMatchMedia;
 });
 
+test("Settings keeps tab content and import feedback when switching sections", async () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = () => ({
+    matches: true,
+    media: "(max-width: 700px)",
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => true,
+  });
+
+  render(<SettingsPanel open prefs={DEFAULT_PREFS} onClose={() => undefined} onChange={() => undefined} />);
+  const dialog = await screen.findByRole("dialog", { name: "Settings" });
+  fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
+  assert.ok(screen.getByRole("heading", { name: "Feed window" }));
+  assert.equal(screen.queryByRole("heading", { name: "Reading" }), null);
+
+  const file = new File(["not-json"], "invalid.json", { type: "application/json" });
+  Object.defineProperty(file, "text", { value: async () => "not-json" });
+  const input = dialog.querySelector<HTMLInputElement>('input[type="file"]');
+  assert.ok(input);
+  fireEvent.change(input, { target: { files: [file] } });
+  await waitFor(() => assert.match(dialog.querySelector(".settings-import-status")?.textContent ?? "", /Import failed: choose a valid Coeus JSON file/));
+
+  fireEvent.click(screen.getByRole("button", { name: "Reading" }));
+  assert.ok(screen.getByRole("heading", { name: "Reading" }));
+  fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
+  assert.match(dialog.querySelector(".settings-import-status")?.textContent ?? "", /Import failed/);
+  window.matchMedia = originalMatchMedia;
+});
+
+test("mobile Settings traps reverse Tab within the dialog", async () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = () => ({
+    matches: true,
+    media: "(max-width: 700px)",
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => true,
+  });
+
+  render(<SettingsPanel open prefs={DEFAULT_PREFS} onClose={() => undefined} onChange={() => undefined} />);
+  const dialog = await screen.findByRole("dialog", { name: "Settings" });
+  const done = screen.getByRole("button", { name: "Done" });
+  done.focus();
+  fireEvent.keyDown(done, { key: "Tab", shiftKey: true });
+  assert.equal(dialog.contains(document.activeElement), true);
+  assert.notEqual(document.activeElement, done);
+  window.matchMedia = originalMatchMedia;
+});
+
+test("desktop Settings stays a popover and returns focus after Escape", async () => {
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = () => ({
+    matches: false,
+    media: "(max-width: 700px)",
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => true,
+  });
+
+  function Harness() {
+    const [open, setOpen] = useState(false);
+    return <div>
+      <button type="button" onClick={() => setOpen(true)}>Open settings</button>
+      <SettingsPanel open={open} prefs={DEFAULT_PREFS} onClose={() => setOpen(false)} onChange={() => undefined} />
+    </div>;
+  }
+
+  render(<Harness />);
+  const opener = screen.getByRole("button", { name: "Open settings" });
+  opener.focus();
+  fireEvent.click(opener);
+  const region = await screen.findByRole("region", { name: "Settings" });
+  fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+  assert.ok(screen.getByRole("heading", { name: "Appearance" }));
+  fireEvent.keyDown(region, { key: "Escape" });
+  await waitFor(() => assert.equal(screen.queryByRole("region", { name: "Settings" }), null));
+  assert.equal(document.activeElement, opener);
+  window.matchMedia = originalMatchMedia;
+});
+
 const article = {
   id: "article-1",
   sourceId: "source-1",
