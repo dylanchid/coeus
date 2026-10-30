@@ -1,3 +1,5 @@
+import { RETENTION_NEAR_DEADLINE_EVENT, RETENTION_PAGE_RATIO, RETENTION_WARN_RATIO } from "./destinations/queueRetention.ts";
+
 /**
  * The log-based alert thresholds from the README "Observability › Alerting"
  * table, as a pure evaluator. `scripts/log-thresholds.mts` pulls a window of
@@ -20,6 +22,8 @@ export interface ServerLogLine {
   operation?: string;
   statusClass?: "2xx" | "4xx" | "5xx" | "error" | (string & {});
   durationMs?: number;
+  /** Queue messages only: share of the retention window consumed. */
+  retentionUsedRatio?: number;
 }
 
 /** One Vercel request-log entry (path + final status). */
@@ -175,6 +179,22 @@ export function evaluateLogThresholds(input: ThresholdInput): Breach[] {
     }
   }
 
+  // 6. Queue message near its retention deadline: the queue drops it at expiry.
+  const nearDeadline = logs
+    .filter((l) => l.event === RETENTION_NEAR_DEADLINE_EVENT && typeof l.retentionUsedRatio === "number")
+    .map((l) => l.retentionUsedRatio as number);
+  if (nearDeadline.length) {
+    const worst = Math.max(...nearDeadline);
+    if (worst >= RETENTION_WARN_RATIO) {
+      breaches.push({
+        signal: "destination queue message near retention deadline",
+        severity: worst >= RETENTION_PAGE_RATIO ? "page" : "warn",
+        observed: `${pct(worst)} of retention used (${nearDeadline.length} delivery attempt(s) in ${windowMinutes}m)`,
+        threshold: `warn >= ${pct(RETENTION_WARN_RATIO)}, page >= ${pct(RETENTION_PAGE_RATIO)}`,
+      });
+    }
+  }
+
   return breaches;
 }
 
@@ -239,6 +259,7 @@ function structuredLine(message: string): ServerLogLine | undefined {
       operation: firstString(structured.operation),
       statusClass: firstString(structured.statusClass),
       durationMs: typeof structured.durationMs === "number" ? structured.durationMs : undefined,
+      retentionUsedRatio: typeof structured.retentionUsedRatio === "number" ? structured.retentionUsedRatio : undefined,
     };
   } catch {
     return undefined;
