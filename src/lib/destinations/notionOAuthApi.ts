@@ -105,7 +105,13 @@ export async function handleNotionOAuthCallback(request: Request, dependencies: 
     },
     body: JSON.stringify({ grant_type: "authorization_code", code, redirect_uri: dependencies.redirectUri }),
   });
-  if (!tokenResponse.ok) return redirectError("Notion token exchange failed");
+  if (!tokenResponse.ok) {
+    // Notion's error body is `{ error, error_description }` and carries no
+    // credential; the code (invalid_client vs invalid_grant) is what tells a
+    // bad client secret apart from a redirect_uri mismatch.
+    const detail = await tokenResponse.json().catch(() => null) as { error?: string; error_description?: string } | null;
+    return redirectError("Notion token exchange failed", `HTTP ${tokenResponse.status} ${detail?.error ?? ""} ${detail?.error_description ?? ""}`.trim());
+  }
   const token = (await tokenResponse.json()) as NotionTokenResponse;
 
   const searchResponse = await fetcher("https://api.notion.com/v1/search", {
