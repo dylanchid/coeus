@@ -1099,6 +1099,7 @@ mark {
   background: none;
 }
 
+.feed-status button,
 .banner-error button {
   font: inherit;
   color: var(--link);
