@@ -702,7 +702,7 @@
 .topics,
 .view-switch,
 .representation-switch {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   margin: 0;
   flex-shrink: 0;
 }
@@ -716,7 +716,7 @@
   padding: 0.55rem 0.4rem;
   margin: 0;
   font: inherit;
-  color: var(--link);
+  color: var(--text-link);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -727,13 +727,13 @@
 .view-switch button:hover,
 .representation-switch button:hover,
 .search-clear:hover {
-  color: var(--fg);
+  color: var(--text-primary);
 }
 
 .topics button[aria-pressed="true"],
 .view-switch button[aria-pressed="true"],
 .representation-switch button[aria-pressed="true"] {
-  color: var(--fg);
+  color: var(--text-primary);
   font-weight: 700;
   text-decoration: none;
 }
@@ -778,9 +778,12 @@
 }
 
 .category-chips {
-  display: block;
-  line-height: 1.65;
-  font-size: 0.82rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1.4;
+  font-size: 0.8125rem;
 }
 
 .category-multi {
@@ -788,7 +791,8 @@
   align-items: center;
   gap: 0.3rem;
   margin-right: 0.35rem;
-  color: var(--fg);
+  color: var(--text-primary);
+  min-height: 44px;
   cursor: pointer;
 }
 
@@ -798,15 +802,16 @@
 }
 
 .category-chips button {
-  display: inline;
-  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin: 0;
-  padding: 0.05rem 0.35rem;
+  padding: 0.55rem 0.45rem;
   border: 0;
   border-radius: 0;
   background: none;
   box-shadow: none;
-  color: var(--link);
+  color: var(--text-link);
   font: inherit;
   text-decoration: none;
   cursor: pointer;
@@ -823,8 +828,8 @@
 }
 
 .category-chips button[aria-pressed="true"] {
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
 }
 
 .category-empty {
@@ -905,8 +910,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.8rem;
-  color: var(--muted);
-  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
   margin: 0.15rem 0 1rem;
 }
 
@@ -1220,6 +1225,15 @@ mark {
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+.reader-empty {
+  max-width: 40rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--rule-subtle);
+  color: var(--text-secondary);
+}
+
+.reader-empty p { margin: 0 0 1rem; }
 
 .reader-return-bar {
   position: fixed;
