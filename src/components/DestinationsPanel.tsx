@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import type { Destination, DestinationDelivery, DestinationKind } from "@/lib/destinations/destinations";
 
 const NOTION_OAUTH_START_URL = "/api/archive/destinations/notion/oauth/start";
@@ -190,7 +189,7 @@ export function DestinationsPanel({ onNotice }: { onNotice?: (message: string) =
 
                   {needsReconnect ? (
                     kind === "notion" ? (
-                      <Link href={NOTION_OAUTH_START_URL}>Reconnect Notion ↗</Link>
+                      <a href={NOTION_OAUTH_START_URL}>Reconnect Notion ↗</a>
                     ) : (
                       <button type="button" onClick={() => setObsidianFormOpen(true)}>Reconnect with a new GitHub token</button>
                     )
@@ -219,7 +218,7 @@ export function DestinationsPanel({ onNotice }: { onNotice?: (message: string) =
                   <button type="button" className="archive-danger" disabled={busyKind === kind} onClick={() => void disconnect(kind, true)}>Remove permanently…</button>
                 </>
               ) : kind === "notion" ? (
-                <Link href={NOTION_OAUTH_START_URL}>Connect Notion ↗</Link>
+                <a href={NOTION_OAUTH_START_URL}>Connect Notion ↗</a>
               ) : obsidianFormOpen ? (
                 <form className="destination-connect-form" onSubmit={(event) => { event.preventDefault(); void connectObsidian(); }}>
                   <label htmlFor="obsidian-repo">Repository</label>
