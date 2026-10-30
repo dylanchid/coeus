@@ -5,6 +5,8 @@ import { fetchWithRetry, type RetryOptions } from "../httpRetry.ts";
 
 const NOTION_API = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
+// Stable per-item key so a redelivered create finds the page the first attempt made.
+const ITEM_ID_PROPERTY = "Coeus ID";
 
 function notionHeaders(token: string): HeadersInit {
   return {
@@ -23,6 +25,10 @@ function paragraphPayload(item: ArchiveItem) {
   return {
     rich_text: [{ type: "text" as const, text: { content: text.slice(0, 2000), link: { url: item.url } } }],
   };
+}
+
+function itemIdProperty(item: ArchiveItem) {
+  return { [ITEM_ID_PROPERTY]: { rich_text: [{ text: { content: item.id } }] } };
 }
 
 function bodyBlocks(item: ArchiveItem) {
@@ -59,6 +65,7 @@ export class NotionAdapter implements DestinationAdapter {
   private readonly token: string;
   private readonly fetcher: typeof fetch;
   private readonly retryOptions: RetryOptions;
+  private idPropertyReady: Promise<DestinationPushResult | null> | null = null;
 
   constructor(config: NotionConfig, token: string, fetcher: typeof fetch = fetch, retryOptions: RetryOptions = {}) {
     this.config = config;
@@ -71,21 +78,68 @@ export class NotionAdapter implements DestinationAdapter {
     return fetchWithRetry(this.fetcher, url, init, this.retryOptions);
   }
 
+  // PATCH /databases is a no-op when the property exists, so it is safe to repeat.
+  // Cached per adapter so a batch pays for it once; failures are not cached.
+  private ensureIdProperty(): Promise<DestinationPushResult | null> {
+    if (!this.idPropertyReady) {
+      const attempt = this.request(`${NOTION_API}/databases/${this.config.databaseId}`, {
+        method: "PATCH",
+        headers: notionHeaders(this.token),
+        body: JSON.stringify({ properties: { [ITEM_ID_PROPERTY]: { rich_text: {} } } }),
+      }).then(mappedFailure);
+      this.idPropertyReady = attempt.then(
+        (failure) => {
+          if (failure) this.idPropertyReady = null;
+          return failure;
+        },
+        (error: unknown) => {
+          this.idPropertyReady = null;
+          throw error;
+        },
+      );
+    }
+    return this.idPropertyReady;
+  }
+
+  private async findPageByItemId(itemId: string): Promise<{ id: string } | null | DestinationPushResult> {
+    const response = await this.request(`${NOTION_API}/databases/${this.config.databaseId}/query`, {
+      method: "POST",
+      headers: notionHeaders(this.token),
+      body: JSON.stringify({
+        filter: { property: ITEM_ID_PROPERTY, rich_text: { equals: itemId } },
+        page_size: 1,
+      }),
+    });
+    const failure = await mappedFailure(response);
+    if (failure) return failure;
+    const body = (await response.json()) as { results?: { id: string }[] };
+    return body.results?.[0] ?? null;
+  }
+
   async pushUpsert(item: ArchiveItem, existingExternalRef: string | null): Promise<DestinationPushResult> {
     if (!existingExternalRef) {
-      const response = await this.request(`${NOTION_API}/pages`, {
-        method: "POST",
-        headers: notionHeaders(this.token),
-        body: JSON.stringify({
-          parent: { database_id: this.config.databaseId },
-          properties: titleProperty(item),
-          children: bodyBlocks(item),
-        }),
-      });
-      const failure = await mappedFailure(response);
-      if (failure) return failure;
-      const body = (await response.json()) as { id: string };
-      return { ok: true, externalRef: body.id, httpStatus: response.status };
+      const propertyFailure = await this.ensureIdProperty();
+      if (propertyFailure) return propertyFailure;
+      const found = await this.findPageByItemId(item.id);
+      if (found && "ok" in found) return found;
+      if (found) {
+        // A previous attempt created this page but never recorded its ref.
+        existingExternalRef = found.id;
+      } else {
+        const response = await this.request(`${NOTION_API}/pages`, {
+          method: "POST",
+          headers: notionHeaders(this.token),
+          body: JSON.stringify({
+            parent: { database_id: this.config.databaseId },
+            properties: { ...titleProperty(item), ...itemIdProperty(item) },
+            children: bodyBlocks(item),
+          }),
+        });
+        const failure = await mappedFailure(response);
+        if (failure) return failure;
+        const body = (await response.json()) as { id: string };
+        return { ok: true, externalRef: body.id, httpStatus: response.status };
+      }
     }
 
     const response = await this.request(`${NOTION_API}/pages/${existingExternalRef}`, {
