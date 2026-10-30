@@ -1,7 +1,9 @@
 name: CI
 
-# Run checks that match the files changed in a PR. A push to main repeats the
-# fast Node gate as a backstop; the database and browser gates already ran on PR.
+# Run checks that match the files changed in a PR. PRs get the fast Node gate
+# (lint, types, tests); Vercel's preview build covers the production build.
+# The browser suite runs on PRs only when data/auth code or the schema changed,
+# and always after merge to main. Dependency audit runs nightly in audit.yml.
 on:
   pull_request:
   push:
@@ -36,7 +38,7 @@ jobs:
           if [[ "$EVENT_NAME" == push ]]; then
             echo 'quality=true' >> "$GITHUB_OUTPUT"
             echo 'database=false' >> "$GITHUB_OUTPUT"
-            echo 'e2e=false' >> "$GITHUB_OUTPUT"
+            echo 'e2e=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -54,7 +56,7 @@ jobs:
                 database=true ;;
             esac
             case "$file" in
-              src/*|e2e/*|supabase/*|public/*|package.json|package-lock.json|playwright.config.*|next.config.*|vercel.json|.nvmrc|.github/workflows/ci.yml)
+              src/lib/*|src/app/api/*|src/proxy.*|e2e/*|supabase/*|package-lock.json|playwright.config.*|next.config.*|vercel.json|.github/workflows/ci.yml)
                 e2e=true ;;
             esac
           done < "$RUNNER_TEMP/ci-changed-files"
@@ -62,8 +64,8 @@ jobs:
           echo "database=$database" >> "$GITHUB_OUTPUT"
           echo "e2e=$e2e" >> "$GITHUB_OUTPUT"
 
-  # Node quality gates: tests (unit + jsdom UI), TypeScript, ESLint, production
-  # build, and the dependency-audit policy. No production secrets are used.
+  # Node quality gates: ESLint, TypeScript, and tests (unit + jsdom UI).
+  # No production secrets are used.
   quality:
     needs: changes
     # If classification fails, keep the required quality check red rather than
@@ -101,19 +103,6 @@ jobs:
 
       - name: Tests (jsdom UI)
         run: npm run test:ui
-
-      - name: Production build
-        # Public, non-secret placeholders — the build only needs these present
-        # and well-formed; the BFF reads real config at request time. Never put
-        # SUPABASE_SECRET_KEY (or any secret) in CI.
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
-          NEXT_PUBLIC_SITE_URL: https://example.com
-        run: npm run build
-
-      - name: Dependency audit policy
-        run: npm run audit:ci
 
   # Supabase pgTAP migrations and database tests. GitHub-hosted ubuntu runners
   # ship Docker, which the local Supabase stack requires. The CLI version is
