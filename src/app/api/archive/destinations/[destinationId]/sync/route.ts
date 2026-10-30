@@ -16,6 +16,9 @@ export const maxDuration = 300;
  */
 const e2eNotionDeliveryFetcher: typeof fetch = async (input) => {
   const url = String(input);
+  // Create is preceded by a Coeus ID property check and an item-id lookup.
+  if (/^https:\/\/api\.notion\.com\/v1\/databases\/[^/]+$/.test(url)) return Response.json({ id: "e2e-database" });
+  if (/^https:\/\/api\.notion\.com\/v1\/databases\/[^/]+\/query$/.test(url)) return Response.json({ results: [] });
   if (url.startsWith("https://api.notion.com/v1/pages")) {
     return Response.json({ id: `e2e-page-${url.split("/").at(-1) ?? "new"}` });
   }
