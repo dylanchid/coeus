@@ -1,6 +1,6 @@
 import { handleCallback } from "@vercel/queue";
 import { SupabaseArchiveSyncStore } from "@/lib/archive/archiveSyncStore.server";
-import { destinationQueueEnabled, isDestinationDeliveryRequest, processDestinationDeliveryRequest } from "@/lib/destinations/destinationQueue.server";
+import { destinationQueueEnabled, isDestinationDeliveryRequest, logQueueMessageMetrics, logQueueProcessed, processDestinationDeliveryRequest } from "@/lib/destinations/destinationQueue.server";
 import { logDelivery } from "@/lib/deliveryLog";
 import { runDestinationWorkerTick } from "@/lib/destinations/destinationWorker.server";
 import { SupabaseDestinationsStore } from "@/lib/destinations/destinationsStore.server";
@@ -23,7 +23,9 @@ const callback = handleCallback(async (payload, metadata) => {
     consumerGroup: metadata.consumerGroup,
     region: metadata.region,
   });
-  await processDestinationDeliveryRequest(payload, {
+  logQueueMessageMetrics(payload, metadata);
+  const startedAt = Date.now();
+  const result = await processDestinationDeliveryRequest(payload, {
     runTick: async (ownerId, correlationId) => {
       const supabase = createAdminSupabaseClient();
       const store = new SupabaseDestinationsStore(supabase, requiredEnvironment("DESTINATION_TOKEN_ENCRYPTION_KEY"));
@@ -39,6 +41,7 @@ const callback = handleCallback(async (payload, metadata) => {
     // secrets; enabling the flag is the explicit staging/production cutover.
     enabled: destinationQueueEnabled(),
   });
+  logQueueProcessed(payload, metadata, result, Date.now() - startedAt);
 }, {
   visibilityTimeoutSeconds: 300,
   retry: (error, metadata) => {

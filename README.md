@@ -214,6 +214,7 @@ on the same `serverLog.ts` events is still the recommended primary.
 | `archive.sync` `5xx` rate | > 2% over 15 min | > 10% over 5 min | ✅ |
 | `archive.sync` p95 `durationMs` | > 2000 | > 5000 | ✅ |
 | `destination_delivery.*.error` | > 5 in 1 h | > 50 in 1 h | ✅ |
+| Destination queue message retention used (`destination_delivery.queue.retention_near_deadline`) | >= 50% of the message's retention | >= 80% | ✅ |
 | `archive_storage_stats` total `snapshot_bytes` growth | > 25%/week | > 100%/week | ✅ |
 
 ## Local Supabase

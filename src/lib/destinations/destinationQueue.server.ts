@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { QueueClient } from "@vercel/queue";
 import { logDelivery } from "../deliveryLog.ts";
 import { MAX_ITEMS_PER_TICK, type WorkerTickResult } from "./destinationWorker.server.ts";
+import { RETENTION_NEAR_DEADLINE_EVENT, isNearRetentionDeadline, queueMessageHealth, type QueueMessageTiming } from "./queueRetention.ts";
 
 export const DESTINATION_DELIVERY_QUEUE = "destination_delivery";
 
@@ -36,6 +37,44 @@ export function isDestinationDeliveryRequest(value: unknown): value is Destinati
 
 export function newDestinationDeliveryRequest(ownerId: string, correlationId: string): DestinationDeliveryRequest {
   return { requestId: randomUUID(), ownerId, correlationId };
+}
+
+/**
+ * Age, retries and retention headroom for one delivery attempt. A message past
+ * the warn ratio also emits a dedicated event that the log-threshold check
+ * turns into a warning or page before the queue silently expires it.
+ */
+export function logQueueMessageMetrics(
+  request: DestinationDeliveryRequest,
+  message: QueueMessageTiming & { messageId: string },
+  now: Date = new Date()
+) {
+  const health = queueMessageHealth(message, now);
+  const fields = { correlationId: request.correlationId, ownerId: request.ownerId, requestId: request.requestId, messageId: message.messageId, deliveryCount: message.deliveryCount, ...health };
+  logDelivery("destination_delivery.queue.metrics", fields);
+  if (isNearRetentionDeadline(health)) logDelivery(RETENTION_NEAR_DEADLINE_EVENT, fields);
+  return health;
+}
+
+/** Outcome of one consumer run; failures here are counts, never credentials. */
+export function logQueueProcessed(
+  request: DestinationDeliveryRequest,
+  message: { messageId: string; deliveryCount: number },
+  result: WorkerTickResult | null,
+  durationMs: number
+): void {
+  logDelivery("destination_delivery.queue.processed", {
+    correlationId: request.correlationId,
+    ownerId: request.ownerId,
+    requestId: request.requestId,
+    messageId: message.messageId,
+    deliveryCount: message.deliveryCount,
+    durationMs,
+    skippedByFlag: result === null,
+    delivered: result?.results.reduce((sum, summary) => sum + summary.delivered, 0) ?? 0,
+    failed: result?.results.reduce((sum, summary) => sum + summary.failed, 0) ?? 0,
+    skipped: result?.skipped ?? 0,
+  });
 }
 
 /** Publish only a compact wake-up request; snapshots and credentials stay in Supabase. */

@@ -129,3 +129,20 @@ test("reads httpStatus from CLI 64 request records", () => {
   assert.equal(parsed.recognized, 2);
   assert.equal(parsed.truncated, false);
 });
+
+test("a queue message past half its retention warns, past 80% pages, and nothing fires below", () => {
+  const near = (ratio) => ({ event: "destination_delivery.queue.retention_near_deadline", retentionUsedRatio: ratio });
+  assert.deepEqual(evaluateLogThresholds({ windowMinutes: 30, logs: [] }), []);
+  const warn = evaluateLogThresholds({ windowMinutes: 30, logs: [near(0.55)] });
+  assert.deepEqual(warn.map((b) => b.severity), ["warn"]);
+  const page = evaluateLogThresholds({ windowMinutes: 30, logs: [near(0.55), near(0.93)] });
+  assert.deepEqual(page.map((b) => b.severity), ["page"]);
+  assert.match(page[0].observed, /93\.0%.*2 delivery attempt/);
+});
+
+test("retentionUsedRatio survives log parsing so the retention rule can fire from real logs", () => {
+  const line = structured("destination_delivery.queue.retention_near_deadline", { retentionUsedRatio: 0.9, messageId: "m" });
+  const { logs } = parseVercelLogLines([JSON.stringify({ message: line })]);
+  assert.equal(logs[0].retentionUsedRatio, 0.9);
+  assert.equal(worstSeverity(evaluateLogThresholds({ windowMinutes: 30, logs })), "page");
+});

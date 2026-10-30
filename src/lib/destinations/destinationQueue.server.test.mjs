@@ -5,6 +5,8 @@ import {
   DESTINATION_RETRY_DELAY_SECONDS,
   enqueueDestinationDelivery,
   isDestinationDeliveryRequest,
+  logQueueMessageMetrics,
+  logQueueProcessed,
   processDestinationDeliveryRequest,
 } from "./destinationQueue.server.ts";
 
@@ -86,4 +88,49 @@ test("lease contention schedules a delayed retry instead of losing a redelivery"
   });
   assert.equal(queued.length, 1);
   assert.equal(queued[0].options.delaySeconds, DESTINATION_RETRY_DELAY_SECONDS);
+});
+
+function captureLogs(run) {
+  const lines = [];
+  const original = console.info;
+  console.info = (line) => lines.push(JSON.parse(line));
+  try { run(); } finally { console.info = original; }
+  return lines;
+}
+
+const message = (deliveryCount, now) => ({
+  messageId: "message-1",
+  deliveryCount,
+  createdAt: new Date("2026-10-30T00:00:00Z"),
+  expiresAt: new Date("2026-10-31T00:00:00Z"),
+  now: new Date(now),
+});
+
+test("queue metrics log age and retries, and flag only messages past half their retention", () => {
+  const early = message(2, "2026-10-30T01:00:00Z");
+  const earlyLogs = captureLogs(() => logQueueMessageMetrics(request, early, early.now));
+  assert.deepEqual(earlyLogs.map((line) => line.event), ["destination_delivery.queue.metrics"]);
+  assert.equal(earlyLogs[0].retries, 1);
+  assert.equal(earlyLogs[0].ageSeconds, 3600);
+
+  const late = message(5, "2026-10-30T20:00:00Z");
+  const lateLogs = captureLogs(() => logQueueMessageMetrics(request, late, late.now));
+  assert.deepEqual(lateLogs.map((line) => line.event), [
+    "destination_delivery.queue.metrics",
+    "destination_delivery.queue.retention_near_deadline",
+  ]);
+  assert.ok(lateLogs[1].retentionUsedRatio > 0.8);
+  assert.ok(lateLogs.every((line) => !line.event.endsWith(".error")), "retention warnings must not count as delivery errors");
+});
+
+test("queue processed log sums delivered and failed items and marks a flag-disabled skip", () => {
+  const result = { correlationId: request.correlationId, processed: 2, skipped: 1, failures: [], results: [
+    { ownerId: "owner-1", kind: "notion", status: "delivered", delivered: 100, failed: 0, authError: false },
+    { ownerId: "owner-1", kind: "obsidian_git", status: "failed", delivered: 10, failed: 3, authError: false },
+  ] };
+  const [done] = captureLogs(() => logQueueProcessed(request, { messageId: "m", deliveryCount: 1 }, result, 1234));
+  assert.equal(done.event, "destination_delivery.queue.processed");
+  assert.deepEqual([done.delivered, done.failed, done.skipped, done.durationMs, done.skippedByFlag], [110, 3, 1, 1234, false]);
+  const [skipped] = captureLogs(() => logQueueProcessed(request, { messageId: "m", deliveryCount: 1 }, null, 5));
+  assert.deepEqual([skipped.delivered, skipped.skippedByFlag], [0, true]);
 });
