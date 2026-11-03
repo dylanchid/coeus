@@ -212,6 +212,7 @@ export async function runDestinationWorkerTick(
     }
 
     let summary: DestinationDeliverySummary;
+    const startedAt = Date.now();
     try {
       const counts = await runDeliveryForDestination(target, reader, store, options.fetcher, options.retryOptions);
       const status = counts.failed > 0 ? "failed" : counts.delivered > 0 ? "delivered" : "noop";
@@ -236,6 +237,7 @@ export async function runDestinationWorkerTick(
       failed: summary.failed,
       authError: summary.authError,
       error: summary.error ?? null,
+      durationMs: Date.now() - startedAt,
     });
 
     try {
