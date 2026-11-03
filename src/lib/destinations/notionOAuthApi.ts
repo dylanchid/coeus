@@ -1,3 +1,5 @@
+import { logDelivery } from "../deliveryLog.ts";
+import { requestCorrelationId } from "../serverLog.ts";
 import { createOAuthStateNonce, OAUTH_STATE_MAX_AGE_MS, signOAuthState, verifyOAuthState } from "../oauthState.server.ts";
 import type { DestinationsStore } from "./destinationsStore.server.ts";
 import type { NotionOAuthStateStore } from "./notionOAuthStateStore.server.ts";
@@ -67,7 +69,16 @@ interface NotionSearchResponse {
 export async function handleNotionOAuthCallback(request: Request, dependencies: NotionOAuthCallbackDependencies): Promise<Response> {
   const fetcher = dependencies.fetcher ?? fetch;
   const url = new URL(request.url);
-  const redirectError = (message: string) => settingsRedirect(request.url, { destination: "notion", status: "error", message });
+  const redirectError = (message: string, cause?: unknown) => {
+    // The user only sees this message in a transient notice; log it so a failed
+    // connect is diagnosable from runtime logs.
+    logDelivery("notion_oauth.callback.failed", {
+      correlationId: requestCorrelationId(request),
+      message,
+      ...(cause === undefined ? {} : { cause: cause instanceof Error ? cause.message : String(cause) }),
+    });
+    return settingsRedirect(request.url, { destination: "notion", status: "error", message });
+  };
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -94,7 +105,13 @@ export async function handleNotionOAuthCallback(request: Request, dependencies: 
     },
     body: JSON.stringify({ grant_type: "authorization_code", code, redirect_uri: dependencies.redirectUri }),
   });
-  if (!tokenResponse.ok) return redirectError("Notion token exchange failed");
+  if (!tokenResponse.ok) {
+    // Notion's error body is `{ error, error_description }` and carries no
+    // credential; the code (invalid_client vs invalid_grant) is what tells a
+    // bad client secret apart from a redirect_uri mismatch.
+    const detail = await tokenResponse.json().catch(() => null) as { error?: string; error_description?: string } | null;
+    return redirectError("Notion token exchange failed", `HTTP ${tokenResponse.status} ${detail?.error ?? ""} ${detail?.error_description ?? ""}`.trim());
+  }
   const token = (await tokenResponse.json()) as NotionTokenResponse;
 
   const searchResponse = await fetcher("https://api.notion.com/v1/search", {
@@ -115,8 +132,8 @@ export async function handleNotionOAuthCallback(request: Request, dependencies: 
       { databaseId, workspaceName: token.workspace_name ?? "" },
       token.access_token
     );
-  } catch {
-    return redirectError("Saving the Notion connection failed");
+  } catch (error) {
+    return redirectError("Saving the Notion connection failed", error);
   }
   return settingsRedirect(request.url, { destination: "notion", status: "connected" });
 }
