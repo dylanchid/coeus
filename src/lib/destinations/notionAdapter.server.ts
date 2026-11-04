@@ -79,7 +79,7 @@ export class NotionAdapter implements DestinationAdapter {
   }
 
   // PATCH /databases is a no-op when the property exists, so it is safe to repeat.
-  // Cached per adapter so a batch pays for it once; failures are not cached.
+  // Cached per adapter so a batch pays for it at most once; failures are not cached.
   private ensureIdProperty(): Promise<DestinationPushResult | null> {
     if (!this.idPropertyReady) {
       const attempt = this.request(`${NOTION_API}/databases/${this.config.databaseId}`, {
@@ -101,8 +101,19 @@ export class NotionAdapter implements DestinationAdapter {
     return this.idPropertyReady;
   }
 
-  private async findPageByItemId(itemId: string): Promise<{ id: string } | null | DestinationPushResult> {
-    const response = await this.request(`${NOTION_API}/databases/${this.config.databaseId}/query`, {
+  // Notion answers a filter on a missing property with 400 validation_error.
+  private async isMissingPropertyResponse(response: Response): Promise<boolean> {
+    if (response.status !== 400) return false;
+    try {
+      const body = (await response.clone().json()) as { code?: string };
+      return body.code === "validation_error";
+    } catch {
+      return false;
+    }
+  }
+
+  private queryByItemId(itemId: string): Promise<Response> {
+    return this.request(`${NOTION_API}/databases/${this.config.databaseId}/query`, {
       method: "POST",
       headers: notionHeaders(this.token),
       body: JSON.stringify({
@@ -110,6 +121,17 @@ export class NotionAdapter implements DestinationAdapter {
         page_size: 1,
       }),
     });
+  }
+
+  // The lookup is the common path, so it runs first; the property is only
+  // added (once, then retried) when Notion says it does not exist yet.
+  private async findPageByItemId(itemId: string): Promise<{ id: string } | null | DestinationPushResult> {
+    let response = await this.queryByItemId(itemId);
+    if (await this.isMissingPropertyResponse(response)) {
+      const propertyFailure = await this.ensureIdProperty();
+      if (propertyFailure) return propertyFailure;
+      response = await this.queryByItemId(itemId);
+    }
     const failure = await mappedFailure(response);
     if (failure) return failure;
     const body = (await response.json()) as { results?: { id: string }[] };
@@ -118,8 +140,6 @@ export class NotionAdapter implements DestinationAdapter {
 
   async pushUpsert(item: ArchiveItem, existingExternalRef: string | null): Promise<DestinationPushResult> {
     if (!existingExternalRef) {
-      const propertyFailure = await this.ensureIdProperty();
-      if (propertyFailure) return propertyFailure;
       const found = await this.findPageByItemId(item.id);
       if (found && "ok" in found) return found;
       if (found) {

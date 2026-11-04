@@ -23,34 +23,62 @@ function fetcherFromScript(script) {
   return { fetcher, calls };
 }
 
-test("pushUpsert ensures the Coeus ID property, finds nothing, then POSTs a new page keyed by item id", async () => {
+test("pushUpsert looks the item up first, then POSTs a new page keyed by item id (no property PATCH)", async () => {
   const { fetcher, calls } = fetcherFromScript([
-    jsonResponse({ id: "db-1" }),
     jsonResponse({ results: [] }),
     jsonResponse({ id: "page-1" }),
   ]);
   const adapter = new NotionAdapter(CONFIG, "token", fetcher);
   const result = await adapter.pushUpsert(ITEM, null);
 
-  assert.equal(calls.length, 3);
-  assert.equal(calls[0].method, "PATCH");
-  assert.match(calls[0].url, /\/v1\/databases\/db-1$/);
-  assert.deepEqual(calls[0].body, { properties: { "Coeus ID": { rich_text: {} } } });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].method, "POST");
+  assert.match(calls[0].url, /\/v1\/databases\/db-1\/query$/);
+  assert.deepEqual(calls[0].body.filter, { property: "Coeus ID", rich_text: { equals: ITEM.id } });
   assert.equal(calls[1].method, "POST");
-  assert.match(calls[1].url, /\/v1\/databases\/db-1\/query$/);
-  assert.deepEqual(calls[1].body.filter, { property: "Coeus ID", rich_text: { equals: ITEM.id } });
-  assert.equal(calls[2].method, "POST");
-  assert.match(calls[2].url, /\/v1\/pages$/);
-  assert.deepEqual(calls[2].body.parent, { database_id: "db-1" });
-  assert.equal(calls[2].body.properties["Coeus ID"].rich_text[0].text.content, ITEM.id);
-  assert.equal(calls[2].body.children[0].type, "paragraph");
-  assert.equal(calls[2].body.children[0].paragraph.rich_text[0].text.content, BODY_TEXT.slice(0, 2000));
+  assert.match(calls[1].url, /\/v1\/pages$/);
+  assert.deepEqual(calls[1].body.parent, { database_id: "db-1" });
+  assert.equal(calls[1].body.properties["Coeus ID"].rich_text[0].text.content, ITEM.id);
+  assert.equal(calls[1].body.children[0].type, "paragraph");
+  assert.equal(calls[1].body.children[0].paragraph.rich_text[0].text.content, BODY_TEXT.slice(0, 2000));
   assert.deepEqual(result, { ok: true, externalRef: "page-1", httpStatus: 200 });
+});
+
+test("a missing Coeus ID property is added once, then the lookup is retried", async () => {
+  const { fetcher, calls } = fetcherFromScript([
+    jsonResponse({ code: "validation_error", message: "Could not find property with name or id: Coeus ID" }, 400),
+    jsonResponse({ id: "db-1" }),
+    jsonResponse({ results: [] }),
+    jsonResponse({ id: "page-1" }),
+    jsonResponse({ results: [] }),
+    jsonResponse({ id: "page-2" }),
+  ]);
+  const adapter = new NotionAdapter(CONFIG, "token", fetcher);
+  const first = await adapter.pushUpsert(ITEM, null);
+  const second = await adapter.pushUpsert({ ...ITEM, id: "other-item" }, null);
+
+  assert.equal(calls[1].method, "PATCH");
+  assert.match(calls[1].url, /\/v1\/databases\/db-1$/);
+  assert.deepEqual(calls[1].body, { properties: { "Coeus ID": { rich_text: {} } } });
+  assert.equal(calls.filter((call) => /\/v1\/databases\/db-1$/.test(call.url)).length, 1, "ensured once per adapter");
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+});
+
+test("a failed property add stops the create so it cannot write a page without its key", async () => {
+  const { fetcher, calls } = fetcherFromScript([
+    jsonResponse({ code: "validation_error", message: "Could not find property" }, 400),
+    jsonResponse({ message: "forbidden" }, 403),
+  ]);
+  const adapter = new NotionAdapter(CONFIG, "token", fetcher, { retries: 0 });
+  const result = await adapter.pushUpsert(ITEM, null);
+  assert.equal(result.ok, false);
+  assert.equal(result.authError, true);
+  assert.equal(calls.length, 2, "no POST /pages after a failed property add");
 });
 
 test("a redelivered create adopts the page a timed-out attempt already made instead of duplicating it", async () => {
   const { fetcher, calls } = fetcherFromScript([
-    jsonResponse({ id: "db-1" }),
     jsonResponse({ results: [{ id: "page-orphan" }] }),
     jsonResponse({ id: "page-orphan" }),
     jsonResponse({ results: [{ id: "block-1", type: "paragraph" }] }),
@@ -60,33 +88,18 @@ test("a redelivered create adopts the page a timed-out attempt already made inst
   const result = await adapter.pushUpsert(ITEM, null);
 
   assert.ok(!calls.some((call) => call.method === "POST" && /\/v1\/pages$/.test(call.url)), "no second page is created");
-  assert.match(calls[2].url, /\/v1\/pages\/page-orphan$/);
+  assert.match(calls[1].url, /\/v1\/pages\/page-orphan$/);
   assert.deepEqual(result, { ok: true, externalRef: "page-orphan", httpStatus: 200 });
-});
-
-test("the Coeus ID property is ensured once per adapter, not once per item", async () => {
-  const { fetcher, calls } = fetcherFromScript([
-    jsonResponse({ id: "db-1" }),
-    jsonResponse({ results: [] }),
-    jsonResponse({ id: "page-1" }),
-    jsonResponse({ results: [] }),
-    jsonResponse({ id: "page-2" }),
-  ]);
-  const adapter = new NotionAdapter(CONFIG, "token", fetcher);
-  await adapter.pushUpsert(ITEM, null);
-  await adapter.pushUpsert({ ...ITEM, id: "other-item" }, null);
-  assert.equal(calls.filter((call) => /\/v1\/databases\/db-1$/.test(call.url)).length, 1);
 });
 
 test("a failed lookup stops the create so it cannot duplicate", async () => {
   const { fetcher, calls } = fetcherFromScript([
-    jsonResponse({ id: "db-1" }),
     jsonResponse({ message: "boom" }, 500),
   ]);
   const adapter = new NotionAdapter(CONFIG, "token", fetcher, { retries: 0 });
   const result = await adapter.pushUpsert(ITEM, null);
   assert.equal(result.ok, false);
-  assert.equal(calls.length, 2, "no POST /pages after a failed lookup");
+  assert.equal(calls.length, 1, "no POST /pages after a failed lookup");
 });
 
 test("pushUpsert PATCHes title and rewrites the first paragraph when an externalRef is known", async () => {
