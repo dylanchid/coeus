@@ -5,7 +5,7 @@ import { GitHubGitAdapter, type GitBatchAction } from "./obsidianGitAdapter.serv
 import { NotionAdapter } from "./notionAdapter.server.ts";
 import { itemToObsidianNote } from "../archive/archiveExport.ts";
 import type { ArchiveSyncSnapshot } from "../archive/archiveSync.ts";
-import type { DestinationKind } from "./destinations.ts";
+import type { DestinationDelivery, DestinationKind } from "./destinations.ts";
 import type { DeliveryOutcomeInput, DestinationWorkerStore, WorkerDestination } from "./destinationsStore.server.ts";
 import type { NotionConfig, ObsidianGitConfig } from "./destinations.ts";
 
@@ -27,12 +27,12 @@ export const MAX_ITEMS_PER_TICK = 100;
 async function deliverObsidianGit(
   target: WorkerDestination,
   snapshot: ArchiveSyncSnapshot,
+  deliveries: DestinationDelivery[],
   store: DestinationWorkerStore,
   fetcher: typeof fetch,
   retryOptions: RetryOptions
 ): Promise<DeliveryCounts> {
   const config = target.config as ObsidianGitConfig;
-  const deliveries = await store.deliveries(target.ownerId, target.kind);
   const actions = computeDirtyItems(snapshot, deliveries).slice(0, MAX_ITEMS_PER_TICK);
   if (!actions.length) return { ...EMPTY_COUNTS };
 
@@ -61,8 +61,8 @@ async function deliverObsidianGit(
       error: result.error ?? null,
     });
   }
-  await store.recordOutcomes(target.ownerId, target.kind, outcomeInputs);
-  if (counts.authError) await store.markStatus(target.ownerId, target.kind, "auth_error");
+  await store.recordOutcomes(target.ownerId, target.kind, outcomeInputs, target.archiveId);
+  if (counts.authError) await store.markStatus(target.ownerId, target.kind, "auth_error", target.archiveId);
   return counts;
 }
 
@@ -74,11 +74,11 @@ async function deliverObsidianGit(
 async function deliverNotion(
   target: WorkerDestination,
   snapshot: ArchiveSyncSnapshot,
+  deliveries: DestinationDelivery[],
   store: DestinationWorkerStore,
   fetcher: typeof fetch,
   retryOptions: RetryOptions
 ): Promise<DeliveryCounts> {
-  const deliveries = await store.deliveries(target.ownerId, target.kind);
   const adapter = new NotionAdapter(target.config as NotionConfig, target.secret, fetcher, retryOptions);
   const outcomes = await runDestinationDelivery(snapshot, deliveries, adapter, MAX_ITEMS_PER_TICK);
 
@@ -97,8 +97,8 @@ async function deliverNotion(
       error: outcome.result.error ?? null,
     });
   }
-  await store.recordOutcomes(target.ownerId, target.kind, outcomeInputs);
-  if (counts.authError) await store.markStatus(target.ownerId, target.kind, "auth_error");
+  await store.recordOutcomes(target.ownerId, target.kind, outcomeInputs, target.archiveId);
+  if (counts.authError) await store.markStatus(target.ownerId, target.kind, "auth_error", target.archiveId);
   return counts;
 }
 
@@ -114,12 +114,17 @@ export async function runDeliveryForDestination(
   fetcher: typeof fetch = fetch,
   retryOptions: RetryOptions = {}
 ): Promise<DeliveryCounts> {
-  const snapshot = await reader.snapshot(target.archiveId);
+  const delivers = target.kind === "obsidian_git" || target.kind === "notion";
+  // The snapshot and the per-item watermarks are independent reads, so overlap their round trips.
+  const [snapshot, deliveries] = await Promise.all([
+    reader.snapshot(target.archiveId),
+    delivers ? store.deliveries(target.ownerId, target.kind, target.destinationId) : Promise.resolve([]),
+  ]);
   if (target.kind === "obsidian_git") {
-    return deliverObsidianGit(target, snapshot, store, fetcher, retryOptions);
+    return deliverObsidianGit(target, snapshot, deliveries, store, fetcher, retryOptions);
   }
   if (target.kind === "notion") {
-    return deliverNotion(target, snapshot, store, fetcher, retryOptions);
+    return deliverNotion(target, snapshot, deliveries, store, fetcher, retryOptions);
   }
   return { ...EMPTY_COUNTS };
 }
@@ -194,7 +199,8 @@ export async function runDestinationWorkerTick(
         target.kind,
         leaseToken,
         leaseTtlSeconds,
-        minIntervalSeconds
+        minIntervalSeconds,
+        target.archiveId
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -248,7 +254,7 @@ export async function runDestinationWorkerTick(
         failed: summary.failed,
         authError: summary.authError,
         at: new Date().toISOString(),
-      });
+      }, target.archiveId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logDelivery("destination_delivery.release.error", { correlationId, ownerId: target.ownerId, kind: target.kind, error: message });

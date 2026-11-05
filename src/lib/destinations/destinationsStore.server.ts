@@ -70,6 +70,7 @@ export interface DestinationsStore {
 export interface WorkerDestination {
   ownerId: string;
   archiveId: string;
+  destinationId: string;
   kind: DestinationKind;
   config: ObsidianGitConfig | NotionConfig;
   /** The decrypted third-party token/secret. */
@@ -94,10 +95,15 @@ export interface DestinationWorkerStore {
   /** All active destinations, or just one owner's when called from the post-sync hook. */
   activeDestinations(ownerId?: string): Promise<WorkerDestination[]>;
   /** Current per-item watermarks, so the worker only pushes items dirty since their last delivered revision. */
-  deliveries(ownerId: string, kind: DestinationKind): Promise<DestinationDelivery[]>;
+  deliveries(ownerId: string, kind: DestinationKind, destinationId?: string): Promise<DestinationDelivery[]>;
   /** Persist a tick's outcomes atomically, avoiding one RPC round-trip per item. */
-  recordOutcomes(ownerId: string, kind: DestinationKind, outcomes: DeliveryOutcomeInput[]): Promise<void>;
-  markStatus(ownerId: string, kind: DestinationKind, status: DestinationStatus): Promise<void>;
+  recordOutcomes(
+    ownerId: string,
+    kind: DestinationKind,
+    outcomes: DeliveryOutcomeInput[],
+    archiveId?: string
+  ): Promise<void>;
+  markStatus(ownerId: string, kind: DestinationKind, status: DestinationStatus, archiveId?: string): Promise<void>;
   /**
    * Atomically take the delivery lease for one destination. Returns false when
    * another run holds a live lease or the previous run started less than
@@ -108,14 +114,16 @@ export interface DestinationWorkerStore {
     kind: DestinationKind,
     leaseToken: string,
     ttlSeconds: number,
-    minIntervalSeconds: number
+    minIntervalSeconds: number,
+    archiveId?: string
   ): Promise<boolean>;
   /** Release a lease held under `leaseToken` and record a redaction-safe run summary. A stale token is a no-op. */
   releaseDeliveryLease(
     ownerId: string,
     kind: DestinationKind,
     leaseToken: string,
-    outcome: Record<string, unknown>
+    outcome: Record<string, unknown>,
+    archiveId?: string
   ): Promise<void>;
 }
 
@@ -181,8 +189,8 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
     return Boolean(data);
   }
 
-  async deliveries(ownerId: string, kind: DestinationKind): Promise<DestinationDelivery[]> {
-    const destinationId = await this.destinationId(ownerId, kind);
+  async deliveries(ownerId: string, kind: DestinationKind, knownDestinationId?: string): Promise<DestinationDelivery[]> {
+    const destinationId = knownDestinationId ?? (await this.destinationId(ownerId, kind));
     const data = await readAllPages((from, to) => this.supabase
       .from("destination_deliveries")
       .select("destination_id,item_id,external_ref,last_delivered_revision,status,last_attempted_at,last_error,last_http_status")
@@ -196,7 +204,7 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
     const data = await readAllPages((from, to) => {
       let query = this.supabase
         .from("destinations")
-        .select("kind,config,secret_ciphertext,secret_iv,secret_auth_tag,archives!inner(id,owner_id)")
+        .select("id,kind,config,secret_ciphertext,secret_iv,secret_auth_tag,archives!inner(id,owner_id)")
         .eq("status", "active")
         .not("secret_ciphertext", "is", null)
         .order("id")
@@ -206,6 +214,7 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
     });
     return data
       .map((row) => row as unknown as {
+        id: string;
         kind: DestinationKind;
         config: ObsidianGitConfig | NotionConfig;
         secret_ciphertext: string;
@@ -216,6 +225,7 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
       .map((row) => ({
         ownerId: row.archives.owner_id,
         archiveId: row.archives.id,
+        destinationId: row.id,
         kind: row.kind,
         config: row.config,
         secret: decryptSecret(
@@ -229,9 +239,14 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
       }));
   }
 
-  async recordOutcomes(ownerId: string, kind: DestinationKind, outcomes: DeliveryOutcomeInput[]): Promise<void> {
+  async recordOutcomes(
+    ownerId: string,
+    kind: DestinationKind,
+    outcomes: DeliveryOutcomeInput[],
+    knownArchiveId?: string
+  ): Promise<void> {
     if (!outcomes.length) return;
-    const archiveId = await this.archiveId(ownerId);
+    const archiveId = knownArchiveId ?? (await this.archiveId(ownerId));
     const { error } = await this.supabase.rpc("record_delivery_outcomes", {
       p_owner_id: ownerId,
       p_archive_id: archiveId,
@@ -248,8 +263,13 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
     if (error) throw error;
   }
 
-  async markStatus(ownerId: string, kind: DestinationKind, status: DestinationStatus): Promise<void> {
-    const archiveId = await this.archiveId(ownerId);
+  async markStatus(
+    ownerId: string,
+    kind: DestinationKind,
+    status: DestinationStatus,
+    knownArchiveId?: string
+  ): Promise<void> {
+    const archiveId = knownArchiveId ?? (await this.archiveId(ownerId));
     const { error } = await this.supabase.rpc("mark_destination_status", {
       p_owner_id: ownerId,
       p_archive_id: archiveId,
@@ -264,9 +284,10 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
     kind: DestinationKind,
     leaseToken: string,
     ttlSeconds: number,
-    minIntervalSeconds: number
+    minIntervalSeconds: number,
+    knownArchiveId?: string
   ): Promise<boolean> {
-    const archiveId = await this.archiveId(ownerId);
+    const archiveId = knownArchiveId ?? (await this.archiveId(ownerId));
     const { data, error } = await this.supabase.rpc("acquire_destination_delivery_lease", {
       p_owner_id: ownerId,
       p_archive_id: archiveId,
@@ -283,9 +304,10 @@ export class SupabaseDestinationsStore implements DestinationsStore, Destination
     ownerId: string,
     kind: DestinationKind,
     leaseToken: string,
-    outcome: Record<string, unknown>
+    outcome: Record<string, unknown>,
+    knownArchiveId?: string
   ): Promise<void> {
-    const archiveId = await this.archiveId(ownerId);
+    const archiveId = knownArchiveId ?? (await this.archiveId(ownerId));
     const { error } = await this.supabase.rpc("release_destination_delivery_lease", {
       p_owner_id: ownerId,
       p_archive_id: archiveId,
