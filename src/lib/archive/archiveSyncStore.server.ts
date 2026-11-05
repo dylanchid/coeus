@@ -90,18 +90,15 @@ export class SupabaseArchiveSyncStore implements ArchiveSyncStore {
 
   /** Structurally satisfies destinationWorker.server.ts's ArchiveSnapshotReader without adding to the ArchiveSyncStore interface. */
   async snapshot(archiveId: string): Promise<ArchiveSyncSnapshot> {
-    const { data: archive, error: archiveError } = await this.supabase
-      .from("archives")
-      .select("current_revision")
-      .eq("id", archiveId)
-      .single();
-    if (archiveError) throw archiveError;
-    const row = archive as unknown as { current_revision: number };
+    // archives.current_revision always names the highest revision row (commit and recovery only
+    // ever advance it by one alongside the insert), so the newest row is the current snapshot and
+    // this needs one round trip instead of reading archives first.
     const { data: revision, error: revisionError } = await this.supabase
       .from("archive_revisions")
       .select("snapshot")
       .eq("archive_id", archiveId)
-      .eq("revision", row.current_revision)
+      .order("revision", { ascending: false })
+      .limit(1)
       .single();
     if (revisionError) throw revisionError;
     return checkedSnapshot((revision as unknown as { snapshot: unknown }).snapshot);

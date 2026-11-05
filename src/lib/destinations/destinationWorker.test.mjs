@@ -12,6 +12,7 @@ function notionTarget(ownerId = "owner-1") {
   return {
     ownerId,
     archiveId: `archive-${ownerId}`,
+    destinationId: `destination-${ownerId}`,
     kind: "notion",
     config: { databaseId: "db-1", workspaceName: "WS" },
     secret: "notion-token",
@@ -24,28 +25,29 @@ const okReader = { async snapshot() { return SNAPSHOT; } };
 const notionOkFetcher = async () => new Response(JSON.stringify({ id: "page-x" }), { status: 200 });
 
 function fakeStore(overrides = {}) {
-  const calls = { acquire: [], release: [], outcomes: [], status: [] };
+  const calls = { acquire: [], release: [], outcomes: [], status: [], deliveries: [] };
   const store = {
     calls,
     async activeDestinations() {
       return overrides.targets ?? [notionTarget()];
     },
-    async deliveries() {
+    async deliveries(ownerId, kind, destinationId) {
+      calls.deliveries.push({ ownerId, kind, destinationId });
       return [];
     },
-    async recordOutcomes(ownerId, kind, outcomes) {
-      calls.outcomes.push({ ownerId, kind, outcomes });
+    async recordOutcomes(ownerId, kind, outcomes, archiveId) {
+      calls.outcomes.push({ ownerId, kind, outcomes, archiveId });
     },
-    async markStatus(ownerId, kind, status) {
-      calls.status.push({ ownerId, kind, status });
+    async markStatus(ownerId, kind, status, archiveId) {
+      calls.status.push({ ownerId, kind, status, archiveId });
     },
-    async acquireDeliveryLease(ownerId, kind, token, ttl, minInterval) {
-      calls.acquire.push({ ownerId, kind, token, ttl, minInterval });
+    async acquireDeliveryLease(ownerId, kind, token, ttl, minInterval, archiveId) {
+      calls.acquire.push({ ownerId, kind, token, ttl, minInterval, archiveId });
       if (typeof overrides.acquire === "function") return overrides.acquire(calls.acquire.length);
       return overrides.acquire ?? true;
     },
-    async releaseDeliveryLease(ownerId, kind, token, outcome) {
-      calls.release.push({ ownerId, kind, token, outcome });
+    async releaseDeliveryLease(ownerId, kind, token, outcome, archiveId) {
+      calls.release.push({ ownerId, kind, token, outcome, archiveId });
     },
   };
   return store;
@@ -135,7 +137,9 @@ test("an auth failure records failed_auth and disables further delivery", async 
 
   assert.equal(result.results[0].authError, true);
   assert.equal(store.calls.outcomes[0].outcomes[0].status, "failed_auth");
-  assert.deepEqual(store.calls.status, [{ ownerId: "owner-1", kind: "notion", status: "auth_error" }]);
+  assert.deepEqual(store.calls.status, [
+    { ownerId: "owner-1", kind: "notion", status: "auth_error", archiveId: "archive-owner-1" },
+  ]);
 });
 
 test("a final network failure records failed_retryable for the next queue wake-up", async () => {
@@ -160,4 +164,25 @@ test("an enumeration failure is reported without throwing", async () => {
   assert.equal(result.failures.length, 1);
   assert.match(result.failures[0].error, /db down/);
   assert.equal(result.results.length, 0);
+});
+
+test("the known archive and destination ids are passed through so the store skips its lookups", async () => {
+  const store = fakeStore();
+  await runDestinationWorkerTick(okReader, store, { fetcher: notionOkFetcher });
+
+  assert.equal(store.calls.acquire[0].archiveId, "archive-owner-1");
+  assert.deepEqual(store.calls.deliveries, [{ ownerId: "owner-1", kind: "notion", destinationId: "destination-owner-1" }]);
+  assert.equal(store.calls.outcomes[0].archiveId, "archive-owner-1");
+  assert.equal(store.calls.release[0].archiveId, "archive-owner-1");
+});
+
+test("the snapshot and watermark reads start together rather than back to back", async () => {
+  const order = [];
+  const reader = { async snapshot() { order.push("snapshot:start"); await Promise.resolve(); order.push("snapshot:end"); return SNAPSHOT; } };
+  const store = fakeStore();
+  const deliveries = store.deliveries;
+  store.deliveries = async (...args) => { order.push("deliveries:start"); return deliveries(...args); };
+  await runDestinationWorkerTick(reader, store, { fetcher: notionOkFetcher });
+
+  assert.deepEqual(order.slice(0, 2), ["snapshot:start", "deliveries:start"]);
 });
