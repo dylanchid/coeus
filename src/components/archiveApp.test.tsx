@@ -107,7 +107,7 @@ test("Archive collection publishing and unpublishing round-trip through their re
   await screen.findByRole("heading", { name: "Everything worth returning to." });
   fireEvent.click(screen.getByRole("button", { name: /a humane internet/i }));
   fireEvent.click(screen.getByText("Publish & follow"));
-  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "public" } });
+  assert.equal((screen.getByLabelText("Visibility") as HTMLSelectElement).value, "public", "a public collection publishes as public by default");
   fireEvent.click(screen.getByRole("button", { name: "Publish collection" }));
   await screen.findByRole("button", { name: "Unpublish" });
   const publishCall = calls.find((call) => call.url === "/api/collections/publish");
@@ -118,4 +118,41 @@ test("Archive collection publishing and unpublishing round-trip through their re
   const unpublishCall = calls.find((call) => call.url === "/api/collections/unpublish");
   assert.deepEqual(JSON.parse(unpublishCall?.body ?? "{}"), { collectionLocalId: "humane-internet" });
   await screen.findByText("Collection unpublished");
+});
+
+test("A new collection is personal, has no placeholder text, and its visibility follows what it was published as", async () => {
+  const calls: { url: string; body: string | undefined }[] = [];
+  stubArchiveFetch((url, _method, body) => {
+    calls.push({ url, body });
+    if (url === "/api/collections") return response({ publications: [] });
+    if (url === "/api/archive/destinations") return response({ destinations: [] });
+    if (url === "/api/collections/publish") {
+      const request = JSON.parse(body ?? "{}");
+      return response({ id: "publication-2", archiveId: "archive-1", ownerId: "owner-1", collectionLocalId: request.collectionLocalId, slug: "field-notes", visibility: request.visibility, name: "Field notes", description: "", curatorNote: "", attribution: "", items: [], publishedAt: "2026-11-10T00:00:00.000Z", updatedAt: "2026-11-10T00:00:00.000Z", unpublishedAt: null });
+    }
+    return response({ error: "not found" }, 404);
+  });
+  renderArchive();
+  await screen.findByRole("heading", { name: "Everything worth returning to." });
+  fireEvent.click(screen.getByRole("button", { name: "New collection" }));
+  assert.equal(screen.queryByLabelText("Ownership"), null, "community collections are frozen");
+  fireEvent.change(screen.getByPlaceholderText("e.g. Local futures"), { target: { value: "Field notes" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+  await screen.findByRole("heading", { name: "Field notes" });
+  assert.equal(screen.queryByText("A new path through your archive."), null);
+  const stored = JSON.parse(localStorage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) ?? "null");
+  const created = stored.collections.find((collection: { name: string }) => collection.name === "Field notes");
+  assert.deepEqual([created.kind, created.visibility, created.description], ["personal", "private", ""]);
+
+  fireEvent.click(screen.getByText("Publish & follow"));
+  assert.equal((screen.getByLabelText("Visibility") as HTMLSelectElement).value, "unlisted", "an undecided (private) collection defaults to link-only");
+  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "public" } });
+  fireEvent.click(screen.getByRole("button", { name: "Publish collection" }));
+  await screen.findByRole("button", { name: "Unpublish" });
+  await waitFor(() => {
+    const after = JSON.parse(localStorage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) ?? "null");
+    assert.equal(after.collections.find((collection: { id: string }) => collection.id === created.id).visibility, "public");
+  });
+  assert.ok(!calls.some((call) => call.url === "/api/posts"), "the frozen post panel no longer fetches posts");
 });

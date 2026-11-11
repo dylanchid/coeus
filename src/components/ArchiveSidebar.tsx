@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ArchiveCollection, ArchiveData, CollectionKind, CollectionVisibility } from "@/lib/archive";
+import type { ArchiveCollection, ArchiveData, CollectionVisibility } from "@/lib/archive";
 import type { ContentSnapshotSummary, ArchiveRevisionSummary } from "@/lib/archive/archiveRecovery";
 import type { ArchiveSyncState } from "@/lib/archive/syncedArchiveRepository";
 import type { AuthStatus, AuthUser } from "./AuthProvider";
@@ -15,7 +15,7 @@ type SidebarAuth = { status: AuthStatus; user: AuthUser | null; profile: { handl
 /** Collection navigation and account/recovery controls; state remains in ArchiveApp. */
 export function ArchiveSidebar({
   data, collectionId, setCollectionId, selectedCollection, newCollection, setNewCollection,
-  newCollectionKind, setNewCollectionKind, newCollectionVisibility, setNewCollectionVisibility,
+  newCollectionVisibility, setNewCollectionVisibility,
   composerOpen, setComposerOpen, createCollection, exportMarkdown, exportCsv, exportArchiveJson,
   publication, publishBusy, publishCollection, unpublishCollection, sync, retrySync, revisions,
   contentSnapshots, recoveryBusy, refreshRecovery, restoreRevision, auth, accountBusy, signOut,
@@ -27,8 +27,6 @@ export function ArchiveSidebar({
   selectedCollection: ArchiveCollection | undefined;
   newCollection: string;
   setNewCollection: (value: string) => void;
-  newCollectionKind: CollectionKind;
-  setNewCollectionKind: (value: CollectionKind) => void;
   newCollectionVisibility: CollectionVisibility;
   setNewCollectionVisibility: (value: CollectionVisibility) => void;
   composerOpen: boolean;
@@ -69,14 +67,14 @@ export function ArchiveSidebar({
     </nav>
     {composerOpen ? <form className="collection-composer" onSubmit={(event) => { event.preventDefault(); createCollection(); }}>
       <label htmlFor="new-collection">Collection name</label><input id="new-collection" autoFocus value={newCollection} onChange={(event) => setNewCollection(event.target.value)} placeholder="e.g. Local futures" />
-      <label htmlFor="collection-kind">Ownership</label><select id="collection-kind" value={newCollectionKind} onChange={(event) => setNewCollectionKind(event.target.value as CollectionKind)}><option value="personal">Personal</option><option value="community">Community</option></select>
+
       <label htmlFor="collection-visibility">Visibility</label><VisibilitySelect id="collection-visibility" value={newCollectionVisibility} onChange={setNewCollectionVisibility} />
       <div><button type="submit">Create</button><button type="button" onClick={() => setComposerOpen(false)}>Cancel</button></div>
     </form> : <button className="new-collection-button" onClick={() => setComposerOpen(true)}><span aria-hidden="true">＋</span> New collection</button>}
     <details className="archive-portability"><summary>Export &amp; share</summary><div className="archive-sidebar-actions" aria-label="Archive portability">
       <button type="button" onClick={exportMarkdown}>Markdown <span aria-hidden="true">↓</span></button><button type="button" onClick={exportCsv}>Notion CSV <span aria-hidden="true">↓</span></button><button type="button" onClick={() => void exportArchiveJson()}>Full JSON archive <span aria-hidden="true">↓</span></button>
     </div></details>
-    {selectedCollection && selectedCollection.id !== "inbox" ? <ArchivePublishPanel key={selectedCollection.id} collectionId={selectedCollection.id} publication={publication} busy={publishBusy} onPublish={publishCollection} onUnpublish={unpublishCollection} /> : null}
+    {selectedCollection && selectedCollection.id !== "inbox" ? <ArchivePublishPanel key={selectedCollection.id} collectionId={selectedCollection.id} collectionVisibility={selectedCollection.visibility} waitingForSync={sync.status === "syncing" || (sync.status === "synced" && sync.pending > 0)} publication={publication} busy={publishBusy} onPublish={publishCollection} onUnpublish={unpublishCollection} /> : null}
     <details className="archive-portability"><summary>Sync, recovery &amp; account</summary><div className="archive-sidebar-actions" aria-label="Archive sync and recovery">
       <p className="archive-sync-state" role="status">Sync: {sync.status}{sync.pending ? ` · ${sync.pending} queued` : ""}{sync.conflicts ? ` · ${sync.conflicts} conflicts retained` : ""}</p>
       {sync.message && sync.status !== "synced" ? <p className="archive-sync-state" role="status">{sync.message}</p> : null}{sync.recoveredCorruptQueue ? <p className="archive-sync-state" role="alert">A damaged offline queue was set aside for recovery; export your archive if recent edits are missing.</p> : null}{sync.paused ? <button type="button" onClick={retrySync}>Retry sync now</button> : null}

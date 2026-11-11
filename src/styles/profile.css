@@ -91,11 +91,16 @@
   display: flex;
   align-items: center;
   gap: 0 1.1rem;
+  /* One scrollable row on narrow screens; tabs never wrap letter by letter. */
+  overflow-x: auto;
+  scrollbar-width: none;
   margin: var(--space-md) 0 0;
   padding: 0 clamp(1rem, 3vw, 2rem);
   border-bottom: 1px solid var(--header-rule);
 }
 .profile-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 0.6rem 0;
   color: var(--muted);
   font-size: var(--text-meta);
@@ -110,7 +115,7 @@
 /* The owner's Posts tab before they have published a post: shown, not a link. */
 .profile-tab.is-greyed { color: var(--line); cursor: default; }
 
-.profile-actions { margin-left: auto; }
+.profile-actions { margin-left: auto; flex: 0 0 auto; white-space: nowrap; }
 .profile-action {
   display: inline-block;
   min-height: 32px;

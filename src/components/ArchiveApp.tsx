@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { ArchiveCollection, ArchiveData, ArchiveItem, CollectionKind, CollectionVisibility } from "@/lib/archive";
+import { useState } from "react";
+import type { ArchiveCollection, ArchiveData, ArchiveItem, CollectionVisibility } from "@/lib/archive";
 import { archiveToCsv, archiveToMarkdown } from "@/lib/archive/archiveExport";
 import { useArchive } from "./AppProviders";
 import { useAuth } from "./AuthProvider";
 import { AppShell } from "./AppShell";
 import { ArchiveSidebar } from "./ArchiveSidebar";
 import { ArchiveList } from "./ArchiveList";
-import { type PublishedPost } from "./PostPublishPanel";
+import type { PublishedPost } from "./PostPublishPanel";
 import { useArchiveFilters } from "./useArchiveFilters";
 import { usePublications } from "./usePublications";
 import { useArchiveRecovery } from "./useArchiveRecovery";
+
+// Posts fold into collections (product review §5); the per-item post panel stays hidden.
+const NO_POSTS: ReadonlyMap<string, PublishedPost> = new Map();
 
 /** Archive workflows plus the page body, exported as a focused UI-test seam. */
 export function ArchiveWorkspace() {
@@ -19,12 +22,10 @@ export function ArchiveWorkspace() {
   const auth = useAuth();
   const [collectionId, setCollectionId] = useState("all");
   const [newCollection, setNewCollection] = useState("");
-  const [newCollectionKind, setNewCollectionKind] = useState<CollectionKind>("personal");
   const [newCollectionVisibility, setNewCollectionVisibility] = useState<CollectionVisibility>("private");
   const [composerOpen, setComposerOpen] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
   const [accountBusy, setAccountBusy] = useState(false);
-  const [postsByItem, setPostsByItem] = useState<ReadonlyMap<string, PublishedPost>>(new Map());
 
   const update = (recipe: (current: ArchiveData) => ArchiveData) => { void updateArchive(recipe); };
   const requestJson = async (url: string, init?: RequestInit) => {
@@ -39,15 +40,6 @@ export function ArchiveWorkspace() {
   const { publications, publishBusy, publishCollection, unpublishCollection } = usePublications(requestJson, setShareNotice);
   const recovery = useArchiveRecovery({ requestJson, replaceArchiveFromServer, onNotice: setShareNotice });
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetch("/api/posts", { credentials: "same-origin", cache: "no-store" })
-      .then(async (response) => response.ok ? response.json() as Promise<{ posts: { itemLocalId: string; visibility: PublishedPost["visibility"]; commentary: string }[] }> : null)
-      .then((body) => { if (!cancelled && body) setPostsByItem(new Map(body.posts.map((post) => [post.itemLocalId, { visibility: post.visibility, commentary: post.commentary }]))); })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, []);
-
   const filters = useArchiveFilters(data?.items ?? [], collectionId);
   const selectedCollection = data?.collections.find((collection) => collection.id === collectionId);
   const currentPublication = selectedCollection ? publications.find((publication) => publication.collectionLocalId === selectedCollection.id && !publication.unpublishedAt) : undefined;
@@ -55,9 +47,17 @@ export function ArchiveWorkspace() {
   const createCollection = () => {
     const name = newCollection.trim();
     if (!name) return;
-    const collection: ArchiveCollection = { id: `collection-${Date.now()}`, name, description: "A new path through your archive.", visibility: newCollectionVisibility, kind: newCollectionKind, createdAt: new Date().toISOString() };
+    // Community collections are frozen (product review §5): new collections are personal.
+    const collection: ArchiveCollection = { id: `collection-${Date.now()}`, name, description: "", visibility: newCollectionVisibility, kind: "personal", createdAt: new Date().toISOString() };
     update((current) => ({ ...current, collections: [...current.collections, collection] }));
-    setCollectionId(collection.id); setNewCollection(""); setNewCollectionKind("personal"); setNewCollectionVisibility("private"); setComposerOpen(false);
+    setCollectionId(collection.id); setNewCollection(""); setNewCollectionVisibility("private"); setComposerOpen(false);
+  };
+  // Publishing is the moment visibility is decided, so the archive collection
+  // follows it; otherwise the sidebar can say "public" while /c lists nothing.
+  const publishSelected = async (visibility: CollectionVisibility, note: string, attribution: string) => {
+    const id = selectedCollection!.id;
+    const published = await publishCollection(id, visibility, note, attribution);
+    if (published) update((current) => ({ ...current, collections: current.collections.map((collection) => collection.id === id ? { ...collection, visibility } : collection) }));
   };
   const download = (contents: string, filename: string, type: string) => {
     const url = URL.createObjectURL(new Blob([contents], { type }));
@@ -77,8 +77,8 @@ export function ArchiveWorkspace() {
 
   if (!data) return <p className="boot">Opening your archive…</p>;
   return <div className="archive-page"><section className="archive-overview" aria-labelledby="archive-title"><div className="archive-overview-copy"><p className="archive-eyebrow">{selectedCollection ? `${selectedCollection.kind} collection · ${selectedCollection.visibility}` : "Personal library"}</p><h1 id="archive-title">{selectedCollection?.name ?? "Everything worth returning to."}</h1>{selectedCollection?.description ? <p>{selectedCollection.description}</p> : null}</div></section>
-      <div className="archive-workspace"><ArchiveSidebar data={data} collectionId={collectionId} setCollectionId={setCollectionId} selectedCollection={selectedCollection} newCollection={newCollection} setNewCollection={setNewCollection} newCollectionKind={newCollectionKind} setNewCollectionKind={setNewCollectionKind} newCollectionVisibility={newCollectionVisibility} setNewCollectionVisibility={setNewCollectionVisibility} composerOpen={composerOpen} setComposerOpen={setComposerOpen} createCollection={createCollection} exportMarkdown={exportMarkdown} exportCsv={exportCsv} exportArchiveJson={exportArchiveJson} publication={currentPublication} publishBusy={publishBusy} publishCollection={(visibility, note, attribution) => void publishCollection(selectedCollection!.id, visibility, note, attribution)} unpublishCollection={() => void unpublishCollection(selectedCollection!.id)} sync={sync} retrySync={retrySync} revisions={recovery.revisions} contentSnapshots={recovery.contentSnapshots} recoveryBusy={recovery.recoveryBusy} refreshRecovery={recovery.refreshRecovery} restoreRevision={recovery.restoreRevision} auth={auth} accountBusy={accountBusy} signOut={signOut} deleteAccount={deleteAccount} onNotice={setShareNotice} />
-        <ArchiveList data={data} query={filters.query} setQuery={filters.setQuery} filter={filters.filter} setFilter={filters.setFilter} sort={filters.sort} setSort={filters.setSort} counts={filters.counts} visible={filters.visible} patchItem={patchItem} recoveryBusy={recovery.recoveryBusy} captureContent={recovery.captureContent} onNotice={setShareNotice} shareNotice={shareNotice} showPostPanels={auth.status !== "signed-out"} postsByItem={postsByItem} />
+      <div className="archive-workspace"><ArchiveSidebar data={data} collectionId={collectionId} setCollectionId={setCollectionId} selectedCollection={selectedCollection} newCollection={newCollection} setNewCollection={setNewCollection} newCollectionVisibility={newCollectionVisibility} setNewCollectionVisibility={setNewCollectionVisibility} composerOpen={composerOpen} setComposerOpen={setComposerOpen} createCollection={createCollection} exportMarkdown={exportMarkdown} exportCsv={exportCsv} exportArchiveJson={exportArchiveJson} publication={currentPublication} publishBusy={publishBusy} publishCollection={(visibility, note, attribution) => void publishSelected(visibility, note, attribution)} unpublishCollection={() => void unpublishCollection(selectedCollection!.id)} sync={sync} retrySync={retrySync} revisions={recovery.revisions} contentSnapshots={recovery.contentSnapshots} recoveryBusy={recovery.recoveryBusy} refreshRecovery={recovery.refreshRecovery} restoreRevision={recovery.restoreRevision} auth={auth} accountBusy={accountBusy} signOut={signOut} deleteAccount={deleteAccount} onNotice={setShareNotice} />
+        <ArchiveList data={data} query={filters.query} setQuery={filters.setQuery} filter={filters.filter} setFilter={filters.setFilter} sort={filters.sort} setSort={filters.setSort} counts={filters.counts} visible={filters.visible} patchItem={patchItem} recoveryBusy={recovery.recoveryBusy} captureContent={recovery.captureContent} onNotice={setShareNotice} shareNotice={shareNotice} showPostPanels={false} postsByItem={NO_POSTS} />
       </div>
   </div>;
 }

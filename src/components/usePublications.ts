@@ -26,7 +26,8 @@ export function usePublications(requestJson: RequestJson, onNotice: (notice: str
       const link = `${window.location.origin}/c/${publication.slug}`;
       try { await navigator.clipboard.writeText(link); onNotice(`Published at /c/${publication.slug} — link copied`); }
       catch { onNotice(`Published at /c/${publication.slug}`); }
-    } catch (error) { onNotice(error instanceof Error ? error.message : "Publishing failed"); }
+      return publication;
+    } catch (error) { onNotice(error instanceof Error ? error.message : "Publishing failed"); return null; }
     finally { setPublishBusy(false); }
   };
   const unpublishCollection = async (collectionLocalId: string) => {
