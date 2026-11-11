@@ -1,8 +1,8 @@
 # Coeus product review — 2026-11-10
 
-**Status:** Review and recommendation, not yet accepted. Once decisions are made,
-fold them into [`PRD.md`](PRD.md) and the "Current status" section of
-[`HANDOFF.md`](../HANDOFF.md) (last updated 2026-09-09).
+**Status:** Accepted 2026-11-10. The keep/fold/freeze table (§5) is recorded in
+[`PRD.md`](PRD.md) §7.1 and [`HANDOFF.md`](../HANDOFF.md) "Current status"; those
+are now the source of truth. Delivered so far: §6 items 1 (#35) and 4 (#36).
 **Inputs:** PRD, product-notes, HANDOFF, destination-delivery-decision, the route and
 `src/lib` inventory, the open beads, the last ~30 merged PRs, a signed-out walk of
 coeuscoeus.com, and aggregate row counts from the Supabase project configured in

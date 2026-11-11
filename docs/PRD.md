@@ -1,6 +1,6 @@
 # Coeus — Product Requirements Document
 
-**Status:** Living document (product intent), reconciled with the codebase 2026-09-09.
+**Status:** Living document (product intent), reconciled with the codebase 2026-11-11. Scope decisions from the [2026-11 product review](./product-review-2026-11.md) are recorded in §7.1 and win over older roadmap text.
 For the authoritative *engineering* status of what is built, see [`HANDOFF.md`](../HANDOFF.md).
 **Owner:** Dylan Chidambaram
 **Related:** [`HANDOFF.md`](../HANDOFF.md) (authoritative engineering status), `/about` route (public-facing explanation), `bareaga_web-5bv` (shared collections — shipped 2026-09-04)
@@ -165,34 +165,30 @@ A directory of all **51 catalog sources**, independent from "sources you've adde
 
 The most functionally complete surface today. Per saved item: reading `state` (`unread / read / kept`), `starred`, a private `note`, `tags[]`, and `collectionIds[]`.
 
-- Sidebar: "Everything" plus user-created collections, each with a `kind` (`personal / community`) and `visibility` (`private / unlisted / public`). Publishing a collection to a stable public page at `/c/[slug]` (curator note, attribution, RSS output, follow/unfollow) shipped in `bareaga_web-5bv` (2026-09-04). Wiring published collections into the Discover surface is the remaining piece.
+- Sidebar: "Everything" plus user-created collections, each with a `visibility` (`private / followers / unlisted / public`). New collections are always `personal`; the `community` kind exists in data but is frozen (§7.1). Publishing a collection to a stable public page at `/c/[slug]` (curator note, attribution, RSS output, follow/unfollow, curator byline) shipped in `bareaga_web-5bv` and #36; published collections are listed on Discover.
 - Full-text search across title/summary/source/author/topic/note, with filter tabs (All/Unread/Starred/Annotated).
 - Per-item actions: change state, star, copy as Markdown, reassign collection, inline note editor.
 - **Export as a first-class feature**: whole-archive or per-collection export to Markdown (YAML frontmatter, aimed at Obsidian) or CSV (aimed at Notion/spreadsheets) — the concrete expression of "open formats over locked platforms."
-- Footer states the current honesty boundary directly: "Private by default. Your archive lives on this device today. Shared collections are the next layer."
+- Footer states the honesty boundary directly: "Private by default. Your archive lives on this device, and syncs when you sign in. Nothing is public until you publish a collection."
+- New visitors start with an empty archive (one Inbox) and a first-run empty state; there is no demo content.
 
-### 6.4 Discover (`/discover`) — shared links and collections
+### 6.4 Discover (`/discover`) — published collections
 
-The people-powered surface for collections, shared articles, and links with human context attached. The local Discover *preview* is still device-local, but the account-backed layer it was waiting on has since shipped: signed-in users get server-persisted follows and real public pages at `/u/[handle]` and `/c/[slug]` (`bareaga_web-5bv`, `bareaga_web-nfq`). Connecting those into this Discover surface is the open work.
+The people-powered surface, built only from what someone actually published:
 
-What exists today:
+- **Everyone** — every public collection, newest first, from the same store as `/c` (shared `PublicCollectionList`). When nothing is published, it says so and explains how a collection is made (save → collect → publish).
+- **Following** — collections and posts from people the signed-in viewer follows, filtered through `canSee`.
+- No invented activity, ever: the earlier device-local preview (seeded posts by fictional people, a local "publish clip" composer) was removed in #35.
 
-- A composer publishing a **"sourced clip"**: URL + title + excerpt + user commentary. Publishing simultaneously creates an `ArchiveItem` (state `kept`) and a `SocialPost` — the excerpt is a hard product rule, never detached from its canonical source link.
-- A feed of the user's own posts (`data.socialPosts` is local on this surface; a server-readable `posts` table and publish boundary now exist and back the `/u/[handle]` Posts tab).
-- "Community collections" browsing with a follow/unfollow toggle — on this local preview it is still component-local state. Durable follows exist for signed-in users on `/c` and `/u/[handle]`.
-- Native share integration (`navigator.share()`, falling back to clipboard) so a post can leave Coeus entirely.
+### 6.5 ShareSheet — save, collect, or send
 
-### 6.5 ShareSheet — the connective tissue
+Reachable from "Share" on any story card, with three destinations:
 
-A single sheet, reachable from "Share" on any story card, offering five destinations as siblings rather than two separate flows:
+1. **A friend** — native OS share sheet, or clipboard-copy fallback. Nothing is posted publicly.
+2. **Personal collection** (default) — private or unlisted, just yours.
+3. **Public collection** — a collection people can follow once it is published from the Archive.
 
-1. **Discover**
-2. **A friend** (native OS share sheet, or clipboard-copy fallback)
-3. **Personal collection**
-4. **Public collection**
-5. **Community collection**
-
-This is the one place in the product where "save privately" and "publish publicly" sit side by side as equal choices — evidence that collections/social sharing were designed as one spectrum from day one, even though only the private end (personal collections, local archive) is fully wired to real persistence today.
+"Discover" (sourced posts) and "Community collection" were removed as destinations when posts were folded into collections and community collections were frozen (§7.1).
 
 ### 6.6 Settings
 
@@ -207,21 +203,37 @@ Tabs: **Reading / Appearance / Sources / Advanced** (`SETTINGS_TABS`). Ranking (
 
 **Fully real and usable solo today:** reading (all four views), ranking, source discovery, archiving, notes/collections, Markdown/CSV export, full preference portability — all local-first, no account.
 
-**Shipped since the original roadmap:** optional passwordless accounts; cross-device archive sync (`bareaga_web-6j1`); public collection pages `/c/[slug]` with RSS and follows (`bareaga_web-5bv`); public profiles `/u/[handle]` with a person graph and posts/replies/reposts/likes (`bareaga_web-nfq`).
+**Shipped for signed-in accounts:** passwordless accounts; cross-device archive sync (`bareaga_web-6j1`); published collections at `/c/[slug]` with RSS, follows, and a "Curated by @handle" byline (`bareaga_web-5bv`, #36); public profiles at `/@handle` (`bareaga_web-nfq`); in-app notifications; push destinations to Notion and Obsidian-via-GitHub (see §7.1, frozen at their current shape).
 
-**Still incomplete:** the *local* Discover preview surface is not yet wired to the shipped account-backed follows and public pages; preference sync (as opposed to archive sync) is not built.
+### 7.1 Scope decisions (accepted 2026-11-10)
 
-Stated near-term roadmap (from `/about` and project planning):
+From the [2026-11 product review](./product-review-2026-11.md). The core, stated once:
+
+> **Coeus turns the sources you choose into one finite page, and turns what you keep into collections other people can follow — in Coeus or in any RSS reader.**
+
+Every surface earns its place by feeding that sentence. **Frozen** means the code stays and keeps working for existing data, but it is hidden from navigation and gets no new work; revisit only when real users ask.
+
+| Decision | Surface | Notes |
+|---|---|---|
+| **Keep and sharpen** | Reader, Sources (+ custom feeds), Archive (+ export), published collections with RSS, `/@handle` as the page of a person's collections | The core loop. |
+| **Fold** | Posts → collection entries with a note | No new post surfaces. The per-item "Publish as post" panel is hidden; existing post rows and `/api/posts` remain. |
+| **Fold** | Person follow → "follow everything @x publishes" | One follow concept that will feed the Reader (`ek7.2`). |
+| **Freeze** | Likes, reposts, replies, notifications inbox, `/messages`, `/plus`, community collections | Notifications show only for signed-in accounts; `/messages` and `/plus` are unlinked stubs; the new-collection form no longer offers "Community"; profile tabs for these appear only when they already have content. |
+| **Freeze** | Destination delivery queue (`DESTINATION_QUEUE_ENABLED`, `bareaga_web-9hz.8`) | Notion / Obsidian-via-GitHub delivery keeps running on `after()` + daily cron + "Sync now". The Vercel Queue path stays off in production. |
+| **Removed** | Demo/fixture content shown to visitors | New archives start empty; old seeded content is stripped on load when untouched (#35). |
+
+Near-term roadmap (epic `bareaga_web-ek7`):
 
 | Horizon | Item |
 |---|---|
-| Now | Bring-your-own-feeds — add any RSS/Atom URL into the existing source manager/ordering/topic system. |
-| Now | Wire the shipped public collections / profiles / follows into the Discover surface. |
+| Now | Concierge launch pilot — 10 curators from the owner's network (`ek7.5`). |
+| Now | Followed collections become sources in the Reader, closing the core loop (`ek7.2`). |
+| Now | OPML import/export for sources (`ek7.3`). |
+| Now | Fill a collection without filing pieces one at a time (`ek7.8`). |
 | Next | Cloud-synced *preferences* (archive sync already ships), with local-first reading remaining the default. |
 | Next | Reading state refinements — mark read, collapse a source, return to a quieter view — without becoming an inbox. |
 | Later | Saved keyword watches / lightweight alerts, kept transparent and controllable rather than push-notification noise. |
-
-`bareaga_web-5bv` (publish/discover shared collection paths) closed 2026-09-04; feeding published collections into a human-curated Discover layer remains open.
+| Later | Import as the on-ramp: an existing Are.na / Obsidian / Notion reading life *into* Coeus. |
 
 ## 8. Explicit non-goals (current)
 
@@ -237,8 +249,17 @@ the default; signing in adds a durable remote archive but does not remove the lo
 copy. The accepted storage and conflict model is documented in
 [`synced-archive-architecture.md`](./synced-archive-architecture.md).
 
-- How does `bareaga_web-5bv`'s "community permissions" model interact with the existing private/unlisted/public visibility enum — is a fourth state needed, or do permissions layer on top of `public`?
-- Discover's follow state is currently unpersisted local component state — is that a placeholder pending sync, or does it need a real (even if local) persistence layer before sync lands?
+Resolved by §7.1:
+
+- *Posts vs. one-item collections* — posts fold into collections.
+- *Following a person vs. following their collections* — one concept: following a person follows what they publish.
+- *Community permissions vs. the visibility enum* — moot while community collections are frozen.
+- *Discover's unpersisted follow state* — the local preview that held it was removed; follows are account-backed.
+
+Still open:
+
+- How editorial should Discover be? The current answer is no global ranking: newest published first, plus what you follow.
+- Who runs the concierge outreach, and at what pace (see product-notes "Seeding & community rollout")?
 
 ---
 

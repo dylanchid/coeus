@@ -13,15 +13,20 @@ as such.
 - Product: standalone RSS reader inspired by brutalist.report; do not scrape it or claim affiliation
 - Work tracking: Beads (`bd ready`, `bd show <id>`, `bd update <id> --claim`); issue ids are `bareaga_web-<id>` (an earlier `coeus_web-` prefix appears in some historical text)
 
-## Current status (2026-09-09)
+## Current status (2026-11-11)
 
-- **Reading, sources, ranking, archive, export** — fully real and local-first, no account required.
-- **Accounts + synced archive** — shipped (`bareaga_web-6j1`, closed 2026-09-04). Passwordless Supabase Auth; `SyncedArchiveRepository` is the wired repository, so a signed-in browser gets authenticated background sync with a durable local operation queue. Anonymous use stays local-only.
-- **Public collections** — shipped (`bareaga_web-5bv`, closed 2026-09-04). `/c` listing and `/c/[slug]` pages with curator notes, attribution, owner-controlled visibility, RSS output, and signed-in follow/unfollow.
-- **Profiles + person graph + posts/replies/reposts/likes** — shipped (`bareaga_web-nfq` phases 1–4, 2026-09-07). Public profile at `/u/[handle]` with `followers`/`following` pages; owner-console affordances inline via an `isOwner` flag.
-- **Observability** — structured `serverLog` boundary on every API route; `/api/health` probe; uptime + log-threshold GitHub Actions alerting (`bareaga_web-yg4`).
-- **Open near-term work** — see `bd ready`. UI-orchestration extraction (`bareaga_web-cqi`), `src/lib` domain-folder moves (`bareaga_web-a2n`), Playwright E2E (`bareaga_web-ubj`), notifications (`bareaga_web-80m`).
-- **Living research** — [`docs/codebase-findings.md`](docs/codebase-findings.md) indexes bottleneck and risk findings (F-01…). It is not a task list and not yet a plan; HANDOFF still wins on what ships.
+**Scope is set by the accepted [2026-11 product review](docs/product-review-2026-11.md) and PRD §7.1.** Do not extend frozen surfaces; if a task seems to need one, raise it instead of building it.
+
+- **Core (keep and sharpen)** — Reader, Sources, Archive + export, published collections with RSS, `/@handle` profiles. All reading/ranking/archive features stay local-first with no account required.
+- **Accounts + synced archive** — shipped (`bareaga_web-6j1`). `SyncedArchiveRepository` gives signed-in browsers background sync over a durable local operation queue; anonymous use stays local-only. New archives start empty (`createEmptyArchive`); untouched legacy demo content is stripped on load (#35).
+- **Published collections** — shipped (`bareaga_web-5bv`, #36). `/c`, `/c/[slug]` (+ RSS), Discover "Everyone" lists the same inventory, pages name the curator and link `/@handle`. Publishing defaults to the collection's own visibility, waits for archive sync, and covered end to end by `e2e/publish.spec.ts`.
+- **Folded** — posts → collection entries (the per-item post panel is hidden); person follow → following what they publish.
+- **Frozen (code kept, hidden, no new work)** — likes, reposts, replies, notifications inbox (bell only when signed in), `/messages` and `/plus` (unlinked stubs), community collections (not offered on create).
+- **Destinations** — Notion (OAuth) and Obsidian-via-GitHub push delivery run on `after()` + a daily cron (`/api/archive/destinations/worker`, 06:00 UTC) + manual "Sync now". The Vercel Queue dispatch path is **frozen off** in production (`DESTINATION_QUEUE_ENABLED` unset; `bareaga_web-9hz.8`); see [`destination-delivery-decision.md`](docs/destination-delivery-decision.md).
+- **Observability** — structured `serverLog` on every API route; `/api/health`; uptime, log-threshold, storage-growth and audit GitHub Actions workflows.
+- **Testing** — unit (`test:unit`), jsdom UI (`test:ui`), pgTAP (`test:db`), Playwright (`test:e2e`, 25 journeys). E2E journeys that need saved pieces seed them with `seedLocalArchiveItems` (`e2e/support/fixtures.ts`). Known local issue: the teardown purge fails with an HS256 JWT error (`bareaga_web-1xm`), so local runs can leave `@e2e.coeus.local` accounts behind.
+- **Open work** — epic `bareaga_web-ek7` (`bd ready`): launch pilot (`ek7.5`), followed collections as Reader sources (`ek7.2`), OPML (`ek7.3`), faster collection filling (`ek7.8`).
+- **Living research** — [`docs/codebase-findings.md`](docs/codebase-findings.md) indexes bottleneck and risk findings (F-01…). It is not a task list; HANDOFF wins on what ships.
 
 Before changing Next.js code, read the relevant installed guide under `node_modules/next/dist/docs/`; this repository’s framework version may differ from remembered APIs.
 
@@ -29,12 +34,13 @@ Before changing Next.js code, read the relevant installed guide under `node_modu
 
 - `/`: Reader. Grid groups stories by source; Top balances sources; Focus orders newest-first; Ranked applies inspectable user rules.
 - `/sources`: Source catalog, filtering, ratings, custom feeds, and enabled-source management.
-- `/discover`: Shared links, sourced posts, and community collections.
+- `/discover`: Everyone (all public collections) and Following (people you follow).
 - `/archive`: Archive, notes, reading state, collections, Markdown/CSV export — local-first, background-synced when signed in.
-- `/u/[handle]`: Public profile (+ `/followers`, `/following`); owner sees the same page with inline edit/visibility affordances.
+- `/@handle` (rewritten to `/u/[handle]`): Public profile (+ `/followers`, `/following`); owner sees the same page with inline edit/visibility affordances.
 - `/c` and `/c/[slug]` (+ `/c/[slug]/rss.xml`): Public collection listing and pages.
 - `/signin`, `/welcome`, `/auth/callback`: Passwordless auth flow (optional; anonymous use is unaffected).
 - `/about`: Compact explanation of the product.
+- `/notifications`: Signed-in only (frozen). `/messages`, `/plus`: unlinked "coming soon" stubs (frozen).
 - `/social` and `/product`: Permanent legacy redirects.
 - `/api/feeds`: Validated, rate-limited RSS aggregation route.
 - `/api/archive/*`, `/api/collections/*`, `/api/posts/*`, `/api/profiles/*`, `/api/replies`, `/api/reposts`, `/api/likes`, `/api/account/*`: authenticated JSON boundaries, each wrapped in `instrument()`.
@@ -57,7 +63,7 @@ Archive responsibilities are deliberately separated:
 
 - `archiveTypes.ts`: contracts and repository interface
 - `archiveDomain.ts`: pure mutations such as saving an article
-- `archiveFixtures.ts`: demo seed
+- `archiveFixtures.ts`: `createEmptyArchive` (first-run seed), `stripUntouchedDemoContent`, and the demo fixture used only by tests
 - `archiveValidation.ts`: runtime validation and v1 migrations
 - `localArchiveRepository.ts`: browser storage adapter
 - `archiveExport.ts`: Markdown and CSV portability
@@ -125,4 +131,4 @@ The test command covers feed contracts/orchestration, refresh limiting, archive 
 - RSS stays server-side to avoid browser CORS and keep provider code out of client bundles.
 - `next.config.ts` pins the Turbopack root to this repository.
 
-Last updated: 2026-09-09.
+Last updated: 2026-11-11.
