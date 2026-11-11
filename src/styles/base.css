@@ -54,9 +54,14 @@
   --space-2xl: clamp(4rem, 10vw, 8rem);
 
   /* —— Type scale —— */
-  --text-kicker: 0.7rem;
-  --text-meta: 0.72rem;
-  --text-body: 0.9rem;
+  /* One small-text ladder; nothing below --text-label. Raw rem sizes under
+     1rem should map to one of these rather than add a new step. */
+  --text-label: 0.75rem;   /* uppercase / tracked labels, badges, counts */
+  --text-meta: 0.8125rem;  /* metadata, captions, secondary copy */
+  --text-control: 0.875rem; /* buttons, inputs, dense body */
+  --text-body: 0.9375rem;  /* story and reading copy */
+  --text-lead: 1.125rem;   /* lede, small headings */
+  --text-kicker: var(--text-label);
   --wordmark: clamp(1.65rem, 2.85vw, 2.25rem);
   --text-h2: clamp(1.9rem, 4.2vw, 3.6rem);
   --text-display: clamp(3rem, 8vw, 7.2rem);
@@ -111,22 +116,27 @@ html[data-theme="dark"] {
   }
 }
 
-/* —— Palettes (override accents; work with light/dark theme) —— */
+/* —— Palettes ——
+   Theme (system / light / dark) and palette are independent. Every palette is
+   defined twice: its dark values are the default, and its light values apply
+   when the theme is "light", or "system" with a light OS preference. "ink" is
+   the base :root / theme block above. Keep each pair in step when editing. */
 html[data-palette="paper"] {
-  --bg: #f7f3e8;
-  --fg: #1c1914;
-  --muted: #6e675c;
-  --link: #8b2e1a;
-  --visited: #5c3d2e;
-  --mark: #f0d78c;
-  --border: #d8d0be;
-  --line: #e0d8c6;
-  --header-rule: #e0d8c6;
-  --settings-bg: #fffaf0;
-  --settings-border: #1c1914;
-  --error: #8b1e1e;
-  --accent: #8b2e1a;
-  color-scheme: light;
+  --bg: #16140f;
+  --fg: #e8e2d4;
+  --muted: #9a9280;
+  --link: #e8a090;
+  --visited: #c0a090;
+  --mark: #5a4820;
+  --border: #3a362c;
+  --line: #3a362c;
+  --header-rule: #6a6458;
+  --settings-bg: #1e1c16;
+  --settings-border: #6a6458;
+  --error: #ff9a8a;
+  --accent: #e8a090;
+  --handle: #9a9280;
+  color-scheme: dark;
 }
 
 html[data-palette="terminal"] {
@@ -183,22 +193,150 @@ html[data-palette="rose"] {
   color-scheme: dark;
 }
 
-/* paper palette + dark theme: dim paper */
-html[data-theme="dark"][data-palette="paper"] {
-  --bg: #16140f;
-  --fg: #e8e2d4;
-  --muted: #9a9280;
-  --link: #e8a090;
-  --visited: #c0a090;
-  --mark: #5a4820;
-  --border: #3a362c;
-  --line: #3a362c;
-  --header-rule: #6a6458;
-  --settings-bg: #1e1c16;
-  --settings-border: #6a6458;
-  --error: #ff9a8a;
-  --accent: #e8a090;
-  color-scheme: dark;
+html[data-theme="light"][data-palette="paper"] {
+  --bg: #f7f3e8;
+  --fg: #1c1914;
+  --muted: #6e675c;
+  --link: #8b2e1a;
+  --visited: #5c3d2e;
+  --mark: #f0d78c;
+  --border: #d8d0be;
+  --line: #e0d8c6;
+  --header-rule: #e0d8c6;
+  --settings-bg: #fffaf0;
+  --settings-border: #1c1914;
+  --error: #8b1e1e;
+  --accent: #8b2e1a;
+  --handle: #8a8272;
+  color-scheme: light;
+}
+
+html[data-theme="light"][data-palette="terminal"] {
+  --bg: #eef5ec;
+  --fg: #10240f;
+  --muted: #4f6f4b;
+  --link: #0d6b0a;
+  --visited: #3d6b3a;
+  --mark: #cdeab8;
+  --border: #bcd3b8;
+  --line: #cfe0cb;
+  --header-rule: #cfe0cb;
+  --settings-bg: #f7fbf5;
+  --settings-border: #10240f;
+  --error: #8b1e1e;
+  --accent: #0d6b0a;
+  --handle: #6b8a67;
+  color-scheme: light;
+}
+
+html[data-theme="light"][data-palette="copper"] {
+  --bg: #f6ece2;
+  --fg: #2a1a0e;
+  --muted: #7a5b3d;
+  --link: #9a4a10;
+  --visited: #8a4a5a;
+  --mark: #f2cfa0;
+  --border: #dcc6ae;
+  --line: #e6d3bf;
+  --header-rule: #e6d3bf;
+  --settings-bg: #fffaf4;
+  --settings-border: #2a1a0e;
+  --error: #8b2a12;
+  --accent: #9a4a10;
+  --handle: #8a6c4e;
+  color-scheme: light;
+}
+
+html[data-theme="light"][data-palette="rose"] {
+  --bg: #fbeff3;
+  --fg: #2a1219;
+  --muted: #805666;
+  --link: #a3194f;
+  --visited: #6a3f9a;
+  --mark: #f6c6d8;
+  --border: #e5c3d0;
+  --line: #eed3dd;
+  --header-rule: #eed3dd;
+  --settings-bg: #fff8fa;
+  --settings-border: #2a1219;
+  --error: #8b1e3a;
+  --accent: #a3194f;
+  --handle: #94707e;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  html[data-theme="system"][data-palette="paper"] {
+    --bg: #f7f3e8;
+    --fg: #1c1914;
+    --muted: #6e675c;
+    --link: #8b2e1a;
+    --visited: #5c3d2e;
+    --mark: #f0d78c;
+    --border: #d8d0be;
+    --line: #e0d8c6;
+    --header-rule: #e0d8c6;
+    --settings-bg: #fffaf0;
+    --settings-border: #1c1914;
+    --error: #8b1e1e;
+    --accent: #8b2e1a;
+    --handle: #8a8272;
+    color-scheme: light;
+  }
+
+  html[data-theme="system"][data-palette="terminal"] {
+    --bg: #eef5ec;
+    --fg: #10240f;
+    --muted: #4f6f4b;
+    --link: #0d6b0a;
+    --visited: #3d6b3a;
+    --mark: #cdeab8;
+    --border: #bcd3b8;
+    --line: #cfe0cb;
+    --header-rule: #cfe0cb;
+    --settings-bg: #f7fbf5;
+    --settings-border: #10240f;
+    --error: #8b1e1e;
+    --accent: #0d6b0a;
+    --handle: #6b8a67;
+    color-scheme: light;
+  }
+
+  html[data-theme="system"][data-palette="copper"] {
+    --bg: #f6ece2;
+    --fg: #2a1a0e;
+    --muted: #7a5b3d;
+    --link: #9a4a10;
+    --visited: #8a4a5a;
+    --mark: #f2cfa0;
+    --border: #dcc6ae;
+    --line: #e6d3bf;
+    --header-rule: #e6d3bf;
+    --settings-bg: #fffaf4;
+    --settings-border: #2a1a0e;
+    --error: #8b2a12;
+    --accent: #9a4a10;
+    --handle: #8a6c4e;
+    color-scheme: light;
+  }
+
+  html[data-theme="system"][data-palette="rose"] {
+    --bg: #fbeff3;
+    --fg: #2a1219;
+    --muted: #805666;
+    --link: #a3194f;
+    --visited: #6a3f9a;
+    --mark: #f6c6d8;
+    --border: #e5c3d0;
+    --line: #eed3dd;
+    --header-rule: #eed3dd;
+    --settings-bg: #fff8fa;
+    --settings-border: #2a1219;
+    --error: #8b1e3a;
+    --accent: #a3194f;
+    --handle: #94707e;
+    color-scheme: light;
+  }
 }
 
 /* —— Fonts —— */

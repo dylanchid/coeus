@@ -32,6 +32,8 @@ export function HeaderSearch({ commandContext }: { commandContext: SlashBuildCon
   const [draft, setDraft] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState("");
+  // Narrow screens show only the magnifier until it is tapped (CSS keys off this class).
+  const [expanded, setExpanded] = useState(false);
 
   const value = draft ?? prefs?.lastSearch ?? "";
   const commandMode = draft !== null && draft.startsWith("/");
@@ -51,8 +53,14 @@ export function HeaderSearch({ commandContext }: { commandContext: SlashBuildCon
       setDraft(command ? "/" : (prefs?.lastSearch ?? ""));
       setActiveIndex(0);
       setError("");
+      setExpanded(true);
       inputRef.current?.focus();
       if (!command) inputRef.current?.select();
+      // On narrow screens the input is hidden until `expanded` renders.
+      window.requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        if (!command) inputRef.current?.select();
+      });
     };
     window.addEventListener(FOCUS_HEADER_SEARCH_EVENT, onFocusRequest);
     return () => window.removeEventListener(FOCUS_HEADER_SEARCH_EVENT, onFocusRequest);
@@ -89,6 +97,12 @@ export function HeaderSearch({ commandContext }: { commandContext: SlashBuildCon
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
+    // Collapsed below desktop width: the magnifier opens the box instead of submitting.
+    if (!expanded && window.matchMedia("(max-width: 1100px)").matches) {
+      setExpanded(true);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+      return;
+    }
     if (commandMode) {
       void runCommand(ranked[active]);
       return;
@@ -117,7 +131,7 @@ export function HeaderSearch({ commandContext }: { commandContext: SlashBuildCon
   let runningIndex = 0;
 
   return (
-    <form className="header-search" role="search" onSubmit={onSubmit}>
+    <form className={`header-search${expanded ? " is-expanded" : ""}`} role="search" onSubmit={onSubmit}>
       <input
         ref={inputRef}
         className="header-search-input"
@@ -133,11 +147,12 @@ export function HeaderSearch({ commandContext }: { commandContext: SlashBuildCon
         aria-controls={commandMode ? listId : undefined}
         aria-activedescendant={commandMode && ranked[active] ? `${listId}-${ranked[active].id}` : undefined}
         onFocus={() => setDraft((current) => current ?? prefs?.lastSearch ?? "")}
-        onBlur={() => setDraft(null)}
+        onBlur={() => { setDraft(null); setExpanded(false); }}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={onKeyDown}
       />
-      <button type="submit" className="header-search-submit" aria-label="Search">
+      {/* mousedown must not blur the input, or the box would collapse before the click lands. */}
+      <button type="submit" className="header-search-submit" aria-label="Search" onMouseDown={(event) => event.preventDefault()}>
         <SearchIcon />
       </button>
 

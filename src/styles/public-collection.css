@@ -23,7 +23,7 @@
 
 .public-collection-list { list-style: none; margin: var(--space-lg) 0 0; padding: 0; display: grid; gap: var(--space-md); }
 .public-collection-list li { padding-bottom: var(--space-md); border-bottom: 1px solid var(--line); }
-.public-collection-list h2 { margin: 0 0 0.3rem; font-size: 1.05rem; }
+.public-collection-list h2 { margin: 0 0 0.3rem; font-size: var(--text-lead); }
 .public-collection-list h2 a { color: var(--fg); text-decoration: none; }
 .public-collection-list h2 a:hover { text-decoration: underline; }
 .public-collection-meta { margin: 0 0 0.4rem; color: var(--muted); font-size: var(--text-meta); }
@@ -39,7 +39,7 @@
   border: 1px solid var(--fg);
   background: transparent;
   color: var(--fg);
-  font: 0.66rem var(--font);
+  font: var(--text-label) var(--font);
   text-transform: uppercase;
   cursor: pointer;
 }

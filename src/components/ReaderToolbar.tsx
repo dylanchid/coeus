@@ -121,17 +121,15 @@ export function ReaderToolbar({
           >
             Sources
           </button>
-          {TOPICS.map((t, i) => (
-            <span key={t}>
-              {i > 0 ? <span className="sep"> · </span> : null}
-              <button
-                type="button"
-                aria-pressed={topic === t}
-                onClick={() => changeTopic(t)}
-              >
-                {t[0].toUpperCase() + t.slice(1)}
-              </button>
-            </span>
+          {TOPICS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              aria-pressed={topic === t}
+              onClick={() => changeTopic(t)}
+            >
+              {t[0].toUpperCase() + t.slice(1)}
+            </button>
           ))}
           <button
             type="button"
@@ -149,15 +147,16 @@ export function ReaderToolbar({
             <span aria-hidden="true">{categoriesOpen ? "▴" : "▾"}</span>
             {activeCategories.length ? <span className="category-count">{activeCategories.length}</span> : null}
           </button>
-          <span className="sep"> · </span>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            disabled={loading || refreshing}
-          >
-            {loading || refreshing ? "Refreshing…" : "Refresh"}
-          </button>
         </nav>
+        {/* An action, not a filter: it sits apart from the view and topic choices. */}
+        <button
+          type="button"
+          className="toolbar-refresh"
+          onClick={() => void refresh()}
+          disabled={loading || refreshing}
+        >
+          {loading || refreshing ? "Refreshing…" : "Refresh"}
+        </button>
         </div>
         {categoriesOpen ? (
           <div

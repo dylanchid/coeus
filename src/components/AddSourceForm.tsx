@@ -127,7 +127,7 @@ export function AddSourceForm({
         </div>
       </label>
       <p className="add-source-hint">
-        Substack, blog, or any RSS/Atom URL — runs through the same SSRF-hardened fetch path as built-in sources.
+        Paste a Substack, blog, or any RSS/Atom address. Coeus checks it before adding.
       </p>
       {error ? (
         <p className="add-source-error" role="alert">

@@ -118,7 +118,7 @@
   border: 1px solid var(--fg);
   background: transparent;
   color: var(--fg);
-  font: 0.64rem var(--font);
+  font: var(--text-label) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   text-decoration: none;
@@ -146,7 +146,7 @@
 
 .profile-collection { padding-bottom: var(--space-md); border-bottom: 1px solid var(--line); }
 .profile-collection:last-child { border-bottom: none; }
-.profile-collection h3 { margin: 0 0 0.3rem; font-size: 1.05rem; }
+.profile-collection h3 { margin: 0 0 0.3rem; font-size: var(--text-lead); }
 .profile-collection h3 a { color: var(--fg); text-decoration: none; }
 .profile-collection h3 a:hover { text-decoration: underline; }
 .profile-collection p { margin: 0 0 0.35rem; color: var(--fg); line-height: 1.55; }
@@ -193,12 +193,12 @@
 .profile-post-source:hover { border-color: var(--fg); }
 .profile-post-source-name {
   color: var(--accent);
-  font-size: 0.58rem;
+  font-size: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-.profile-post-source strong { font: 600 0.85rem var(--font-display); }
-.profile-post-source small { color: var(--muted); font-size: 0.62rem; }
+.profile-post-source strong { font: 600 var(--text-control) var(--font-display); }
+.profile-post-source small { color: var(--muted); font-size: var(--text-label); }
 .profile-post-excerpt { color: var(--fg); font-size: var(--text-meta); line-height: 1.5; }
 
 /* The colour-free tier glyph (● ◐ ◍ ○) — the sr-only label carries the name. */
@@ -227,7 +227,7 @@
   line-height: 1.5;
 }
 .profile-interaction-line a { color: var(--fg); }
-.profile-interaction-source { color: var(--accent); font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.profile-interaction-source { color: var(--accent); font-size: var(--text-label); text-transform: uppercase; letter-spacing: 0.08em; }
 .profile-interaction-owner { color: var(--handle); font-size: var(--text-meta); text-decoration: none; }
 .profile-interaction-owner:hover { text-decoration: underline; }
 
@@ -239,7 +239,7 @@
   display: grid;
   gap: 0.3rem;
 }
-.profile-interaction-card h3 { margin: 0; font: 600 0.95rem var(--font-display); }
+.profile-interaction-card h3 { margin: 0; font: 600 var(--text-body) var(--font-display); }
 .profile-interaction-card h3 a { color: var(--fg); text-decoration: none; }
 .profile-interaction-card h3 a:hover { text-decoration: underline; }
 .profile-interaction-meta {
@@ -251,13 +251,13 @@
   color: var(--muted);
   font-size: var(--text-meta);
 }
-.profile-interaction-kind { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.58rem; }
+.profile-interaction-kind { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--text-label); }
 
 /* —— Replies tab: two levels, one left rule ————————————————— */
 .profile-replies { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-lg); }
 .profile-reply-thread { display: grid; gap: 0.5rem; }
 .profile-reply-context { margin: 0; color: var(--muted); font-size: var(--text-meta); line-height: 1.5; }
-.profile-reply-context-kind { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.58rem; }
+.profile-reply-context-kind { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--text-label); }
 .profile-reply-context a { color: var(--fg); }
 .profile-reply-context-owner { color: var(--handle); }
 
@@ -332,7 +332,7 @@
   border: 1px solid var(--fg);
   background: transparent;
   color: var(--fg);
-  font: 0.64rem var(--font);
+  font: var(--text-label) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 0.3rem 0.85rem;
@@ -360,7 +360,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.profile-likes-tier { font-size: 0.7rem; }
+.profile-likes-tier { font-size: var(--text-label); }
 .profile-likes-count { color: var(--fg); font-variant-numeric: tabular-nums; }
 .profile-likes-thumbs { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.25rem; }
 .profile-likes-thumbs a {
@@ -409,11 +409,11 @@
   display: grid;
   place-items: center;
   background: var(--bg);
-  font: 600 0.8rem var(--font-display);
+  font: 600 var(--text-meta) var(--font-display);
   color: var(--handle);
 }
 .follow-list-identity { display: grid; gap: 0.1rem; min-width: 0; }
-.follow-list-identity strong { font-size: 0.95rem; }
+.follow-list-identity strong { font-size: var(--text-body); }
 .follow-list-handle { color: var(--handle); font-size: var(--text-meta); }
 .follow-list-bio { color: var(--muted); font-size: var(--text-meta); line-height: 1.4; }
 
@@ -456,7 +456,7 @@
   border: 1px solid var(--fg);
   background: transparent;
   color: var(--fg);
-  font: 0.64rem var(--font);
+  font: var(--text-label) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 0.35rem 0.9rem;
@@ -483,7 +483,7 @@
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--muted);
-  font: 0.62rem var(--font);
+  font: var(--text-label) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 0.25rem 0.6rem;
@@ -544,7 +544,7 @@
   border: 1px solid var(--fg);
   background: transparent;
   color: var(--fg);
-  font: 0.64rem var(--font);
+  font: var(--text-label) var(--font);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 0.3rem 0.7rem;

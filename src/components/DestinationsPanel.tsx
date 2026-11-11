@@ -35,6 +35,7 @@ function lastAttemptOf(deliveries: DestinationDelivery[]): string | null {
 
 async function requestJson(url: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
+  if (response.status === 401) throw Object.assign(new Error("Sign in to connect sync destinations."), { status: 401 });
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { error?: string } | null;
     throw new Error(body?.error ?? `Request failed (${response.status})`);
@@ -76,7 +77,8 @@ export function DestinationsPanel({ onNotice }: { onNotice?: (message: string) =
       }
       setCards(next);
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Destinations are unavailable");
+      // Signed out is an expected state for this passive load: the cards already read "Not connected".
+      if ((error as { status?: number }).status !== 401) notify(error instanceof Error ? error.message : "Destinations are unavailable");
     } finally {
       setLoading(false);
     }

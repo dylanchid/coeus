@@ -50,13 +50,13 @@
   margin: 0.55rem 0 0;
   max-width: 48rem;
   color: var(--text-secondary);
-  font-size: 0.88rem;
+  font-size: var(--text-control);
 }
 
 /* —— Primary navigation —— */
 .primary-nav {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.2rem 1.1rem;
@@ -69,7 +69,7 @@
   min-height: 44px;
   padding: 0.35rem 0;
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   text-decoration: none;
@@ -97,7 +97,7 @@
   border: 1px solid var(--rule-subtle);
   color: var(--text-primary);
   text-align: center;
-  font-size: 0.68rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
 }
 
@@ -109,6 +109,7 @@
   flex: 1 1 14rem;
   min-width: 10rem;
   max-width: 24rem;
+  margin-left: 0.4rem;
 }
 
 .header-search-input {
@@ -116,11 +117,11 @@
   min-height: 40px;
   padding: 0.4rem 2.5rem 0.4rem 0.8rem;
   border: 1px solid var(--rule-strong);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--surface-raised);
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.9rem;
+  font-size: var(--text-control);
 }
 
 .header-search-input::placeholder {
@@ -168,7 +169,7 @@
   margin: 0;
   padding: 0.5rem 0.8rem 0.2rem;
   color: var(--text-secondary);
-  font-size: 0.68rem;
+  font-size: var(--text-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -184,7 +185,7 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-control);
   text-align: left;
   cursor: pointer;
 }
@@ -196,7 +197,7 @@
 
 .header-search-hint {
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--text-label);
 }
 
 .header-search-item.is-active .header-search-hint {
@@ -209,7 +210,7 @@
   margin: 0;
   padding: 0.7rem 0.8rem;
   color: var(--text-secondary);
-  font-size: 0.82rem;
+  font-size: var(--text-meta);
 }
 
 .header-search-error { color: var(--text-danger); }
@@ -249,7 +250,7 @@
   border-radius: 999px;
   background: var(--surface-inverse);
   color: var(--text-inverse);
-  font-size: 0.62rem;
+  font-size: var(--text-label);
   font-weight: 700;
   line-height: 1rem;
   text-align: center;
@@ -279,7 +280,7 @@
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.8rem;
+  font-size: var(--text-meta);
   text-align: left;
   cursor: pointer;
 }
@@ -297,27 +298,6 @@
 
 .header-dropdown .is-danger {
   color: var(--text-danger);
-}
-
-/* —— Try+ upsell (freemium) —— */
-.try-plus {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin-right: 0.6rem;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.try-plus:visited { color: var(--text-secondary); }
-
-.try-plus:hover,
-.try-plus:focus-visible {
-  color: var(--text-primary);
 }
 
 /* —— Account control (header) —— */
@@ -341,12 +321,15 @@ button.account-signin {
   background: none;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
 }
+
+.account-signin-short { display: none; }
 
 button.account-signin:visited { color: var(--text-secondary); }
 
@@ -393,21 +376,16 @@ button.account-signin:focus-visible {
   background-size: cover;
   background-position: center;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--text-meta);
   font-weight: 700;
   text-transform: uppercase;
-}
-
-.account-avatar.is-placeholder {
-  border-color: transparent;
-  background-color: var(--rule-subtle);
 }
 
 .account-name {
   max-width: 10rem;
   overflow: hidden;
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   text-overflow: ellipsis;
@@ -486,7 +464,7 @@ button.account-signin:focus-visible {
   padding-top: var(--header-py);
   border-top: 1px solid var(--rule-strong);
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
 }
 
 .site-footer-main {
@@ -520,7 +498,7 @@ button.account-signin:focus-visible {
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 0.7rem;
+  font-size: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -542,26 +520,64 @@ button.account-signin:focus-visible {
   color: var(--text-inverse);
 }
 
-@media (max-width: 700px) {
-  .site-tools {
-    margin-left: 0;
+/* Below 1100px the search is a magnifier until tapped, and sign-in is just
+   "Log in", so the nav and tools keep one row. */
+@media (max-width: 1100px) {
+  .header-search {
+    flex: 0 0 auto;
+    min-width: 0;
+    max-width: none;
+    margin: 0 0 0 auto;
   }
+
+  .header-search-input { display: none; }
+  .header-search-submit { position: static; width: 40px; height: 44px; }
+
+  .header-search.is-expanded {
+    order: 4;
+    flex-basis: 100%;
+    margin: 0 0 0.25rem;
+  }
+
+  .header-search.is-expanded .header-search-input { display: block; }
+  .header-search.is-expanded .header-search-submit { position: absolute; width: 2.5rem; height: 100%; }
+
+  .account-signin-long { display: none; }
+  .account-signin-short { display: inline; }
+  button.account-signin { padding-inline: 0.4rem; letter-spacing: 0.04em; }
+}
+
+@media (max-width: 700px) {
+  /* Two rows: wordmark + tools, then the whole nav. Search is a magnifier in
+     the first row and only takes a row of its own while it is open. */
+  .site-header-bar { gap: 0 0.25rem; }
+
+  .site-tools { order: 2; margin-left: 0; gap: 0; }
+  .header-search { order: 1; }
+
+  .header-icon-btn { width: 40px; }
 
   .primary-nav {
     flex-basis: 100%;
     order: 3;
-    gap: 0.15rem 0.7rem;
+    flex-wrap: nowrap;
+    gap: 0 0.9rem;
+    margin-top: -0.35rem;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  .header-search {
-    flex-basis: 100%;
-    max-width: none;
-  }
+  .primary-nav::-webkit-scrollbar { display: none; }
 
   .primary-nav-link {
-    font-size: 0.74rem;
+    flex: none;
+    min-height: 40px;
+    font-size: var(--text-label);
     letter-spacing: 0.04em;
   }
+
+  .account-name { max-width: 5.5rem; }
+  .account-trigger { gap: 0.3rem; }
 
   .page-hero-body {
     grid-template-columns: 1fr;

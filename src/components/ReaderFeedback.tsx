@@ -31,11 +31,12 @@ export function ReaderFeedback({
       </p>
     ) : null}
     {failedSources.length > 0 ? (
-      <p className="banner-warn" role="status">
-        Some publishers could not be reached: {failedSources
-          .map((source) => `${source.name} (${source.error})`)
-          .join("; ")}. Other stories are still available.
-      </p>
+      <details className="feed-failures">
+        <summary>Which sources failed?</summary>
+        <ul>
+          {failedSources.map((source) => <li key={source.id}>{source.name} — {source.error}</li>)}
+        </ul>
+      </details>
     ) : null}
   </>;
 }

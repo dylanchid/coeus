@@ -115,14 +115,11 @@ export function SiteHeader({
           <span className="site-wordmark">Coeus</span>
         </Link>
 
-        <PrimaryNav
-          section={section}
-          archiveCount={archiveCount}
-          search={<HeaderSearch commandContext={commandContext} />}
-        />
+        <PrimaryNav section={section} archiveCount={archiveCount} />
+
+        <HeaderSearch commandContext={commandContext} />
 
         <div className="site-tools">
-          <Link className="try-plus" href="/plus">Try+</Link>
           <AccountMenu />
           <NotificationsButton />
           <MessagesButton />
