@@ -1200,7 +1200,8 @@ mark {
 .feed-failures summary {
   display: inline-block;
   cursor: pointer;
-  text-decoration: underline;
+  color: var(--muted);
+  text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
 

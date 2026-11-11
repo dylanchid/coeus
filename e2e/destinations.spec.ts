@@ -1,7 +1,9 @@
-import { expect, test } from "./support/fixtures";
+import { expect, seedLocalArchiveItems, test } from "./support/fixtures";
 
 test("a signed-in user connects Notion through the mocked OAuth provider", async ({ establishedUser }) => {
-  const { page } = establishedUser;
+  const { page, handle } = establishedUser;
+  // New accounts start empty, so give the destination something to deliver.
+  await seedLocalArchiveItems(page, handle);
   await page.goto("/archive");
   await page.getByText("Sync destinations", { exact: true }).click();
   const connect = page.getByRole("link", { name: /connect notion/i });
@@ -22,6 +24,12 @@ test("a signed-in user connects Notion through the mocked OAuth provider", async
   await page.getByText("Sync destinations", { exact: true }).click();
   await expect(page.getByText("Notion — E2E Workspace")).toBeVisible();
 
+  // Delivery reads the server's archive, so wait for the saved piece to sync up.
+  await expect.poll(async () => {
+    const archive = await page.request.get("/api/archive");
+    if (!archive.ok()) return 0;
+    return (await archive.json() as { snapshot: { archive: { items: unknown[] } } }).snapshot.archive.items.length;
+  }, { timeout: 20_000 }).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Sync now" }).click();
   await expect(page.getByText("Notion sync started")).toBeVisible();
 

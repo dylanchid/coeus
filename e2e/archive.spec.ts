@@ -1,7 +1,8 @@
-import { expect, test } from "./support/fixtures";
+import { expect, seedLocalArchiveItems, test } from "./support/fixtures";
 
 test("an archive edit syncs to the server and survives reload", async ({ establishedUser }) => {
   const { page, handle } = establishedUser;
+  await seedLocalArchiveItems(page, handle);
   await page.goto("/archive");
   await expect(page.getByRole("button", { name: `@${handle}` })).toBeVisible({ timeout: 20_000 });
 

@@ -2,6 +2,7 @@
 
 import { defaultRangeExtractor, useWindowVirtualizer, type Range } from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type { ArchiveCollection, ArchiveData, ArchiveItem, ArchiveState } from "@/lib/archive";
 import { itemToMarkdown } from "@/lib/archive/archiveExport";
 import { ExternalLinkHint } from "./ExternalLinkHint";
@@ -97,7 +98,7 @@ export function ArchiveList({ data, query, setQuery, filter, setFilter, sort, se
       const item = visible[row.index];
       if (!item) return null;
       return <ArchiveListItem key={item.id} item={item} measureRef={virtualizer.measureElement} rowIndex={row.index} rowCount={visible.length} rowStart={row.start - virtualizer.options.scrollMargin} itemPosition={itemPositions.get(item.id) ?? 0} collections={data.collections} patchItem={patchItem} recoveryBusy={recoveryBusy} captureContent={captureContent} onNotice={onNotice} showPostPanels={showPostPanels} postPanelItemId={postPanelItemId} setPostPanelItemId={setPostPanelItemId} post={postsByItem.get(item.id) ?? null} noteOpen={openDetails[item.id]?.note ?? false} organizeOpen={openDetails[item.id]?.organize ?? false} onDetailToggle={(detail, open) => setDetailOpen(item.id, detail, open)} />;
-    })}</ol> : <div className="archive-empty"><span aria-hidden="true">◇</span><p>No pieces found.</p><small>Try a broader search, another filter, or save something from the reader.</small>{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</button> : null}</div>}
+    })}</ol> : data.items.length === 0 ? <div className="archive-empty"><span aria-hidden="true">◇</span><p>Nothing saved yet.</p><small>Use <strong>+ Save</strong> on any story in the <Link href="/">Reader</Link>. Saved pieces land here with their source, ready for notes, tags, and collections you can publish.</small></div> : <div className="archive-empty"><span aria-hidden="true">◇</span>{query || filter !== "all" ? <><p>No pieces found.</p><small>Try a broader search or another filter.</small></> : <><p>This collection is empty.</p><small>Open <strong>Organize</strong> on any saved piece and choose this collection to add it.</small></>}{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</button> : null}</div>}
   </section>;
 }
 

@@ -30,9 +30,18 @@ function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
+// The local repository strips byte-identical seed content from earlier builds,
+// so the fixture is nudged (each savedAt +1s, order preserved) to read as the
+// visitor's own saves.
+function visitorArchive() {
+  const archive = createDemoArchive();
+  for (const item of archive.items) item.savedAt = new Date(Date.parse(item.savedAt) + 1000).toISOString();
+  return archive;
+}
+
 function renderArchive() {
   const router = { push: () => undefined, replace: () => undefined, refresh: () => undefined, back: () => undefined, forward: () => undefined, prefetch: () => undefined };
-  localStorage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(createDemoArchive()));
+  localStorage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(visitorArchive()));
   return render(<AppRouterContext.Provider value={router as never}><PathnameContext.Provider value="/archive"><AppProviders><ArchiveWorkspace /></AppProviders></PathnameContext.Provider></AppRouterContext.Provider>);
 }
 

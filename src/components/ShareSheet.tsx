@@ -25,12 +25,13 @@ type Props = {
   onDone: (message: string) => void;
 };
 
+// Posts fold into collections and community collections are frozen
+// (docs/product-review-2026-11.md §5), so the sheet offers only destinations
+// that are real end to end.
 const DESTINATIONS: { id: ShareDestination; label: string; hint: string }[] = [
-  { id: "social", label: "Discover", hint: "Share a sourced clip with your perspective" },
   { id: "friend", label: "A friend", hint: "Use your device share sheet or copy" },
   { id: "personal", label: "Personal collection", hint: "Private or unlisted, just yours" },
   { id: "public", label: "Public collection", hint: "A collection people can follow" },
-  { id: "community", label: "Community collection", hint: "Contribute to a shared shelf" },
 ];
 
 function ensureItem(data: ArchiveData, article: Article, sourceName: string, topic: string) {
@@ -41,7 +42,7 @@ function ensureItem(data: ArchiveData, article: Article, sourceName: string, top
 
 export function ShareSheet({ article, sourceName, topic, onClose, onDone }: Props) {
   const { archive: data, updateArchive } = useArchive();
-  const [destination, setDestination] = useState<ShareDestination>("social");
+  const [destination, setDestination] = useState<ShareDestination>("personal");
   const [excerpt, setExcerpt] = useState(article.summary || article.title);
   const [commentary, setCommentary] = useState("");
   const [collectionId, setCollectionId] = useState("");
@@ -118,37 +119,20 @@ export function ShareSheet({ article, sourceName, topic, onClose, onDone }: Prop
     }
     const { next, item } = ensureItem(data, article, sourceName, topic);
     if (!item) return;
-    let updated = next;
-
-    if (destination === "social") {
-      updated = {
-        ...updated,
-        socialPosts: [{
-          id: `post-${Date.now()}`,
-          itemId: item.id,
-          excerpt: excerpt.trim(),
-          commentary: commentary.trim(),
-          audience: "public",
-          createdAt: new Date().toISOString(),
-          author: "You",
-        }, ...updated.socialPosts],
-      };
-    } else {
-      const targetId = selectedCollectionId;
-      updated = {
-        ...updated,
-        items: updated.items.map((candidate) => candidate.id === item.id
-          ? { ...candidate, collectionIds: targetId ? [targetId] : candidate.collectionIds, note: commentary.trim() || candidate.note }
-          : candidate),
-      };
-    }
+    const targetId = selectedCollectionId;
+    const updated: ArchiveData = {
+      ...next,
+      items: next.items.map((candidate) => candidate.id === item.id
+        ? { ...candidate, collectionIds: targetId ? [targetId] : candidate.collectionIds, note: commentary.trim() || candidate.note }
+        : candidate),
+    };
     const saved = await updateArchive(() => updated);
     if (!saved) {
       setError("This change could not be saved. Retry before closing the sheet.");
       setBusy(false);
       return;
     }
-    onDone(destination === "social" ? "Shared to Discover" : `Saved to ${collections.find((collection) => collection.id === selectedCollectionId)!.name}`);
+    onDone(`Saved to ${collections.find((collection) => collection.id === selectedCollectionId)!.name}`);
     onClose();
   };
 
@@ -178,8 +162,8 @@ export function ShareSheet({ article, sourceName, topic, onClose, onDone }: Prop
           {error ? <p id="share-sheet-error" className="share-error" role="alert">{error}</p> : null}
         </div>
         <footer>
-          <p>{destination === "social" ? "Your clip keeps its original source and canonical link." : destination === "friend" ? "Nothing is posted publicly." : destination === "public" || destination === "community" ? "Publish this collection from the Archive sidebar to put it at a stable public link." : "You can change collection visibility later."}</p>
-          <div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="share-primary" disabled={busy || (destination === "social" && !excerpt.trim()) || (needsCollection && !selectedCollectionId)} onClick={() => void submit()}>{busy ? "Working…" : destination === "friend" ? "Share ↗" : destination === "social" ? "Publish clip" : "Save here"}</button></div>
+          <p>{destination === "friend" ? "Nothing is posted publicly." : destination === "public" ? "Publish this collection from the Archive sidebar to put it at a stable public link." : "You can change collection visibility later."}</p>
+          <div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="share-primary" disabled={busy || (needsCollection && !selectedCollectionId)} onClick={() => void submit()}>{busy ? "Working…" : destination === "friend" ? "Share ↗" : "Save here"}</button></div>
         </footer>
       </section>
     </div>

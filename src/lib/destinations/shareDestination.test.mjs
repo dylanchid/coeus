@@ -16,10 +16,9 @@ const collections = [
 test("collection destinations expose only valid collection kinds", () => {
   assert.deepEqual(collectionsForDestination(collections, "personal").map(({ id }) => id), ["private"]);
   assert.deepEqual(collectionsForDestination(collections, "public").map(({ id }) => id), ["public"]);
-  assert.deepEqual(collectionsForDestination(collections, "community").map(({ id }) => id), ["community"]);
   assert.deepEqual(collectionsForDestination(collections, "friend"), []);
-  assert.equal(isCollectionDestination("community"), true);
-  assert.equal(isCollectionDestination("social"), false);
+  assert.equal(isCollectionDestination("public"), true);
+  assert.equal(isCollectionDestination("friend"), false);
 });
 
 test("collection resolution never invents a destination", () => {
