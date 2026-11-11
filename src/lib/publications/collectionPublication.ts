@@ -114,6 +114,13 @@ export interface DerivePublicationOptions {
 }
 
 /**
+ * Earlier builds pre-filled every new collection with this description. It
+ * was written for the owner ("your archive"), so it must never reach a public
+ * page; treat it as no description at all.
+ */
+export const LEGACY_PLACEHOLDER_DESCRIPTION = "A new path through your archive.";
+
+/**
  * Derive the public-safe snapshot to publish for a collection. Only fields
  * meant to be public ever cross this boundary: item.note, item.tags,
  * item.state, item.starred, item.topic, item.savedAt, and item.articleId are
@@ -130,7 +137,10 @@ export function derivePublicationSnapshot(
     slug: options.slug,
     visibility: options.visibility,
     name: collection.name.trim().slice(0, MAX_NAME_LENGTH),
-    description: collection.description.trim().slice(0, MAX_TEXT_LENGTH),
+    description:
+      collection.description.trim() === LEGACY_PLACEHOLDER_DESCRIPTION
+        ? ""
+        : collection.description.trim().slice(0, MAX_TEXT_LENGTH),
     curatorNote: (options.curatorNote ?? "").trim().slice(0, MAX_TEXT_LENGTH),
     attribution: (options.attribution ?? "").trim().slice(0, MAX_TEXT_LENGTH),
     items: included.map((item, index) => ({

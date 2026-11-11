@@ -323,6 +323,19 @@
 
 .archive-sidebar-actions button:hover { background: transparent; color: var(--fg); }
 
+/* The one primary action in a sidebar panel (Publish collection) must read as
+   a button, not as another row label. */
+.archive-sidebar-actions button.archive-primary-action {
+  justify-content: center;
+  margin: 0.6rem 0 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+.archive-sidebar-actions button.archive-primary-action:hover { background: transparent; color: var(--fg); }
+.archive-sync-state a { color: var(--link); }
+
 .collection-composer {
   gap: 0.55rem;
   margin-top: 0.65rem;

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { createDemoArchive } from "../archive/archiveFixtures.ts";
 import {
+  LEGACY_PLACEHOLDER_DESCRIPTION,
   derivePublicationSnapshot,
   filterFollowedCollections,
   isValidSlug,
@@ -281,4 +282,13 @@ test("filterFollowedCollections lets the owner keep every tier of their own coll
     new Set(),
   );
   assert.equal(kept.length, 3);
+});
+
+test("derivePublicationSnapshot never publishes the old owner-facing placeholder description", () => {
+  const archive = demo();
+  const collection = { ...archive.collections[1], description: LEGACY_PLACEHOLDER_DESCRIPTION };
+  const snapshot = derivePublicationSnapshot(collection, archive.items, { visibility: "public", slug: "x" });
+  assert.equal(snapshot.description, "");
+  const real = derivePublicationSnapshot({ ...collection, description: "Protocols worth keeping." }, archive.items, { visibility: "public", slug: "x" });
+  assert.equal(real.description, "Protocols worth keeping.");
 });

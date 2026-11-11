@@ -30,16 +30,15 @@ export interface ProfileFollowContext {
 }
 
 /**
- * The three-state rule shared by every conditional tab: a link when there is
- * something to see, plain text for the owner who has nothing there yet, absent
- * for anyone else. `available` folds in the section switch / visibility gate
- * that deriveProfileView already applied (an empty list means "not available"
- * to a visitor).
+ * The rule shared by every conditional tab: a link when there is something to
+ * see, absent otherwise. deriveProfileView already applied the section switch
+ * and visibility gate, so an empty list means "nothing this viewer may see".
  */
-function tabState(count: number, isOwner: boolean, available: boolean): TabState {
-  if (count > 0) return "visible";
-  if (isOwner && available) return "greyed";
-  return "hidden";
+function tabState(count: number): TabState {
+  // Posts, reposts, replies and likes are frozen (docs/product-review-2026-11.md
+  // §5): a tab appears only when there is something in it, never as a greyed
+  // invitation to start an empty section. ProfileTabs still renders "greyed".
+  return count > 0 ? "visible" : "hidden";
 }
 
 /** Composes the whole read-only profile surface. All viewer filtering already
@@ -81,10 +80,10 @@ export function ProfileView({
   const tabStates: ProfileTabStates = {
     // Cursor tabs intentionally carry only their current card slice. The
     // visibility-cut aggregate keeps tab availability stable across pages.
-    posts: tabState(view.figures.posts, isOwner, true),
-    reposts: tabState(view.reposts.length, isOwner, Boolean(view.visibleSections.reposts)),
-    replies: tabState(view.replies.length, isOwner, Boolean(view.visibleSections.replies)),
-    likes: tabState(view.likes.length, isOwner, view.likesSurface.render),
+    posts: tabState(view.figures.posts),
+    reposts: tabState(view.reposts.length),
+    replies: tabState(view.replies.length),
+    likes: tabState(view.likes.length),
   };
 
   // An unknown or hidden ?tab= falls back to the overview column.

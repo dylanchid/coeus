@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { FollowButton } from "@/components/FollowButton";
 import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
+import Link from "next/link";
 import { SupabaseProfileFollowStore } from "@/lib/profiles/profileFollowStore.server";
+import { SupabaseProfileStore } from "@/lib/profiles/profileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import { canSee, type Viewer } from "@/lib/visibility";
 import { ExternalLinkHint } from "@/components/ExternalLinkHint";
@@ -67,6 +69,8 @@ export default async function PublicCollectionPage({ params }: { params: Promise
     followers: "Followers-only collection",
     private: "Private collection",
   }[publication.visibility];
+  // The curator is the point of a collection: name them and link their profile.
+  const curator = await new SupabaseProfileStore(createAdminSupabaseClient()).get(publication.ownerId);
   // RSS is link-reachable only, so it is offered for public/unlisted alone.
   const rssAvailable = publication.visibility === "public" || publication.visibility === "unlisted";
 
@@ -85,6 +89,12 @@ export default async function PublicCollectionPage({ params }: { params: Promise
         <header>
           <p className="archive-eyebrow">{eyebrow}</p>
           <h1>{publication.name}</h1>
+          {curator ? (
+            <p className="public-collection-curator">
+              Curated by <Link href={`/@${curator.handle}`}>{curator.displayName || `@${curator.handle}`}</Link>
+              {curator.displayName ? <span> @{curator.handle}</span> : null}
+            </p>
+          ) : null}
           {publication.description ? <p>{publication.description}</p> : null}
           {publication.attribution ? <p className="public-collection-attribution">{publication.attribution}</p> : null}
           {publication.curatorNote ? <blockquote>{publication.curatorNote}</blockquote> : null}
