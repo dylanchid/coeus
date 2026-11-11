@@ -1,4 +1,4 @@
-import { createDemoArchive } from "./archiveFixtures.ts";
+import { createEmptyArchive } from "./archiveFixtures.ts";
 import { isVisibility } from "../visibility.ts";
 import type {
   ArchiveCollection,
@@ -87,7 +87,7 @@ function socialPost(value: unknown): { value: SocialPost; migrated: boolean } | 
 export function migrateArchiveData(value: unknown): ArchiveMigrationResult {
   const data = record(value);
   if (data?.version !== 1 || !Array.isArray(data.items) || !Array.isArray(data.collections)) {
-    return { data: createDemoArchive(), valid: false, migrated: false };
+    return { data: createEmptyArchive(), valid: false, migrated: false };
   }
 
   const items = data.items.map(archiveItem);
@@ -98,11 +98,11 @@ export function migrateArchiveData(value: unknown): ArchiveMigrationResult {
     collections.some((item) => !item) ||
     !Array.isArray(postsInput)
   ) {
-    return { data: createDemoArchive(), valid: false, migrated: false };
+    return { data: createEmptyArchive(), valid: false, migrated: false };
   }
   const socialPosts = postsInput.map(socialPost);
   if (socialPosts.some((post) => !post)) {
-    return { data: createDemoArchive(), valid: false, migrated: false };
+    return { data: createEmptyArchive(), valid: false, migrated: false };
   }
 
   const migrated =

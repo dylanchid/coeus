@@ -1,18 +1,15 @@
 import type { ArchiveCollection } from "../archive/archiveTypes.ts";
 
-export type ShareDestination = "social" | "friend" | "personal" | "public" | "community";
+export type ShareDestination = "friend" | "personal" | "public";
 
 export function isCollectionDestination(destination: ShareDestination): boolean {
-  return destination === "personal" || destination === "public" || destination === "community";
+  return destination === "personal" || destination === "public";
 }
 
 export function collectionsForDestination(
   collections: ArchiveCollection[],
   destination: ShareDestination
 ): ArchiveCollection[] {
-  if (destination === "community") {
-    return collections.filter((collection) => collection.kind === "community");
-  }
   if (destination === "public") {
     return collections.filter(
       (collection) => collection.kind === "personal" && collection.visibility === "public"

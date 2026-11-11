@@ -85,5 +85,5 @@ export function ArchiveWorkspace() {
 
 /** Page shell: layout chrome intentionally stays separate from archive workflows. */
 export function ArchiveApp() {
-  return <AppShell section="archive" footerNote={<><strong>Private by default.</strong> Your archive lives on this device today; shared collections are the next layer.</>}><ArchiveWorkspace /></AppShell>;
+  return <AppShell section="archive" footerNote={<><strong>Private by default.</strong> Your archive lives on this device, and syncs when you sign in. Nothing is public until you publish a collection.</>}><ArchiveWorkspace /></AppShell>;
 }

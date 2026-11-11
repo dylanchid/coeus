@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
-import { DiscoverApp } from "@/components/SocialApp";
+import { NoPublicCollectionsYet, PublicCollectionList } from "@/components/PublicCollectionList";
 import { DiscoverViewTabs } from "@/components/DiscoverViewTabs";
 import { FollowingFeed } from "@/components/FollowingFeed";
 import { SupabaseFollowedFeedReader } from "@/lib/feeds/followedFeed.server";
+import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 
 export const metadata: Metadata = {
@@ -30,9 +31,32 @@ export default async function DiscoverPage({
   const query = await searchParams;
   const view = (Array.isArray(query.view) ? query.view[0] : query.view) === "following" ? "following" : "everyone";
 
-  // The Everyone view keeps its client-rendered local-archive feed; SocialApp
-  // renders its own AppShell and the DiscoverViewTabs strip.
-  if (view === "everyone") return <DiscoverApp />;
+  const offset = boundedOffset(query.offset);
+
+  // Everyone: every published collection, from the same store as /c. It used
+  // to render a device-local preview seeded with invented people; Discover now
+  // only shows what someone actually published (product review §3.1).
+  if (view === "everyone") {
+    const { items, hasMore } = await new SupabaseCollectionPublicationStore(createAdminSupabaseClient()).listPublic(
+      PAGE_SIZE,
+      offset
+    );
+    return (
+      <AppShell section="discover" subline="Collections people have published, with sources attached.">
+        <div className="discover-page">
+          <DiscoverViewTabs current="everyone" />
+          <PublicCollectionList
+            items={items}
+            hasMore={hasMore}
+            offset={offset}
+            pageSize={PAGE_SIZE}
+            pageHref={(next) => `/discover?offset=${next}`}
+            empty={<NoPublicCollectionsYet />}
+          />
+        </div>
+      </AppShell>
+    );
+  }
 
   const viewerId = await authenticateArchiveRequest();
   if (!viewerId) {
@@ -49,7 +73,6 @@ export default async function DiscoverPage({
     );
   }
 
-  const offset = boundedOffset(query.offset);
   const feed = await new SupabaseFollowedFeedReader(createAdminSupabaseClient()).listFollowedPeopleContent(
     viewerId,
     PAGE_SIZE,

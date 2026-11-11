@@ -32,7 +32,9 @@ export function ReaderFeedback({
     ) : null}
     {failedSources.length > 0 ? (
       <details className="feed-failures">
-        <summary>Which sources failed?</summary>
+        <summary>
+          {failedSources.length} {failedSources.length === 1 ? "source" : "sources"} unavailable right now
+        </summary>
         <ul>
           {failedSources.map((source) => <li key={source.id}>{source.name} — {source.error}</li>)}
         </ul>

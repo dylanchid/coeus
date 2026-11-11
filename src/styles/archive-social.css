@@ -608,6 +608,7 @@
 .archive-empty { display: grid; justify-items: center; gap: 0.5rem; padding: 5rem 1rem; }
 .archive-empty > span { color: var(--line); font-size: 2.6rem; }
 .archive-empty p { font-size: 1.45rem; }
+.archive-empty small a { color: var(--link); }
 .archive-empty small { max-width: 31rem; color: var(--muted); font-size: var(--text-label); text-align: center; }
 .archive-empty button { min-height: 40px; margin-top: 0.5rem; padding: 0.4rem 0.65rem; border: 1px solid var(--fg); background: transparent; color: var(--fg); font: var(--text-label) var(--font); text-transform: uppercase; cursor: pointer; }
 .archive-empty button:hover { background: var(--fg); color: var(--bg); }

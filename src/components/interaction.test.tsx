@@ -43,7 +43,6 @@ const { SettingsPanel } = await import("./SettingsPanel");
 const { AppProviders, useArchive } = await import("./AppProviders");
 const { ShareSheet } = await import("./ShareSheet");
 const { ArticlePreview, ArticlePreviewChoice } = await import("./ArticlePreview");
-const { AlreadyArchivedButton, PreviewFollowButton } = await import("./DiscoverPreviewControls");
 const { SourcesCategoryHub } = await import("./DiscoverSourcesApp");
 const { DestinationsPanel } = await import("./DestinationsPanel");
 const { AuthProvider } = await import("./AuthProvider");
@@ -313,7 +312,8 @@ test("Share Sheet blocks a collection destination when none exists", async () =>
   assert.ok(screen.getByRole("link", { name: /Create one in Archive/ }));
   assert.equal((screen.getByRole("button", { name: "Save here" }) as HTMLButtonElement).disabled, true);
   fireEvent.keyDown(publicRadio, { key: "ArrowRight" });
-  assert.equal(screen.getByRole("radio", { name: /Community collection/ }).getAttribute("aria-checked"), "true");
+  assert.equal(screen.getByRole("radio", { name: /A friend/ }).getAttribute("aria-checked"), "true", "arrow keys wrap from the last destination to the first");
+  assert.equal(screen.queryByRole("radio", { name: /Discover|Community collection/ }), null, "frozen destinations are not offered");
   fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
   assert.equal(screen.queryByRole("dialog"), null);
   assert.equal(document.activeElement, opener);
@@ -330,18 +330,6 @@ test("Share Sheet reports success only after a valid collection is persisted", a
   await waitFor(() => assert.equal(notice, "Saved to Public notes"));
   const saved = JSON.parse(localStorage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) ?? "null");
   assert.deepEqual(saved.items[0].collectionIds, ["public"]);
-});
-
-test("Discover preview controls describe their actual state", () => {
-  const view = render(<div><AlreadyArchivedButton /><PreviewFollowButton /></div>);
-  assert.equal((screen.getByRole("button", { name: "Saved" }) as HTMLButtonElement).disabled, true);
-  const follow = screen.getByRole("button", { name: "Preview follow" });
-  fireEvent.click(follow);
-  assert.equal(screen.getByRole("button", { name: "Previewing" }).getAttribute("aria-pressed"), "true");
-
-  view.unmount();
-  render(<PreviewFollowButton />);
-  assert.ok(screen.getByRole("button", { name: "Preview follow" }));
 });
 
 test("article preview lets a reader choose the familiar external-link behavior", (context) => {

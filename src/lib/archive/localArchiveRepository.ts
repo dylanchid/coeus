@@ -1,4 +1,4 @@
-import { createDemoArchive } from "./archiveFixtures.ts";
+import { createEmptyArchive, stripUntouchedDemoContent } from "./archiveFixtures.ts";
 import { migrateArchiveData } from "./archiveValidation.ts";
 import type { ArchiveData, ArchiveRepository } from "./archiveTypes";
 
@@ -19,7 +19,7 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
 
   async load(): Promise<ArchiveData> {
     const storage = this.storage ?? (typeof window === "undefined" ? undefined : window.localStorage);
-    if (!storage) return createDemoArchive();
+    if (!storage) return createEmptyArchive();
     const fromLegacyKey =
       !storage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) &&
       !!storage.getItem(LEGACY_LOCAL_ARCHIVE_STORAGE_KEY);
@@ -27,18 +27,20 @@ export class LocalStorageArchiveRepository implements ArchiveRepository {
       storage.getItem(LOCAL_ARCHIVE_STORAGE_KEY) ??
       storage.getItem(LEGACY_LOCAL_ARCHIVE_STORAGE_KEY);
     if (!raw) {
-      const seed = createDemoArchive();
+      const seed = createEmptyArchive();
       storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(seed));
       return seed;
     }
     try {
       const result = migrateArchiveData(JSON.parse(raw));
-      if (result.valid && (result.migrated || fromLegacyKey)) {
-        storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(result.data));
+      if (!result.valid) return result.data;
+      const data = stripUntouchedDemoContent(result.data);
+      if (result.migrated || fromLegacyKey || data !== result.data) {
+        storage.setItem(LOCAL_ARCHIVE_STORAGE_KEY, JSON.stringify(data));
       }
-      return result.data;
+      return data;
     } catch {
-      return createDemoArchive();
+      return createEmptyArchive();
     }
   }
 

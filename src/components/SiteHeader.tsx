@@ -10,10 +10,10 @@ import { useChrome } from "./ChromeProvider";
 import { PrimaryNav, type AppSection } from "./PrimaryNav";
 import { SettingsPanel } from "./SettingsPanel";
 import { HeaderSearch, FOCUS_HEADER_SEARCH_EVENT } from "./HeaderSearch";
-import { MessagesButton } from "./MessagesButton";
 import { SettingsMenu } from "./SettingsMenu";
 import { NotificationsButton } from "./NotificationsButton";
 import { AccountMenu } from "./AccountMenu";
+import { useAuth } from "./AuthProvider";
 
 function focusHeaderSearch(command: boolean) {
   window.dispatchEvent(new CustomEvent(FOCUS_HEADER_SEARCH_EVENT, { detail: { command } }));
@@ -43,6 +43,7 @@ export function SiteHeader({
   const { archive, persistence: archivePersistence, retryPersistence: retryArchive } = useArchive();
   const chrome = useChrome();
   const router = useRouter();
+  const { status: authStatus } = useAuth();
 
   const { toggleSettings } = chrome;
 
@@ -121,8 +122,9 @@ export function SiteHeader({
 
         <div className="site-tools">
           <AccountMenu />
-          <NotificationsButton />
-          <MessagesButton />
+          {/* Notifications only mean something to a signed-in account; Messages
+              is frozen (product review §5), so it has no header entry. */}
+          {authStatus === "ready" ? <NotificationsButton /> : null}
           {prefs && commandContext ? (
             <>
               <SettingsMenu onOpenSettings={chrome.openSettings} onExportPrefs={() => downloadPrefs(prefs)} />

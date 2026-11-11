@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { NoPublicCollectionsYet, PublicCollectionList } from "@/components/PublicCollectionList";
 import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
 
@@ -32,26 +32,14 @@ export default async function PublicCollectionsPage({ searchParams }: { searchPa
           <h1>Public collections</h1>
           <p>Collections people have curated and made discoverable, with attribution and stable links.</p>
         </header>
-        {items.length ? (
-          <ol className="public-collection-list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <h2><Link href={`/c/${item.slug}`}>{item.name}</Link></h2>
-                <p className="public-collection-meta">
-                  {item.itemCount} {item.itemCount === 1 ? "piece" : "pieces"}
-                  {item.attribution ? ` — ${item.attribution}` : ""}
-                </p>
-                {item.description ? <p>{item.description}</p> : null}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="public-collection-empty">No public collections yet.</p>
-        )}
-        <nav className="public-collection-pagination" aria-label="Pagination">
-          {offset > 0 ? <Link href={`/c?offset=${Math.max(offset - PAGE_SIZE, 0)}`}>← Newer</Link> : <span />}
-          {hasMore ? <Link href={`/c?offset=${offset + PAGE_SIZE}`}>Older →</Link> : null}
-        </nav>
+        <PublicCollectionList
+          items={items}
+          hasMore={hasMore}
+          offset={offset}
+          pageSize={PAGE_SIZE}
+          pageHref={(next) => `/c?offset=${next}`}
+          empty={<NoPublicCollectionsYet />}
+        />
       </div>
     </AppShell>
   );

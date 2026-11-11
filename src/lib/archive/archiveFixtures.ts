@@ -137,6 +137,54 @@ const DEMO_DATA: ArchiveData = {
   ],
 };
 
+/**
+ * Demo content for tests and fixtures only. New visitors start from
+ * createEmptyArchive(); the product never shows invented people or saves as
+ * if they were real (docs/product-review-2026-11.md §3.1–3.2).
+ */
 export function createDemoArchive(): ArchiveData {
   return structuredClone(DEMO_DATA);
+}
+
+/** What a first-time visitor's archive starts as: one empty Inbox. */
+export function createEmptyArchive(): ArchiveData {
+  const inbox = DEMO_DATA.collections.find((collection) => collection.id === "inbox")!;
+  return { version: 1, collections: [structuredClone(inbox)], items: [], socialPosts: [] };
+}
+
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * Removes demo content that earlier builds seeded into every new browser.
+ * Fixture posts always go (they attribute words to people who don't exist).
+ * Fixture items and collections go only while they are byte-identical to the
+ * seed, so anything the visitor starred, annotated, or re-filed is kept.
+ * Returns the input unchanged (same reference) when there is nothing to strip.
+ */
+export function stripUntouchedDemoContent(data: ArchiveData): ArchiveData {
+  const demoPostIds = new Set(DEMO_DATA.socialPosts.map((post) => post.id));
+  const demoItems = new Map(DEMO_DATA.items.map((item) => [item.id, item]));
+  const demoCollections = new Map(
+    DEMO_DATA.collections.filter((collection) => collection.id !== "inbox").map((collection) => [collection.id, collection])
+  );
+
+  const socialPosts = data.socialPosts.filter((post) => !demoPostIds.has(post.id));
+  const items = data.items.filter((item) => {
+    const seeded = demoItems.get(item.id);
+    return !seeded || !sameJson(item, seeded);
+  });
+  const referenced = new Set(items.flatMap((item) => item.collectionIds));
+  const collections = data.collections.filter((collection) => {
+    const seeded = demoCollections.get(collection.id);
+    return !seeded || referenced.has(collection.id) || !sameJson(collection, seeded);
+  });
+
+  if (
+    socialPosts.length === data.socialPosts.length &&
+    items.length === data.items.length &&
+    collections.length === data.collections.length
+  ) {
+    return data;
+  }
+  return { ...data, socialPosts, items, collections };
 }
