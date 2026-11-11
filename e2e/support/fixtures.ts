@@ -19,6 +19,42 @@ export async function signIn(page: Page, user: TestUser): Promise<void> {
   }
 }
 
+/**
+ * New accounts start with an empty archive (no demo seed), so journeys that
+ * need saved pieces put their own into local storage before the app boots.
+ * Written only when storage is empty, so a later reload keeps the app's edits.
+ */
+export async function seedLocalArchiveItems(page: Page, suffix: string, count = 1): Promise<string[]> {
+  const now = Date.now();
+  const items = Array.from({ length: count }, (_, index) => ({
+    id: `e2e-local-${suffix}-${index}`,
+    articleId: `e2e-local-article-${suffix}-${index}`,
+    title: `Saved piece ${suffix} ${index}`,
+    url: `https://example.com/saved/${suffix}/${index}`,
+    sourceName: "Example",
+    topic: "Testing",
+    summary: "A saved piece for a browser journey.",
+    author: "E2E",
+    publishedAt: null,
+    savedAt: new Date(now - index * 60_000).toISOString(),
+    state: "unread",
+    starred: false,
+    collectionIds: [],
+    tags: [],
+    note: "",
+  }));
+  const archive = {
+    version: 1,
+    items,
+    collections: [{ id: "inbox", name: "Inbox", description: "", visibility: "private", kind: "personal", createdAt: new Date(now).toISOString() }],
+    socialPosts: [],
+  };
+  await page.addInitScript((data) => {
+    if (!window.localStorage.getItem("coeus.archive.v1")) window.localStorage.setItem("coeus.archive.v1", data);
+  }, JSON.stringify(archive));
+  return items.map((item) => item.title);
+}
+
 export async function signOut(page: Page): Promise<void> {
   await page.request.delete("/api/test/session");
 }
