@@ -50,7 +50,7 @@
   align-items: center;
   gap: var(--space-xs);
   border-color: var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   text-align: center;
 }
 
@@ -122,7 +122,7 @@
   margin-top: var(--space-lg);
   padding: var(--space-md);
   border: 1px dashed var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .signin-dev-label {
@@ -257,7 +257,7 @@
   overflow: auto;
   padding: clamp(var(--space-lg), 4vw, var(--space-xl));
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius);
   background: var(--bg);
   box-shadow: 0 24px 80px color-mix(in srgb, var(--fg) 18%, transparent);
 }
@@ -273,7 +273,7 @@
   overflow: auto;
   padding: clamp(var(--space-md), 5vw, var(--space-lg));
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius);
   background: var(--bg);
   box-shadow: 0 24px 80px color-mix(in srgb, var(--fg) 18%, transparent);
 }
@@ -294,7 +294,7 @@
 .auth-modal .signin-tagline {
   margin: calc(-1 * var(--space-xs)) 0 var(--space-xs);
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: var(--text-body);
   letter-spacing: 0.01em;
   text-align: center;
 }
@@ -306,10 +306,10 @@
   text-align: center;
 }
 
-/* Profile onboarding inside the modal: same type and rounded controls as sign-in. */
+/* Profile onboarding inside the modal: same type and square controls as sign-in. */
 .auth-modal .welcome-form h1 {
   margin: 0 0 var(--space-3xs);
-  font-size: 1.15rem;
+  font-size: var(--text-lead);
   font-weight: 600;
   text-align: center;
 }
@@ -322,12 +322,12 @@
 
 .auth-modal .welcome-field input,
 .auth-modal .welcome-field textarea {
-  border-radius: 10px;
+  border-radius: var(--radius);
 }
 
 .auth-modal .welcome-form button[type="submit"] {
   width: 100%;
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-weight: 500;
 }
 
@@ -337,7 +337,7 @@
 }
 
 .auth-modal .signin-provider {
-  font-size: 0.95rem;
+  font-size: var(--text-body);
   font-weight: 500;
 }
 
@@ -358,6 +358,6 @@
 .archive-account-state {
   margin: 0;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--text-label);
   line-height: 1.45;
 }

@@ -33,6 +33,9 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, sourceTopic
   const closeRef = useRef<HTMLButtonElement>(null);
   useModalDialog({ active: true, containerRef: dialogRef, initialFocusRef: closeRef, onClose });
   const host = articleHost(article.url);
+  // What the static fallback ended up showing; "reader" and "unavailable" re-shape the layout.
+  const [staticStatus, setStaticStatus] = useState<CardState["status"]>("loading");
+  const layoutMode = compatibility === "allowed" ? "" : staticStatus === "unavailable" ? " is-details-only" : staticStatus === "reader" ? " is-reader" : "";
 
   return (
     <div className="article-preview-overlay" role="presentation" onMouseDown={(event) => {
@@ -46,10 +49,10 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, sourceTopic
             <button type="button" ref={closeRef} onClick={onClose} aria-label="Close preview">×</button>
           </div>
         </header>
-        <div className="article-preview-layout">
+        <div className={`article-preview-layout${layoutMode}`}>
           <div className="article-preview-frame-wrap">
             {compatibility !== "allowed" ? (
-              <StaticSourcePreview key={article.url} article={article} sourceTopic={sourceTopic} />
+              <StaticSourcePreview key={article.url} article={article} sourceTopic={sourceTopic} onStatus={setStaticStatus} />
             ) : (
               <>
                 <iframe
@@ -67,6 +70,11 @@ export function ArticlePreview({ article, sourceName, sourceHomeUrl, sourceTopic
             <p className="article-preview-kicker">Reader preview</p>
             <h2 id="article-preview-title">{article.title}</h2>
             {article.summary ? <p>{article.summary}</p> : null}
+            {staticStatus === "unavailable" && compatibility !== "allowed" ? (
+              <p className="article-preview-unavailable-note" role="status">
+                Preview unavailable or disallowed by this publisher. Open the original article to read it.
+              </p>
+            ) : null}
             <dl>
               <div><dt>Source</dt><dd>{sourceHomeUrl ? <a href={sourceHomeUrl} target="_blank" rel="noreferrer">{sourceName} ↗</a> : sourceName}</dd></div>
               {article.author ? <div><dt>By</dt><dd>{article.author}</dd></div> : null}
@@ -147,8 +155,9 @@ async function loadCard(url: string): Promise<PreviewCard | null> {
  * try a server-extracted, sanitised reader view first; fall back to the
  * OpenGraph metadata card; then to a plain "open the original" message.
  */
-function StaticSourcePreview({ article, sourceTopic }: { article: Article; sourceTopic?: string }) {
+function StaticSourcePreview({ article, sourceTopic, onStatus }: { article: Article; sourceTopic?: string; onStatus?: (status: CardState["status"]) => void }) {
   const [state, setState] = useState<CardState>({ status: "loading" });
+  useEffect(() => { onStatus?.(state.status); }, [onStatus, state.status]);
   const [heroBroken, setHeroBroken] = useState(false);
 
   useEffect(() => {
@@ -176,12 +185,8 @@ function StaticSourcePreview({ article, sourceTopic }: { article: Article; sourc
   }
 
   if (state.status === "unavailable") {
-    return (
-      <figure className="article-preview-static article-preview-static-unavailable">
-        <div className="article-preview-static-label">Source preview</div>
-        <figcaption>Preview unavailable or disallowed by this publisher. Open the original article to read it.</figcaption>
-      </figure>
-    );
+    // The layout collapses to the details column, which carries the explanation.
+    return null;
   }
 
   if (state.status === "reader") {

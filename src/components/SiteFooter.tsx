@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ExternalLinkHint } from "./ExternalLinkHint";
 
 export function SiteFooter({ note }: { note?: ReactNode }) {
   return (
     <footer className="site-footer">
       <div className="site-footer-main">
-        <p>Coeus — a personal front page for the open web.</p>
+        <p>
+          Coeus — a personal front page for the open web. <Link href="/plus">Try+</Link>
+        </p>
         <p>
           Standalone RSS reader, inspired by{" "}
           <a href="https://brutalist.report/" target="_blank" rel="noreferrer">

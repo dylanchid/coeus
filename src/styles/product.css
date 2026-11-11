@@ -60,7 +60,7 @@
 
 .about-jump-nav a {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--text-label);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-underline-offset: 4px;
@@ -106,7 +106,7 @@
 .about-section-copy > p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-control);
   line-height: 1.65;
 }
 
@@ -121,7 +121,7 @@
 .about-principles li {
   padding: 0.6rem 0;
   border-top: 1px solid var(--line);
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   line-height: 1.45;
 }
 
@@ -132,7 +132,7 @@
 
 .about-section-copy > a {
   color: var(--fg);
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   font-weight: 700;
   text-underline-offset: 4px;
 }
@@ -147,7 +147,7 @@
 }
 
 .about-principles li {
-  font-size: 0.86rem;
+  font-size: var(--text-control);
 }
 
 .notifications-page {
@@ -196,7 +196,7 @@
 .notifications-count {
   margin: 0;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -207,7 +207,7 @@
   background: transparent;
   color: var(--fg);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--text-meta);
   cursor: pointer;
 }
 
@@ -226,7 +226,7 @@
   margin: 0;
   padding: 0.75rem 0;
   color: var(--danger, #a33);
-  font-size: 0.82rem;
+  font-size: var(--text-meta);
 }
 
 .notification-list {
@@ -250,7 +250,7 @@
 
 .notification-copy {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: var(--text-control);
   line-height: 1.5;
 }
 
@@ -265,7 +265,7 @@
 
 .notification-row time {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--text-label);
   white-space: nowrap;
 }
 

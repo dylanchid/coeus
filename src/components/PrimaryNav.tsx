@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import Link from "next/link";
 
 export type AppSection = "reader" | "sources" | "discover" | "archive" | "about" | "account";
@@ -14,29 +13,21 @@ export const SECTION_LABELS: Record<AppSection, string> = {
 
 type NavLink = { id: AppSection; href: string; label: string };
 
-const LINKS_BEFORE_SEARCH: NavLink[] = [
+const LINKS: NavLink[] = [
   { id: "reader", href: "/", label: "Home" },
   { id: "discover", href: "/discover", label: "Discover" },
   { id: "archive", href: "/archive", label: "Archive" },
-];
-
-const LINKS_AFTER_SEARCH: NavLink[] = [
   { id: "sources", href: "/sources", label: "Sources" },
   { id: "about", href: "/about", label: "About" },
 ];
 
-/**
- * Header navigation: Home · Discover · Archive, then the search box (passed as
- * `search`), then Sources · About.
- */
+/** Header navigation: one contiguous run of links; search sits beside it, never inside. */
 export function PrimaryNav({
   section,
   archiveCount,
-  search,
 }: {
   section: AppSection;
   archiveCount?: number;
-  search?: ReactNode;
 }) {
   const renderLink = (link: NavLink) => (
     <Link
@@ -54,9 +45,7 @@ export function PrimaryNav({
 
   return (
     <nav className="primary-nav" aria-label="Primary navigation">
-      {LINKS_BEFORE_SEARCH.map(renderLink)}
-      {search}
-      {LINKS_AFTER_SEARCH.map(renderLink)}
+      {LINKS.map(renderLink)}
     </nav>
   );
 }

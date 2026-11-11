@@ -11,8 +11,8 @@ import { UiDialog } from "./ui/Dialog";
 const localDevSignIn = process.env.NODE_ENV !== "production";
 
 /**
- * Header account control. Signed out: a "Sign up / Log in" modal trigger with a gray
- * placeholder circle. Signed in: username, circular avatar and caret that opens the profile menu (View/Edit profile, Sign
+ * Header account control. Signed out: a "Sign up / Log in" modal trigger (just "Log in" on
+ * narrow screens). Signed in: username, circular avatar and caret that opens the profile menu (View/Edit profile, Sign
  * out). Settings lives in the ⋯ menu next to it.
  */
 export function AccountMenu() {
@@ -30,8 +30,8 @@ export function AccountMenu() {
     return (
       <UiDialog.Root open={signinOpen} onOpenChange={setSigninOpen}>
         <UiDialog.Trigger className="account-signin">
-          <span>Sign up / Log in</span>
-          <span className="account-avatar is-placeholder" aria-hidden="true" />
+          <span className="account-signin-long">Sign up / Log in</span>
+          <span className="account-signin-short" aria-hidden="true">Log in</span>
         </UiDialog.Trigger>
         <UiDialog.Portal>
           <UiDialog.Backdrop className="profile-gate-backdrop" />

@@ -83,7 +83,7 @@
 
   .search-input { border-bottom: 0; min-height: 44px; }
 
-  .search-meta { font-size: 0.68rem; }
+  .search-meta { font-size: var(--text-label); }
 
   .search-clear {
     min-width: 44px;
@@ -102,7 +102,7 @@
     min-width: 0;
     max-width: 100%;
     color: var(--muted);
-    font-size: 0.8125rem;
+    font-size: var(--text-meta);
   }
 
   .mobile-toolbar-row button {
@@ -110,9 +110,10 @@
     padding: 0 0.2rem;
     border: 0;
     background: transparent;
-    color: var(--link);
+    color: var(--text-primary);
     font: inherit;
     text-decoration: underline;
+    text-underline-offset: 3px;
     cursor: pointer;
   }
 
