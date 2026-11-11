@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "coeus-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "hotdev"],
+      "port": 3000
+    }
+  ]
+}
