@@ -38,12 +38,11 @@ function EngagementChip({
         rel="noreferrer"
         title="Discussion"
       >
-        {" "}
         {label}<ExternalLinkHint />
       </a>
     );
   }
-  return <span className="engagement"> {label}</span>;
+  return <span className="engagement">{label}</span>;
 }
 
 function highlight(text: string, query: string) {
@@ -176,34 +175,36 @@ function SourceColumnInner({
       <ul>
         {source.articles.map((a) => (
           <li key={a.id}>
-            <a href={a.url} target="_blank" rel="noreferrer" onClick={(event) => {
+            <a className="story-link" href={a.url} target="_blank" rel="noreferrer" onClick={(event) => {
               if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
               event.preventDefault();
               onOpen(a, source.name, source.homeUrl, source.topic);
             }}>
               {q ? highlight(a.title, q) : a.title}<ExternalLinkHint />
             </a>
-            {showAges && a.ageLabel ? (
-              <span className="age"> [{a.ageLabel}]</span>
-            ) : null}
-            {showAuthors && a.author ? (
-              <span className="author"> — {a.author}</span>
-            ) : null}
-            {showEngagement && a.engagement ? (
-              <EngagementChip engagement={a.engagement} />
-            ) : null}
-            <span className="story-actions">
-              <button
-                type="button"
-                className="story-save"
-                aria-pressed={savedArticleIds.has(a.id)}
-                onClick={() => onSave(a, source.name, source.topic)}
-                disabled={savedArticleIds.has(a.id)}
-              >
-                {savedArticleIds.has(a.id) ? "saved" : "+ save"}
-              </button>
-              <button type="button" className="story-save" onClick={() => onShare(a, source.name, source.topic)}>share ↗</button>
-            </span>
+            <div className="story-row-meta">
+              {showAges && a.ageLabel ? (
+                <span className="age">{a.ageLabel}</span>
+              ) : null}
+              {showAuthors && a.author ? (
+                <span className="author">{a.author}</span>
+              ) : null}
+              {showEngagement && a.engagement ? (
+                <EngagementChip engagement={a.engagement} />
+              ) : null}
+              <span className="story-actions">
+                <button
+                  type="button"
+                  className="story-save"
+                  aria-pressed={savedArticleIds.has(a.id)}
+                  onClick={() => onSave(a, source.name, source.topic)}
+                  disabled={savedArticleIds.has(a.id)}
+                >
+                  {savedArticleIds.has(a.id) ? "saved" : "+ save"}
+                </button>
+                <button type="button" className="story-save" onClick={() => onShare(a, source.name, source.topic)}>share ↗</button>
+              </span>
+            </div>
             {showSummaries && a.summary ? (
               <p className="summary">
                 {q ? highlight(a.summary, q) : a.summary}
