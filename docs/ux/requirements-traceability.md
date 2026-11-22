@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/ux/requirements-traceability.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Requirements traceability
 
 **Status:** product-to-surface map. It prevents polished UI changes from weakening Coeus’s core promises.

@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/ux/information-architecture.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Information architecture
 
 **Status:** proposed UX organization, reconciled against the current route inventory on 2026-09-28.

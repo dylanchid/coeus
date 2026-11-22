@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/profile-page-plan.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Profile page at `/@handle` — implementation plan
 
 **Status:** Historical design record. Phases 1–4 shipped (2026-09-07) — see the

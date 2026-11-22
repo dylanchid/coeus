@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/art-direction.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Coeus art direction
 
 **Status:** accepted direction for the design-system and UI-refactor phase. This is a design specification; screen changes are not implemented here.

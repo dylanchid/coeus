@@ -93,3 +93,8 @@ bd prime                # Refresh Beads context
 - Run lint, typecheck, and unit/UI tests when the edited code can affect them. Run a production build for build or route changes; pgTAP for migrations or database policy changes; Playwright for user journeys or integration boundaries.
 - CI selects the relevant jobs by changed path. A skipped job is expected for an unrelated change. Run broader checks when a change crosses boundaries or a specific failure suggests it.
 - The minimal Beads profile above controls session close: do not commit, push, or sync without explicit authority. Do not add another session protocol here.
+
+## Product docs: edit in the vault, not here
+
+Product documents (`docs/PRD.md`, `docs/product-notes.md`, `docs/product-review-*.md`, `docs/profile-page-plan.md`, `docs/art-direction.md`, `docs/ux/*`) are generated from the Obsidian vault and carry a `GENERATED from the Obsidian vault` banner. Do not edit them: change is overwritten by `npm run docs:pull`. If a product doc needs updating, say so in your handoff and let the owner change it in the vault. Engineering docs (everything else in `docs/`, plus `HANDOFF.md`) are edited here as usual. See `docs/README.md`.
+

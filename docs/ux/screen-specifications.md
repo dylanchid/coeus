@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/ux/screen-specifications.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Screen specifications
 
 **Status:** functional inventory and UX acceptance contract. “Live” describes current behavior; “Proposed” records the intended next design pass.
