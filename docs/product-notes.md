@@ -1,18 +1,33 @@
 ---
-page-width: 623
+page-width: 927
 ---
-Coeus | coeuscoeus.com | RSS reader, archival tool, collections
+<!-- GENERATED from the Obsidian vault (Work/Coeus/Coeus.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
+Coeus | https://coeuscoeus.com | RSS reader, archival tool, collections
 August 20, 2026 | targeting Q4 2026
 
-*Working document for talking through the product, its functionality, and building out
+Working document for talking through the product, its functionality, and building out
 the idea. The formal spec is [`PRD.md`](PRD.md); the profile build plan is
 [`profile-page-plan.md`](profile-page-plan.md). This file is for thinking out
 loud, and it extends the original vault note 
-_related_ : [[Coeus.canvas]]
+ q
+Coeus.canvas
+[PRD](PRD.md)
+
+Coeus.collection - a collection of all the links and what not that I want to repost.
+- https://archive.ph
+- winamp archive: https://skins.webamp.org
 
 ---
 ## Name & identity
 Candidates considered:
+
+ - **Coeus** — Titan of intellect. **This is the name.** Reasons it works:
+	  - Vaguely near "coexist"; "co-" is a good leader.
+	  - Ambiguous pronunciation is fine — it reads as Greek/Latin, ancient, which the tech space likes right now.
+	  - But the product is *not* only pandering to the tech crowd. It should land just as easily with artistic / literary users. The name is neutral enough to carry both.
+  - Domain: **`coeuscoeus.com`** obtained. Better than a novelty TLD, and the doubling
+    scans like "cous cous" — memorable, a little warm, not corporate.
 
 - **Bareaga** — *do not use for this.* Temporary; being kept for the builder mononym /
   clothing brand.
@@ -33,15 +48,9 @@ page. It's the thesis — see [Collections](#discover--collections-the-transform
 
 ---
 ## The through-line
-Coeus is a **personalized front page for the open web**. You pick the sources. The
-software does the mechanical work — fetching, normalizing, deduplicating, remembering what
-you asked for — and every "smart" feature is a transparent tool you operate, not a black
-box that operates you.
+Coeus is a **personalized front page for the open web**. You pick the sources. The software does the mechanical work — fetching, normalizing, deduplicating, remembering what you asked for — and every "smart" feature is a transparent tool you operate, not a black box that operates you.
 
-Two things make Coeus more than another RSS reader: **collections** (the democratized-web
-layer) and **customization** (it is genuinely *your* homepage, down to the type and the
-ranking rules). The profile page is what ties a person's collections, sources, and
-identity into one address.
+Two things make Coeus more than another RSS reader: **collections** (the democratized-web layer) and **customization** (it is genuinely *your* homepage, down to the type and the ranking rules). The profile page is what ties a person's collections, sources, and identity into one address.
 
 ---
 
@@ -49,7 +58,8 @@ identity into one address.
 
 **Real and usable solo today, no account:** all four Reader views, the transparent ranking
 engine, source discovery with custom feeds, the archive with notes/tags/collections,
-Markdown/CSV export, full preference portability, five palettes × four fonts × light/dark.
+> [!center]
+> Markdown/CSV export, full preference portability, five palettes × four fonts × light/dark.
 
 **Built at the data layer, not yet public:** collection publication — a collection can be
 published to a stable URL (`/c/<slug>`) with a curator note, attribution intact, and its
@@ -186,9 +196,6 @@ Helps users understand the four surfaces and the four principles (sources over a
 finite pages over feeds, useful controls over chrome, open formats over lock-in).
 
 ### Profile
-
-*Original note left this blank. Building it out here.*
-
 **What it is.** One route, `/@handle`, serving two readers from the same layout (the
 SoundCloud reference: full-bleed cover with the name over it, square avatar overlapping
 lower-left, tab + actions bar, feed column left, persistent sidebar right).
@@ -244,6 +251,42 @@ whose pitch is *not being* a social feed. Resolutions:
 - The bet: a profile can carry identity and following *without* the metrics race, the
   infinite reply tree, the quote-dunk, or the ranked feed. Strip those and what's left is
   closer to a personal website than to Twitter — which is the point.
+
+Wednesday, September 23. 1:32 PM - It is so so important for this to look 
+
+
+### Collections
+These need to look better. This is a high-leverage design oportunity. In addition to the contents of the collection
+- excerpts 
+- articles/links
+- websites 
+the collection itself needs to serve an aesthetic, functional purpose in being something that the user can modify, have enough creative control over that it is able to take form. 
+
+Playlists on spotify, instagram feeds, collections of images, pictures, media, content that when grouped together is able to convey meaning on top of the individual parts.
+
+What does this look like. There are vague pictures in my head but I am far from a clear enough vision. This is something that requires prototyping. Fleshing out of the problem, the porposed solution that these collections are. This one aspect of the problem and solution that coeus is.
+
+Atomic structure, functionality 
+
+Collections may consist of 
+- excerpts
+- articles / links 
+- websites 
+
+- commentary from users on pieces of the collection or the collection as a whole. (show this in canvas)
+
+collections, like tags in obsidian are not restrctive. Any item may exist in as many collections. Obviously this can lead to bloat, but tasteful use and productive use will lead people away from this  
+
+
+Collections may be public or private 
+
+
+
+
+
+
+
+
 
 ---
 
@@ -334,10 +377,12 @@ underserved by existing RSS tools (which look like dashboards) and are exactly t
 who maintain Are.na channels and Letterboxd profiles. Design and type quality is
 market strategy here, not polish.
 
-**Cold-start.** A profile network is worthless with no profiles. Three structural
-mitigations, then the outreach plan below:
+**Cold-start.** A profile network is worthless with no profiles. Mitigations, then the outreach plan below:
 - The profile is useful with an audience of zero — a better blogroll and bio link on day
   one, like a Letterboxd profile you keep even with no followers.
+- Seed with invited curators whose reading people already want (newsletter writers,
+  academics, librarians, link-blog people); their collections are the initial Discover
+  inventory.
 - Collections emit RSS, so a published collection is useful to followers who never make a
   Coeus account — it meets people in the reader they already have.
 - Every seeded curator arrives with an existing audience elsewhere; the collection's RSS
@@ -472,4 +517,33 @@ flow / import tools) before contacting the next segment.
 ---
 
 *See also: `Coeus.canvas` (visual inspiration board — homescreen, login flow, collection
-gallery, profile references, theme studies), [[RSS_work_sep5]] (OAuth redirect-URI notes).*
+gallery, profile references, theme studies), RSS_work_sep5 (OAuth redirect-URI notes).*
+
+
+# Marketing 
+- replying to people on twitter.
+	So often people post websites that are high quality things. This is part of what inspired this idea..
+
+
+# Team
+- Cassia Gray: UIUX designer. Optimally I could do a lot of this on my own. I believe she would be a good addition due to her connections, social network, feminine perspective on something like this. I would imagine her to be an Are.na user and that would have positive benefits on visions of the product and use. 
+
+# Potential
+Revenue 
+
+Community: Growing a community of users, verified users with popular collections
+
+# Research
+RSS Feeds
+Are.na - are.na stands to be the closest thing we are attempting to mimic in terms of collections, shared space, digital archive. It performs much better than twitter or pinterest 
+	Case study
+	Functionality 
+	Branding
+	Design 
+	
+https://opml.org
+
+POSSE, Publish (on your) Own Site, Syndicate Elsewhere movement
+https://indieweb.org/POSSE
+- the practice of posting content on your own site first, then publishing copies or sharing links to third parties (like [social media](https://indieweb.org/social_media "social media") silos) with [original post links](https://indieweb.org/original_post_link "original post link") to provide viewers a path to directly interacting with your content.
+	Most of this stuff is 10+ years old, some of these people are likely still active on X, blogs etc

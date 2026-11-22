@@ -1,8 +1,11 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/product-review-2026-11.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Coeus product review — 2026-11-10
 
-**Status:** Review and recommendation, not yet accepted. Once decisions are made,
-fold them into [`PRD.md`](PRD.md) and the "Current status" section of
-[`HANDOFF.md`](../HANDOFF.md) (last updated 2026-09-09).
+**Status:** Keep/fold/freeze decisions accepted 2026-11-10. On 2026-11-21 the
+owner deferred the concierge pilot to the future launch/rollout epic
+`bareaga_web-5p8`. Product scope, functionality, usability, and design need more
+work before outside-user outreach.
 **Inputs:** PRD, product-notes, HANDOFF, destination-delivery-decision, the route and
 `src/lib` inventory, the open beads, the last ~30 merged PRs, a signed-out walk of
 coeuscoeus.com, and aggregate row counts from the Supabase project configured in
@@ -111,9 +114,11 @@ Every surface should earn its place by feeding that sentence:
 4. **Publish flow for a stranger, end to end.** Sign in → claim handle → turn an
    archive collection into a published collection → share `/@handle`. Walk it with
    Playwright and by hand on mobile.
-5. **Start the concierge launch small.** 10 people from your own network before
-   segment 1. Track them in the single sheet `product-notes.md` describes. Success
-   metric: % who publish ≥1 collection within a week.
+5. **Defer the concierge launch.** The 10-person pilot is tracked in
+   `bareaga_web-5p8` and stays deferred until the owner accepts a product
+   readiness gate (`bareaga_web-5p8.1`) covering functionality, usability, and design. When the pilot
+   starts, use the single sheet `product-notes.md` describes and track the
+   percentage who publish ≥1 collection within a week.
 6. **Write down the freeze.** Update the PRD and HANDOFF so future agent sessions
    stop extending frozen surfaces.
 7. **Housekeeping.** Enable RLS on `notion_oauth_states` and

@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/ux/user-flow-research-and-test-plan.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # User-flow research and test plan
 
 **Status:** proposed research and validation plan. It records hypotheses and evidence to collect; it does not claim unperformed user research.

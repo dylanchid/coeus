@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/ux/README.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Coeus UX documentation
 
 **Purpose:** turn the product intent in [PRD.md](../PRD.md) into an implementation-ready map of the experience. These documents preserve the quiet editorial visual system while making its power-user controls easier to reveal as needed.

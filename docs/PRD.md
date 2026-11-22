@@ -1,3 +1,5 @@
+<!-- GENERATED from the Obsidian vault (Work/Coeus/PRD.md). Do not edit here: edit it in Obsidian, then run `npm run docs:pull`. See docs/README.md. -->
+
 # Coeus — Product Requirements Document
 
 **Status:** Living document (product intent), reconciled with the codebase 2026-09-09.
@@ -243,3 +245,71 @@ copy. The accepted storage and conflict model is documented in
 ---
 
 *This document should be updated alongside significant feature or roadmap changes. Technical implementation details (file paths, architecture) live in [`HANDOFF.md`](../HANDOFF.md); this document covers product surface and rationale.*
+
+---
+
+## 10. Owner outline (carried over from the original vault PRD)
+
+Preserved from the vault's original outline (written 2026-09-15, updated 2026-09-30)
+when the vault became the source of truth for this document. These are intent and
+ideas, not commitments; where an item conflicts with §7–§8 or with
+[`product-review-2026-11.md`](product-review-2026-11.md), those win until the owner
+folds it into the sections above.
+
+### MVP surfaces
+
+- Read / home
+- Explore (a better name than "Discover")
+- Sources
+- Profile
+  - **Archive** — keeps saved reading with its source, notes, tags, state, and
+    collections. Your library. *Open: what are the limits, storage-wise and legal-wise?*
+  - **Collections**
+
+### Release scope
+
+- Browser extension: save articles to different collections.
+- Obsidian / Notion integration: gallery views of bookmarks in both of those apps are
+  already high-quality experiences and high-leverage use cases. Coeus needs to provide
+  not just the archive but the social-network layer that makes it worthwhile.
+- Coeus Collection
+- Import / export
+- Keyboard shortcuts
+- About & Roadmap, Help & FAQs, Share / Invite, Send Feedback, Developer Settings
+
+### Freemium model (ideas)
+
+| Area | Base | Plus |
+|---|---|---|
+| Custom feeds | 10 | Unlimited |
+| Archive search | Title / tag | Full text and semantic |
+
+Other Plus candidates:
+
+- Permanent article snapshots. *Open: there shouldn't be legal issues here — how would the
+  Wayback Machine be viable otherwise?*
+- Custom domains for collections
+- Private link collections (e.g. Substack paywalled articles / series)
+- Subscriber and follower analytics
+- Scheduled posting
+
+### Profile dropdown and navigation
+
+- A carbon copy of Are.na's profile dropdown, but do better. Are.na should be viewed as
+  an amicable member of the same effort. They do great work and should be lauded as such.
+- Your Groups
+- Feed
+- Explore
+
+### Planned
+
+- API
+- RSS feed — *of what, and why?*
+- Desktop app
+- Editorial
+
+### Source preview: opt-out vs. opt-in
+
+Reader functionality is not as strong as it should be, because many main sources block
+iframe embedding or even reader mode on our end. *Opt-out and opt-in behavior is still
+undecided.*
