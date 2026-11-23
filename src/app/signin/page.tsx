@@ -3,11 +3,16 @@ import { AppShell } from "@/components/AppShell";
 import { SignInPanel } from "@/components/SignInPanel";
 import { devSignInEnabled } from "@/lib/devAuth.server";
 import { safeInternalPath } from "@/lib/safeRedirect";
+import { pageMetadata } from "@/lib/siteMetadata";
 
-export const metadata: Metadata = {
-  title: "Sign in — Coeus",
+export const metadata: Metadata = pageMetadata({
+  title: "Sign in",
+  path: "/signin",
   description: "Sign in to sync your archive, publish collections, and connect destinations.",
-};
+  noindex: true,
+  nofollow: true,
+  twitterCard: "summary",
+});
 
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;

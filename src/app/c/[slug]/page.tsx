@@ -11,12 +11,26 @@ import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/sup
 import { canSee, type Viewer } from "@/lib/visibility";
 import { ExternalLinkHint } from "@/components/ExternalLinkHint";
 import type { CollectionPublication } from "@/lib/publications/collectionPublication";
+import {
+  COLLECTION_NOT_FOUND_TITLE,
+  collectionShareText,
+  collectionShareTitle,
+  pageMetadata,
+} from "@/lib/siteMetadata";
 
 export const dynamic = "force-dynamic";
 
 const loadPublication = cache(async (slug: string) => {
   const store = new SupabaseCollectionPublicationStore(createAdminSupabaseClient());
   return store.getBySlug(slug);
+});
+
+/**
+ * Request-scoped curator read for metadata. The page body keeps its own
+ * lookup; calling this same function there would collapse the two reads.
+ */
+const loadCurator = cache(async (ownerId: string) => {
+  return new SupabaseProfileStore(createAdminSupabaseClient()).get(ownerId);
 });
 
 /**
@@ -48,14 +62,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // missing/unpublished/private slug should read as 404.
   const publication = await loadPublication(slug);
   if (!publication || !(await canReadPublication(publication))) {
-    return { title: "Collection not found — Coeus" };
+    return { title: COLLECTION_NOT_FOUND_TITLE };
   }
-  return {
-    title: `${publication.name} — Coeus`,
-    description: publication.description || publication.curatorNote || undefined,
-    alternates: { canonical: `/c/${publication.slug}` },
-    robots: { index: publication.visibility === "public", follow: true },
-  };
+  const curator = await loadCurator(publication.ownerId);
+  const linkReachable = publication.visibility === "public" || publication.visibility === "unlisted";
+  return pageMetadata({
+    title: collectionShareTitle(publication.name, curator?.handle),
+    path: `/c/${publication.slug}`,
+    description: collectionShareText(publication.curatorNote, publication.description),
+    noindex: publication.visibility !== "public",
+    ogType: "article",
+    types: linkReachable ? { "application/rss+xml": `/c/${publication.slug}/rss.xml` } : undefined,
+  });
 }
 
 export default async function PublicCollectionPage({ params }: { params: Promise<{ slug: string }> }) {

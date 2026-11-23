@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
+import { pageMetadata } from "@/lib/siteMetadata";
 import { NoPublicCollectionsYet, PublicCollectionList } from "@/components/PublicCollectionList";
 import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { createAdminSupabaseClient } from "@/lib/supabase.server";
@@ -8,10 +9,11 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
 
-export const metadata: Metadata = {
-  title: "Public collections — Coeus",
+export const metadata: Metadata = pageMetadata({
+  title: "Published collections",
+  path: "/c",
   description: "Browse collections people have published and made discoverable.",
-};
+});
 
 function boundedOffset(value: string | undefined): number {
   const parsed = Number(value ?? 0);

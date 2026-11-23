@@ -45,6 +45,13 @@ export interface PublicCollectionReader {
   listPublicBySource(sourceName: string, limit: number): Promise<CollectionPublicationSummary[]>;
 }
 
+/** A public, still-published collection row small enough for the sitemap. */
+export interface SitemapPublicationEntry {
+  slug: string;
+  updatedAt: string;
+  ownerHandle: string;
+}
+
 export interface CollectionFollowStore {
   /**
    * Subscribe to a live publication the actor can canSee. Throws
@@ -210,6 +217,44 @@ export class SupabaseCollectionPublicationStore
       publishedAt: String(entry.published_at),
       updatedAt: String(entry.updated_at),
       itemCount: counts.get(String(entry.id)) ?? 0,
+    }));
+  }
+
+  /**
+   * Public, still-published collections for the sitemap, newest update first.
+   * Unlisted and private rows are excluded. The owner handle is resolved from
+   * profiles (owner_id points at auth.users, not a profiles foreign key).
+   * A missing profile yields an empty handle so the caller can still list the
+   * collection without inventing a profile URL.
+   */
+  async listSitemapEntries(limit = 500): Promise<SitemapPublicationEntry[]> {
+    const requested = Number.isFinite(limit) ? Math.trunc(limit) : 500;
+    const boundedLimit = Math.min(Math.max(requested, 1), 500);
+    const { data, error } = await this.supabase
+      .from("collection_publications")
+      .select("slug,updated_at,owner_id")
+      .eq("visibility", "public")
+      .is("unpublished_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(boundedLimit);
+    if (error) throw error;
+    const rows = (data ?? []) as { slug: string; updated_at: string; owner_id: string }[];
+    if (!rows.length) return [];
+
+    const ownerIds = [...new Set(rows.map((row) => String(row.owner_id)))];
+    const { data: profiles, error: profileError } = await this.supabase
+      .from("profiles")
+      .select("id,handle")
+      .in("id", ownerIds);
+    if (profileError) throw profileError;
+    const handles = new Map(
+      ((profiles ?? []) as { id: string; handle: string }[]).map((profile) => [String(profile.id), String(profile.handle)]),
+    );
+
+    return rows.map((row) => ({
+      slug: String(row.slug),
+      updatedAt: String(row.updated_at),
+      ownerHandle: handles.get(String(row.owner_id)) ?? "",
     }));
   }
 

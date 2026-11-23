@@ -13,6 +13,12 @@ import { SupabaseConversationProfileReader } from "@/lib/conversations/conversat
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 import type { ReplyComposeTarget } from "@/components/ProfileReplies";
 import type { Viewer } from "@/lib/visibility";
+import {
+  PROFILE_NOT_FOUND_TITLE,
+  pageMetadata,
+  profileShareDescription,
+  profileShareTitle,
+} from "@/lib/siteMetadata";
 
 export const dynamic = "force-dynamic";
 
@@ -27,17 +33,17 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const resolution = await loadProfileIdentity(handle);
-  if (!resolution) return { title: "Profile not found — Coeus" };
+  if (!resolution) return { title: PROFILE_NOT_FOUND_TITLE };
   const { profile } = resolution;
   // No redirect handling here on purpose: when the page body calls
   // permanentRedirect the response is a 308 with no rendered document, so this
   // metadata is never delivered. Returning the canonical profile's metadata is
   // harmless if a crawler ignores the redirect.
-  return {
-    title: `${profile.displayName} (@${profile.handle}) — Coeus`,
-    description: profile.bio ?? undefined,
-    alternates: { canonical: `/@${profile.handle}` },
-  };
+  return pageMetadata({
+    title: profileShareTitle(profile.displayName, profile.handle),
+    path: `/@${profile.handle}`,
+    description: profileShareDescription(profile.bio, profile.handle),
+  });
 }
 
 export default async function ProfilePage({

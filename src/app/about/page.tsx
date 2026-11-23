@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { pageMetadata } from "@/lib/siteMetadata";
 
-export const metadata: Metadata = {
-  title: "About — Coeus",
+export const metadata: Metadata = pageMetadata({
+  title: "About",
+  path: "/about",
   description:
     "How Coeus helps you find sources, read the open web, discover what people share, and keep what matters.",
-};
+});
 
 const sections = [
   {

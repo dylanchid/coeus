@@ -15,10 +15,10 @@ function cursorParam(raw: string | string[] | undefined): string | null {
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const resolution = await loadProfileIdentity(handle);
-  if (!resolution) return { title: "Profile not found — Coeus" };
+  if (!resolution) return { title: "Profile not found" };
   const { profile } = resolution;
   return {
-    title: `People following ${profile.displayName} (@${profile.handle}) — Coeus`,
+    title: `People following ${profile.displayName} (@${profile.handle})`,
     description: `Accounts that follow @${profile.handle} on Coeus.`,
     alternates: { canonical: `/@${profile.handle}/followers` },
     robots: { index: false, follow: true },
