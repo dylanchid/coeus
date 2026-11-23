@@ -68,7 +68,9 @@ export default async function Image() {
           backgroundColor: PAPER,
           color: INK,
           padding: "88px",
-          fontFamily: fonts ? FONT_NAME : undefined,
+          // Satori crashes if fontFamily is present and undefined. Omit it so
+          // the built-in face is used when no TTF could be read.
+          ...(fonts ? { fontFamily: FONT_NAME } : {}),
         }}
       >
         <div
@@ -95,6 +97,6 @@ export default async function Image() {
         </div>
       </div>
     ),
-    { ...size, fonts },
+    fonts ? { ...size, fonts } : size,
   );
 }

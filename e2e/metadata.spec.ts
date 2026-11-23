@@ -34,11 +34,10 @@ test("public pages unfurl with one Coeus title suffix and a self canonical", asy
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /nofollow/);
 });
 
-test("archive, plus, and welcome stay out of the index", async ({ page }) => {
+test("archive and plus stay out of the index", async ({ page }) => {
   for (const [path, title] of [
     ["/archive", "Archive | Coeus"],
     ["/plus", "Try+ | Coeus"],
-    ["/welcome", "Welcome | Coeus"],
   ] as const) {
     const response = await page.goto(path);
     expect(response?.ok(), `${path} status ${response?.status()}`).toBeTruthy();
@@ -46,6 +45,15 @@ test("archive, plus, and welcome stay out of the index", async ({ page }) => {
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     expect((await page.title()).includes("— Coeus")).toBe(false);
   }
+});
+
+// A signed-out visit to /welcome is redirected to /signin before the page
+// metadata renders. The noindex title is what an account still setting up sees.
+(supabaseConfigured ? test : test.skip)("welcome stays out of the index", async ({ freshUserPage }) => {
+  const response = await freshUserPage.goto("/welcome");
+  expect(response?.ok(), `welcome status ${response?.status()}`).toBeTruthy();
+  await expect(freshUserPage).toHaveTitle("Welcome | Coeus");
+  await expect(freshUserPage.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
 
 test("robots.txt disallows sign-in and plus, and the sitemap drops retired routes", async ({ request }) => {
@@ -142,8 +150,7 @@ async function publishCollection(
     "href",
     new RegExp(`/c/${publicCollection.slug}/rss\\.xml$`),
   );
-  const publicRobots = await page.locator('meta[name="robots"]').getAttribute("content");
-  expect(publicRobots ?? "").not.toContain("noindex");
+  await expect(page.locator('meta[name="robots"]')).toHaveCount(0);
 
   await page.goto(`/c/${unlisted.slug}`);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
