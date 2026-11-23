@@ -52,6 +52,7 @@ const { ProfileGate } = await import("./ProfileGate");
 const { AccountMenu } = await import("./AccountMenu");
 const { ArchiveList } = await import("./ArchiveList");
 const { ProfileFollowButton } = await import("./ProfileFollowButton");
+const { FollowButton } = await import("./FollowButton");
 const { SectionSwitches } = await import("./SectionSwitches");
 const { ChromeProvider, useChrome } = await import("./ChromeProvider");
 const { AppRouterContext } = await import(
@@ -832,24 +833,291 @@ test("Profile follow button paints its initial state from props with no fetch on
   globalThis.fetch = (async () => { fetchCalls += 1; return new Response(null, { status: 204 }); }) as typeof fetch;
 
   render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing />);
-  const button = screen.getByRole("button", { name: "Following ✓" });
+  const button = screen.getByRole("button", { name: "Following @ada ✓" });
   assert.equal(button.getAttribute("aria-pressed"), "true");
+  assert.ok(button.classList.contains("follow-control--secondary"));
   assert.equal(fetchCalls, 0);
 
   fireEvent.click(button);
-  await waitFor(() => assert.equal(screen.getByRole("button").getAttribute("aria-pressed"), "false"));
+  await waitFor(() => assert.equal(screen.getByRole("button", { name: "Follow @ada" }).getAttribute("aria-pressed"), "false"));
   assert.equal(fetchCalls, 1);
+  assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
 });
 
-test("Profile follow button shows a sign-in prompt on a 401, linking back to the profile", async () => {
-  stubFetch(() => new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 }));
-  render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing={false} />);
+test("Profile follow button confirms a new follow and Undo calls unfollow", async () => {
+  const calls: { url: string; method: string }[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push({ url: String(input), method: (init?.method ?? "GET").toUpperCase() });
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
 
-  fireEvent.click(screen.getByRole("button", { name: "Follow" }));
-  const link = await screen.findByRole("link", { name: "Sign in" });
-  assert.equal(link.getAttribute("href"), "/signin?next=%2F%40ada");
-  // The follow state did not flip.
-  assert.equal(screen.getByRole("button").getAttribute("aria-pressed"), "false");
+  render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing={false} />);
+  fireEvent.click(screen.getByRole("button", { name: "Follow @ada" }));
+
+  const undo = await screen.findByRole("button", { name: "Undo" });
+  assert.equal(screen.getByRole("button", { name: "Following @ada ✓" }).getAttribute("aria-pressed"), "true");
+  assert.match(screen.getByRole("status").textContent ?? "", /You’ll hear about @ada’s new collections in Discover\./);
+  fireEvent.click(undo);
+  await waitFor(() => assert.ok(screen.getByRole("button", { name: "Follow @ada" })));
+  assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
+  assert.deepEqual(calls.map((call) => `${call.method} ${call.url}`), [
+    "POST /api/profiles/follow",
+    "POST /api/profiles/unfollow",
+  ]);
+});
+
+test("Profile follow button hides Undo after 8 seconds and clears that timer on unmount", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const cleared: unknown[] = [];
+  let undoCallback: (() => void) | null = null;
+  globalThis.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+    if (ms === 8_000 && typeof fn === "function") {
+      undoCallback = () => fn(...(args as []));
+      return 82 as unknown as ReturnType<typeof setTimeout>;
+    }
+    return originalSetTimeout(fn, ms, ...args);
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((id?: unknown) => {
+    cleared.push(id);
+    return originalClearTimeout(id as never);
+  }) as typeof clearTimeout;
+
+  try {
+    globalThis.fetch = (async () => new Response(null, { status: 204 })) as typeof fetch;
+    const { unmount } = render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Follow @ada" }));
+    await screen.findByRole("button", { name: "Undo" });
+    assert.equal(typeof undoCallback, "function");
+    await act(async () => { undoCallback!(); });
+    assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
+    assert.match(screen.getByRole("status").textContent ?? "", /You’ll hear about @ada’s new collections in Discover\./);
+
+    fireEvent.click(screen.getByRole("button", { name: "Following @ada ✓" }));
+    await screen.findByRole("button", { name: "Follow @ada" });
+    fireEvent.click(screen.getByRole("button", { name: "Follow @ada" }));
+    await screen.findByRole("button", { name: "Undo" });
+    unmount();
+    assert.ok(cleared.includes(82));
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+
+test("Profile follow button shows a sign-in prompt on a 401, linking back to the current path", async () => {
+  window.history.pushState({}, "", "/@ada");
+  try {
+    stubFetch(() => new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 }));
+    render(<ProfileFollowButton profileId="p1" handle="ada" initialFollowing={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Follow @ada" }));
+    const link = await screen.findByRole("link", { name: "Sign in" });
+    assert.equal(link.getAttribute("href"), "/signin?next=%2F%40ada");
+    assert.match(screen.getByRole("status").textContent ?? "", /Sign in to follow @ada\./);
+    assert.equal(screen.getByRole("button", { name: "Follow @ada" }).getAttribute("aria-pressed"), "false");
+  } finally {
+    window.history.pushState({}, "", "/");
+  }
+});
+
+// ── FollowButton ───────────────────────────────────────────────────────────
+
+test("FollowButton takes its label from the followed list", async () => {
+  globalThis.fetch = (async () => new Response(JSON.stringify({ publications: [{ id: "pub-1" }] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  })) as typeof fetch;
+
+  render(<FollowButton publicationId="pub-1" />);
+  const button = await screen.findByRole("button", { name: "Following collection ✓" });
+  assert.equal(button.getAttribute("aria-pressed"), "true");
+  assert.ok(button.classList.contains("follow-control--primary"));
+  assert.equal(button.hasAttribute("disabled"), false);
+});
+
+test("FollowButton stays disabled until the followed list resolves", async () => {
+  let resolveList: (value: Response) => void = () => {};
+  const pending = new Promise<Response>((resolve) => { resolveList = resolve; });
+  globalThis.fetch = (() => pending) as typeof fetch;
+
+  render(<FollowButton publicationId="pub-1" />);
+  const button = screen.getByRole("button", { name: "Follow collection" });
+  assert.equal(button.hasAttribute("disabled"), true);
+  assert.equal(button.getAttribute("aria-pressed"), "false");
+
+  resolveList(new Response(JSON.stringify({ publications: [] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  }));
+  await waitFor(() => assert.equal(button.hasAttribute("disabled"), false));
+  assert.equal(button.getAttribute("aria-pressed"), "false");
+});
+
+test("FollowButton follow shows Undo, and Undo calls unfollow", async () => {
+  const calls: { url: string; method: string; body: unknown }[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = (init?.method ?? "GET").toUpperCase();
+    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    calls.push({ url, method, body });
+    if (method === "GET") {
+      return new Response(JSON.stringify({ publications: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+
+  render(<FollowButton publicationId="pub-1" />);
+  const follow = await screen.findByRole("button", { name: "Follow collection" });
+  await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
+  fireEvent.click(follow);
+
+  const undo = await screen.findByRole("button", { name: "Undo" });
+  const followed = screen.getByRole("button", { name: "Following collection ✓" });
+  assert.equal(followed.getAttribute("aria-pressed"), "true");
+  assert.match(screen.getByRole("status").textContent ?? "", /Following\. You’ll find it in Discover · Following\./);
+  fireEvent.click(undo);
+
+  await waitFor(() => assert.ok(screen.getByRole("button", { name: "Follow collection" })));
+  assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
+  assert.equal(screen.getByRole("button", { name: "Follow collection" }).getAttribute("aria-pressed"), "false");
+  assert.deepEqual(
+    calls.filter((call) => call.method === "POST").map((call) => ({ url: call.url, body: call.body })),
+    [
+      { url: "/api/collections/follow", body: { publicationId: "pub-1" } },
+      { url: "/api/collections/unfollow", body: { publicationId: "pub-1" } },
+    ],
+  );
+});
+
+test("FollowButton unfollow from the done state is one click and shows no Undo", async () => {
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const method = (init?.method ?? "GET").toUpperCase();
+    calls.push(`${method} ${String(input)}`);
+    if (method === "GET") {
+      return new Response(JSON.stringify({ publications: [{ id: "pub-1" }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+
+  render(<FollowButton publicationId="pub-1" />);
+  const followed = await screen.findByRole("button", { name: "Following collection ✓" });
+  fireEvent.click(followed);
+  await waitFor(() => assert.ok(screen.getByRole("button", { name: "Follow collection" })));
+  assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
+  assert.equal(screen.queryByRole("dialog"), null);
+  assert.ok(calls.includes("POST /api/collections/unfollow"));
+});
+
+test("FollowButton hides Undo when the 8 second timer fires and keeps the confirmation", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  let undoCallback: (() => void) | null = null;
+  globalThis.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+    if (ms === 8_000 && typeof fn === "function") {
+      undoCallback = () => fn(...(args as []));
+      return 1 as unknown as ReturnType<typeof setTimeout>;
+    }
+    return originalSetTimeout(fn, ms, ...args);
+  }) as typeof setTimeout;
+
+  try {
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? "GET").toUpperCase() === "GET") {
+        return new Response(JSON.stringify({ publications: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+
+    render(<FollowButton publicationId="pub-1" />);
+    const follow = await screen.findByRole("button", { name: "Follow collection" });
+    await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
+    fireEvent.click(follow);
+    await screen.findByRole("button", { name: "Undo" });
+    assert.equal(typeof undoCallback, "function");
+
+    await act(async () => { undoCallback!(); });
+    assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
+    assert.match(screen.getByRole("status").textContent ?? "", /Following\. You’ll find it in Discover · Following\./);
+    assert.equal(screen.getByRole("button", { name: "Following collection ✓" }).getAttribute("aria-pressed"), "true");
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});
+
+test("FollowButton clears the undo timer on unmount", async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const cleared: unknown[] = [];
+  globalThis.setTimeout = ((fn: TimerHandler, ms?: number, ...args: unknown[]) => {
+    if (ms === 8_000 && typeof fn === "function") return 81 as unknown as ReturnType<typeof setTimeout>;
+    return originalSetTimeout(fn, ms, ...args);
+  }) as typeof setTimeout;
+  globalThis.clearTimeout = ((id?: unknown) => {
+    cleared.push(id);
+    return originalClearTimeout(id as never);
+  }) as typeof clearTimeout;
+
+  try {
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? "GET").toUpperCase() === "GET") {
+        return new Response(JSON.stringify({ publications: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+
+    const { unmount } = render(<FollowButton publicationId="pub-1" />);
+    const follow = await screen.findByRole("button", { name: "Follow collection" });
+    await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
+    fireEvent.click(follow);
+    await screen.findByRole("button", { name: "Undo" });
+    unmount();
+    assert.ok(cleared.includes(81));
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+  }
+});
+
+test("FollowButton shows a sign-in link on a 401 without flipping state", async () => {
+  window.history.pushState({}, "", "/c/field-notes");
+  try {
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (method === "GET") {
+        return new Response(JSON.stringify({ publications: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 });
+    }) as typeof fetch;
+
+    render(<FollowButton publicationId="pub-1" />);
+    const follow = await screen.findByRole("button", { name: "Follow collection" });
+    await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
+    fireEvent.click(follow);
+
+    const link = await screen.findByRole("link", { name: "Sign in" });
+    assert.equal(link.getAttribute("href"), "/signin?next=%2Fc%2Ffield-notes");
+    assert.match(screen.getByRole("status").textContent ?? "", /Sign in to follow this collection\./);
+    assert.equal(screen.getByRole("button", { name: "Follow collection" }).getAttribute("aria-pressed"), "false");
+    assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
+  } finally {
+    window.history.pushState({}, "", "/");
+  }
 });
 
 // ── SectionSwitches ────────────────────────────────────────────────────────

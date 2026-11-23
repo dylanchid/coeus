@@ -9,9 +9,10 @@ import type { ProfileFollowContext } from "./ProfileView";
  * tabs is a server render with no client navigation required. A greyed tab
  * (an owner's still-empty section) renders as plain text, not a link.
  *
- * The actions slot holds the owner's "Edit profile" link, or — for a signed-in
- * non-owner — the Follow button, seeded with `initialFollowing` from the server
- * so it is correct at first paint (plan risk R5).
+ * The actions slot holds the owner's "Edit profile" link, a signed-in
+ * non-owner's Follow control (seeded with `initialFollowing` from the server
+ * so it is correct at first paint — plan risk R5), or a signed-out visitor's
+ * sign-in link when `follow` is null.
  */
 export function ProfileTabs({
   handle,
@@ -59,7 +60,16 @@ export function ProfileTabs({
             initialFollowing={follow.initialFollowing}
           />
         </span>
-      ) : null}
+      ) : (
+        <span className="profile-actions">
+          <Link
+            className="follow-control follow-control--secondary"
+            href={`/signin?next=${encodeURIComponent(`/@${handle}`)}`}
+          >
+            Follow @{handle}
+          </Link>
+        </span>
+      )}
     </nav>
   );
 }
