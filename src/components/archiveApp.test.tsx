@@ -107,7 +107,7 @@ test("Archive collection publishing and unpublishing round-trip through their re
   await screen.findByRole("heading", { name: "Everything worth returning to." });
   fireEvent.click(screen.getByRole("button", { name: /a humane internet/i }));
   fireEvent.click(screen.getByText("Publish & follow"));
-  assert.equal((screen.getByLabelText("Visibility") as HTMLSelectElement).value, "public", "a public collection publishes as public by default");
+  assert.equal(screen.getByRole("radio", { name: "Published" }).getAttribute("aria-checked"), "true", "a public collection publishes as public by default");
   fireEvent.click(screen.getByRole("button", { name: "Publish collection" }));
   await screen.findByRole("button", { name: "Unpublish" });
   const publishCall = calls.find((call) => call.url === "/api/collections/publish");
@@ -146,8 +146,8 @@ test("A new collection is personal, has no placeholder text, and its visibility 
   assert.deepEqual([created.kind, created.visibility, created.description], ["personal", "private", ""]);
 
   fireEvent.click(screen.getByText("Publish & follow"));
-  assert.equal((screen.getByLabelText("Visibility") as HTMLSelectElement).value, "unlisted", "an undecided (private) collection defaults to link-only");
-  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "public" } });
+  assert.equal(screen.getByRole("radio", { name: "Unlisted" }).getAttribute("aria-checked"), "true", "an undecided (private) collection defaults to link-only");
+  fireEvent.click(screen.getByRole("radio", { name: "Published" }));
   fireEvent.click(screen.getByRole("button", { name: "Publish collection" }));
   await screen.findByRole("button", { name: "Unpublish" });
   await waitFor(() => {
