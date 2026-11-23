@@ -2,15 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DEFAULT_ENABLED_SOURCE_IDS,
+  LEGACY_DEFAULT_SOURCE_IDS,
   SOURCE_CATALOG,
   catalogSourceIds,
   defaultSourceOrder,
+  starterSourceOrder,
   storedSourceOrder,
   getSource,
   sourceByIdMap,
   sanitizeCustomSources,
   slugifyId,
 } from "./sources.ts";
+
+const CULTURE_FIRST_STARTER = [
+  "lithub", "aeon", "marginalian", "parisreview", "longreads", "electricliterature",
+  "openculture", "hyperallergic", "colossal", "dezeen", "filmcomment", "nprmusic",
+  "printmag", "publicdomainreview", "jstordaily", "quanta", "scientificamerican",
+  "restofworld", "guardian", "npr", "arstechnica", "hn",
+];
+
+const PREVIOUS_STARTER = [
+  "hn", "verge", "arstechnica", "register", "phoronix", "wired", "slashdot",
+  "engadget", "daringfireball", "lwn", "bleepingcomputer", "hackaday",
+  "servethehome", "bbc", "npr", "guardian", "aljazeera", "cnbc", "fortune",
+  "scientificamerican", "phys", "sciencedaily",
+];
 
 test("catalog ids are unique and every source has discovery metadata", () => {
   const ids = catalogSourceIds();
@@ -31,6 +47,36 @@ test("culture, arts, and history are substantial first-class collections", () =>
   assert.ok(counts.arts.some((source) => source.sourceType === "primary-source"));
   assert.ok(counts.history.some((source) => source.sourceType === "primary-source"));
   assert.ok(counts.history.some((source) => source.sourceType === "research"));
+});
+
+test("the starter set is 22 catalog sources with a culture-first topic mix", () => {
+  assert.equal(DEFAULT_ENABLED_SOURCE_IDS.length, 22);
+  assert.equal(new Set(DEFAULT_ENABLED_SOURCE_IDS).size, 22);
+  assert.deepEqual([...DEFAULT_ENABLED_SOURCE_IDS], CULTURE_FIRST_STARTER);
+
+  const byId = new Map(SOURCE_CATALOG.map((source) => [source.id, source]));
+  const tally = {};
+  for (const id of DEFAULT_ENABLED_SOURCE_IDS) {
+    const source = byId.get(id);
+    assert.ok(source, id);
+    tally[source.topic] = (tally[source.topic] ?? 0) + 1;
+  }
+  assert.deepEqual(tally, {
+    culture: 7,
+    arts: 6,
+    tech: 2,
+    news: 2,
+    science: 2,
+    history: 2,
+    business: 1,
+  });
+});
+
+test("returning visitors keep the frozen legacy starter set", () => {
+  assert.equal(Object.isFrozen(LEGACY_DEFAULT_SOURCE_IDS), true);
+  assert.deepEqual([...LEGACY_DEFAULT_SOURCE_IDS], PREVIOUS_STARTER);
+  assert.deepEqual(starterSourceOrder(false), [...DEFAULT_ENABLED_SOURCE_IDS]);
+  assert.deepEqual(starterSourceOrder(true), [...LEGACY_DEFAULT_SOURCE_IDS]);
 });
 
 test("catalog expansion does not silently enable new sources", () => {
