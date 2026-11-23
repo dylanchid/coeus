@@ -14,10 +14,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { handle } = await params;
   const resolution = await loadProfileIdentity(handle);
-  if (!resolution) return { title: "Thread not found — Coeus" };
+  if (!resolution) return { title: "Thread not found" };
   const { profile } = resolution;
   return {
-    title: `A thread from ${profile.displayName} (@${profile.handle}) — Coeus`,
+    title: `A thread from ${profile.displayName} (@${profile.handle})`,
     description: `A reply thread on @${profile.handle}'s profile.`,
     alternates: { canonical: `/@${profile.handle}?tab=replies` },
     robots: { index: false, follow: true },

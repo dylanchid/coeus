@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMetadata } from "@/lib/siteMetadata";
 import { AppShell } from "@/components/AppShell";
 import { NoPublicCollectionsYet, PublicCollectionList } from "@/components/PublicCollectionList";
 import { DiscoverViewTabs } from "@/components/DiscoverViewTabs";
@@ -8,10 +9,11 @@ import { SupabaseFollowedFeedReader } from "@/lib/feeds/followedFeed.server";
 import { SupabaseCollectionPublicationStore } from "@/lib/publications/collectionPublicationStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = {
-  title: "Discover — Coeus",
+export const metadata: Metadata = pageMetadata({
+  title: "Discover",
+  path: "/discover",
   description: "Explore collections, articles, and links shared by people across the open web.",
-};
+});
 
 export const dynamic = "force-dynamic";
 

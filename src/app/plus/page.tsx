@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/AppShell";
+import { pageMetadata } from "@/lib/siteMetadata";
 
-export const metadata: Metadata = {
-  title: "Try+ — Coeus",
+export const metadata: Metadata = pageMetadata({
+  title: "Try+",
+  path: "/plus",
   description: "Coeus is free to use. Plus plans are coming soon.",
-};
+  noindex: true,
+});
 
 export default function PlusPage() {
   return (

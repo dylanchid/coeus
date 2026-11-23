@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, IBM_Plex_Mono, Newsreader, Pochaevsk, Roboto_Slab, Syne } from "next/font/google";
 import { AppProviders } from "@/components/AppProviders";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE } from "@/lib/siteMetadata";
 import "./globals.css";
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -28,10 +29,10 @@ const metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localho
 
 export const metadata: Metadata = {
   metadataBase,
-  title: { default: "Coeus", template: "%s | Coeus" },
-  description:
-    "Headlines, bare — transparent story ordering, keyword search, and a configurable reading surface.",
-  alternates: { canonical: "/" },
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "en_US" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({
