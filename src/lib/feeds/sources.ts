@@ -150,13 +150,37 @@ export const SOURCE_CATALOG: SourceDef[] = [
   source({ id: "imperialglobal", name: "Imperial & Global Forum", homeUrl: "https://imperialglobalexeter.com", feedUrl: "https://imperialglobalexeter.com/feed/", description: "Research and debate on empires, global history, and their legacies.", topic: "history", topics: ["global history", "empire", "politics"], tags: ["research", "analysis", "longform"], region: "United Kingdom", sourceType: "research", cadence: "weekly", depth: "deep", defaultRank: 14 }),
 ];
 
-/** The original starter set remains the default for new and existing users. */
+/**
+ * Starter set for a first visit. Visitors with no stored preferences land on
+ * a culture, arts, writing, and ideas reader. The first nine ids are the
+ * opening Reader columns. Returning visitors are not moved onto this set.
+ */
 export const DEFAULT_ENABLED_SOURCE_IDS = [
+  "lithub", "aeon", "marginalian", "parisreview", "longreads", "electricliterature",
+  "openculture", "hyperallergic", "colossal", "dezeen", "filmcomment", "nprmusic",
+  "printmag", "publicdomainreview", "jstordaily", "quanta", "scientificamerican",
+  "restofworld", "guardian", "npr", "arstechnica", "hn",
+] as const;
+
+/**
+ * The previous 22-source starter set, frozen. A returning visitor who never
+ * stored an explicit source order — a legacy prefs key, a v1 record without
+ * `sourceOrder`, or corrupt stored JSON — keeps this desk.
+ */
+export const LEGACY_DEFAULT_SOURCE_IDS = Object.freeze([
   "hn", "verge", "arstechnica", "register", "phoronix", "wired", "slashdot",
   "engadget", "daringfireball", "lwn", "bleepingcomputer", "hackaday",
   "servethehome", "bbc", "npr", "guardian", "aljazeera", "cnbc", "fortune",
   "scientificamerican", "phys", "sciencedaily",
-] as const;
+] as const);
+
+/**
+ * Choose the starter list. `hasStoredPrefs` is false for a first visit and
+ * true when a prefs record exists but did not include an explicit source order.
+ */
+export function starterSourceOrder(hasStoredPrefs: boolean): string[] {
+  return [...(hasStoredPrefs ? LEGACY_DEFAULT_SOURCE_IDS : DEFAULT_ENABLED_SOURCE_IDS)];
+}
 
 /** Backward-compatible name for the starter definitions. */
 export const DEFAULT_SOURCES = SOURCE_CATALOG.filter((item) =>
@@ -189,7 +213,7 @@ export function sourcesByTopicWithCustom(
 }
 
 export function defaultSourceOrder(): string[] {
-  return [...DEFAULT_ENABLED_SOURCE_IDS];
+  return starterSourceOrder(false);
 }
 
 export function catalogSourceIds(): string[] {

@@ -16,6 +16,7 @@ import {
   catalogSourceIds,
   defaultSourceOrder,
   sanitizeCustomSources,
+  starterSourceOrder,
   storedSourceOrder,
 } from "./feeds/sources";
 
@@ -129,15 +130,20 @@ function pick<T extends string | number>(
 export function mergeWithDefaults(raw: Partial<UserPrefs> | null): UserPrefs {
   const base: UserPrefs = {
     ...DEFAULT_PREFS,
-    sourceOrder: [...DEFAULT_PREFS.sourceOrder],
+    sourceOrder: starterSourceOrder(false),
     hiddenSources: [],
     customSources: [],
   };
-  if (!raw || raw.version !== 1) return base;
+  // No stored record is a first visit. A stored record from before v1 keeps
+  // every other default, but stays on the frozen legacy starter set.
+  if (!raw) return base;
+  if (raw.version !== 1) {
+    return { ...base, sourceOrder: starterSourceOrder(true) };
+  }
 
   const customSources = sanitizeCustomSources(raw.customSources);
   const known = new Set(allSources(customSources).map((source) => source.id));
-  const order = storedSourceOrder(raw.sourceOrder, customSources) ?? base.sourceOrder;
+  const order = storedSourceOrder(raw.sourceOrder, customSources) ?? starterSourceOrder(true);
 
   const legacy = raw as Omit<Partial<UserPrefs>, "homeView"> & {
     homeView?: HomeViewId | "grid" | "gallery";
@@ -225,7 +231,9 @@ export class LocalPrefsStore implements PrefsStore {
       }
       return prefs;
     } catch {
-      return { ...DEFAULT_PREFS, sourceOrder: defaultSourceOrder() };
+      // A value was stored, so this is a returning visitor even though it
+      // cannot be parsed. Keep the desk they already had.
+      return { ...DEFAULT_PREFS, sourceOrder: starterSourceOrder(true) };
     }
   }
 
