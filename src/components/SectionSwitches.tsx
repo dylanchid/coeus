@@ -4,14 +4,16 @@ import { useState } from "react";
 import type { PublicationVisibility } from "@/lib/publications/collectionPublication";
 
 /**
- * The owner-only control strip in the profile sidebar: the five `show_*`
- * toggles under a "Show on profile" label, and a separate "Who sees your
- * likes" control, as the mockup models them.
+ * The owner-only control strip in the profile sidebar: the Followers and
+ * Following `show_*` toggles under a "Show on profile" label.
  *
  * Each toggle is an INDEPENDENT PATCH to /api/account/profile/sections. The
  * change is applied optimistically and, if the request fails, that one field
  * rolls back to its previous value — the other toggles are untouched — and the
  * failure is announced through role="status". Never rendered for a visitor.
+ *
+ * Reposts, Replies, and Likes switches remain stored server-side (frozen) but
+ * are no longer offered in the profile UI.
  */
 export interface SectionSwitchesState {
   showFollowers: boolean;
@@ -22,20 +24,11 @@ export interface SectionSwitchesState {
   likesVisibility: PublicationVisibility;
 }
 
-type ToggleKey = "showFollowers" | "showFollowing" | "showReposts" | "showReplies" | "showLikes";
+type ToggleKey = "showFollowers" | "showFollowing";
 
 const TOGGLES: { key: ToggleKey; label: string }[] = [
   { key: "showFollowers", label: "Followers" },
   { key: "showFollowing", label: "Following" },
-  { key: "showReposts", label: "Reposts" },
-  { key: "showReplies", label: "Replies" },
-  { key: "showLikes", label: "Likes" },
-];
-
-const LIKES_OPTIONS: { value: PublicationVisibility; label: string }[] = [
-  { value: "public", label: "Anyone" },
-  { value: "followers", label: "Followers" },
-  { value: "private", label: "Only me" },
 ];
 
 export function SectionSwitches({
@@ -105,27 +98,6 @@ export function SectionSwitches({
           })}
         </div>
       </fieldset>
-
-      <label className="section-likes-visibility">
-        <span>Who sees your likes</span>
-        <select
-          value={state.likesVisibility}
-          disabled={pending.has("likesVisibility")}
-          onChange={(event) =>
-            void save(
-              "likesVisibility",
-              event.target.value as PublicationVisibility,
-              state.likesVisibility
-            )
-          }
-        >
-          {LIKES_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
 
       {error ? (
         <p className="section-switches-error" role="status">

@@ -1136,26 +1136,35 @@ test("Section switches are not rendered for a visitor", () => {
   assert.equal(container.innerHTML, "");
 });
 
+test("Section switches offer only Followers and Following toggles", () => {
+  render(<SectionSwitches isOwner initial={SECTIONS_ALL_ON} />);
+  assert.ok(screen.getByRole("switch", { name: "Followers" }));
+  assert.ok(screen.getByRole("switch", { name: "Following" }));
+  assert.equal(screen.queryByRole("switch", { name: "Reposts" }), null);
+  assert.equal(screen.queryByRole("switch", { name: "Replies" }), null);
+  assert.equal(screen.queryByRole("switch", { name: "Likes" }), null);
+  assert.equal(screen.queryByText(/who sees your likes/i), null);
+});
+
 test("Section switches toggle optimistically and roll back only the failed one", async () => {
   const bodies: Record<string, unknown>[] = [];
   globalThis.fetch = (async (_url: RequestInfo | URL, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body ?? "{}"));
     bodies.push(body);
-    // Fail the Replies toggle only; succeed everything else.
-    return new Response(null, { status: "showReplies" in body ? 503 : 204 });
+    return new Response(null, { status: "showFollowers" in body ? 503 : 204 });
   }) as typeof fetch;
 
   render(<SectionSwitches isOwner initial={SECTIONS_ALL_ON} />);
-  const reposts = screen.getByRole("switch", { name: "Reposts" });
-  const replies = screen.getByRole("switch", { name: "Replies" });
+  const followers = screen.getByRole("switch", { name: "Followers" });
+  const following = screen.getByRole("switch", { name: "Following" });
 
-  fireEvent.click(reposts); // succeeds → stays off
-  fireEvent.click(replies); // fails → rolls back on
+  fireEvent.click(following);
+  fireEvent.click(followers);
 
-  await waitFor(() => assert.equal(replies.getAttribute("aria-checked"), "true"));
-  assert.equal(reposts.getAttribute("aria-checked"), "false");
+  await waitFor(() => assert.equal(followers.getAttribute("aria-checked"), "true"));
+  assert.equal(following.getAttribute("aria-checked"), "false");
   assert.ok(screen.getByRole("status").textContent?.includes("Couldn’t save"));
-  assert.deepEqual(bodies, [{ showReposts: false }, { showReplies: false }]);
+  assert.deepEqual(bodies, [{ showFollowing: false }, { showFollowers: false }]);
 });
 
 test("Section switches PATCH just the one changed field", async () => {
@@ -1166,7 +1175,7 @@ test("Section switches PATCH just the one changed field", async () => {
   }) as typeof fetch;
 
   render(<SectionSwitches isOwner initial={SECTIONS_ALL_ON} />);
-  fireEvent.click(screen.getByRole("switch", { name: "Likes" }));
+  fireEvent.click(screen.getByRole("switch", { name: "Followers" }));
   await waitFor(() => assert.equal(bodies.length, 1));
-  assert.deepEqual(JSON.parse(bodies[0]), { showLikes: false });
+  assert.deepEqual(JSON.parse(bodies[0]), { showFollowers: false });
 });
