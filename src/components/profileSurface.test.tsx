@@ -148,10 +148,15 @@ test("ProfileTabs shows the owner an Edit link and no follow button", () => {
   renderWithRouter(<ProfileTabs handle="ada" current="overview" isOwner follow={null} />);
   assert.ok(screen.getByRole("link", { name: /edit profile/i }));
   assert.equal(screen.queryByRole("button", { name: /follow/i }), null);
+  assert.equal(screen.queryByRole("link", { name: /follow @/i }), null);
 });
 
-test("ProfileTabs shows a logged-out visitor neither control", () => {
+test("ProfileTabs shows a logged-out visitor a Follow @handle sign-in link", () => {
   renderWithRouter(<ProfileTabs handle="ada" current="overview" isOwner={false} follow={null} />);
+  const link = screen.getByRole("link", { name: "Follow @ada" });
+  assert.equal(link.getAttribute("href"), "/signin?next=%2F%40ada");
+  assert.ok(link.classList.contains("follow-control"));
+  assert.ok(link.classList.contains("follow-control--secondary"));
   assert.equal(screen.queryByRole("button", { name: /follow/i }), null);
   assert.equal(screen.queryByRole("link", { name: /edit profile/i }), null);
 });

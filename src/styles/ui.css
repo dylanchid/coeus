@@ -38,3 +38,101 @@
   overflow: auto;
 }
 .ui-dialog-close { position: absolute; top: 0.35rem; right: 0.35rem; width: 44px; padding: 0; font-size: 1.5rem; line-height: 1; }
+
+/* Named follow controls. The doubled class outranks the legacy
+   .public-collection-follow button rules until pub-1 / prof-1 restyle the wrappers. */
+.follow-control.follow-control--primary,
+.follow-control.follow-control--secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius);
+  font: var(--text-control) var(--font);
+  letter-spacing: normal;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.follow-control.follow-control--primary {
+  border: 1px solid var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.follow-control.follow-control--secondary {
+  border: 1px solid var(--fg);
+  background: transparent;
+  color: var(--fg);
+}
+
+.follow-control.follow-control--primary:hover:not(:disabled) { opacity: 0.85; }
+.follow-control.follow-control--secondary:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.follow-control.follow-control--primary:focus-visible,
+.follow-control.follow-control--secondary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.follow-control.follow-control--primary:disabled,
+.follow-control.follow-control--secondary:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.follow-confirmation {
+  margin: 0.5rem 0 0;
+  color: var(--text-secondary);
+  font-size: var(--text-meta);
+  line-height: 1.4;
+  white-space: normal;
+  max-width: 28rem;
+}
+
+.follow-confirmation a { color: var(--text-link); }
+
+.public-collection-follow .follow-confirmation button,
+.profile-follow .follow-confirmation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 44px;
+  margin-left: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-link);
+  font: inherit;
+  letter-spacing: normal;
+  line-height: 1.2;
+  text-transform: none;
+  text-decoration: underline;
+  vertical-align: baseline;
+  cursor: pointer;
+}
+
+.public-collection-follow .follow-confirmation button:hover:not(:disabled),
+.profile-follow .follow-confirmation button:hover:not(:disabled) {
+  background: transparent;
+  color: var(--text-link);
+  opacity: 0.85;
+}
+
+.public-collection-follow .follow-confirmation button:disabled,
+.profile-follow .follow-confirmation button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}

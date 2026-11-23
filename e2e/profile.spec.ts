@@ -124,10 +124,10 @@ test("a second signed-in user can follow a published collection", async ({ brows
     await followerPage.goto(`/c/${publication.slug}`);
     await expect(followerPage.getByRole("heading", { name: publication.name })).toBeVisible();
 
-    const follow = followerPage.getByRole("button", { name: "Follow" });
+    const follow = followerPage.getByRole("button", { name: "Follow collection" });
     await expect(follow).toBeEnabled();
     await follow.click();
-    await expect(followerPage.getByRole("button", { name: "Following ✓" })).toBeVisible();
+    await expect(followerPage.getByRole("button", { name: "Following collection ✓" })).toBeVisible();
 
     const followed = await followerPage.request.get("/api/collections/followed");
     expect(followed.ok(), await followed.text()).toBeTruthy();
@@ -210,8 +210,8 @@ test("a profile follower loses a private collection after revocation", async ({ 
   try {
     await signIn(followerPage, newEstablishedUser());
     await followerPage.goto(`/@${handle}`);
-    await followerPage.getByRole("button", { name: "Follow" }).click();
-    await expect(followerPage.getByRole("button", { name: "Following ✓" })).toBeVisible();
+    await followerPage.getByRole("button", { name: `Follow @${handle}` }).click();
+    await expect(followerPage.getByRole("button", { name: `Following @${handle} ✓` })).toBeVisible();
 
     await followerPage.goto(`/c/${publication.slug}`);
     await expect(followerPage.getByRole("heading", { name: publication.name })).toBeVisible();
