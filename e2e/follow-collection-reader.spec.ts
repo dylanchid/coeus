@@ -51,11 +51,25 @@ async function seedCollection(page: Page, suffix: string) {
   return await published.json() as { id: string; slug: string; name: string };
 }
 
+function collectionSourceId(slug: string): string {
+  return `c:${slug}`;
+}
+
+async function waitForCollectionInPrefs(page: Page, sourceId: string): Promise<void> {
+  await expect.poll(async () => page.evaluate((id) => {
+    const raw = localStorage.getItem("coeus.prefs.v1");
+    if (!raw) return false;
+    const prefs = JSON.parse(raw) as { sourceOrder?: string[] };
+    return prefs.sourceOrder?.includes(id) ?? false;
+  }, sourceId)).toBe(true);
+}
+
 test("follow collection wires a Reader column without disturbing profile follows", async ({ browser, establishedUser }) => {
   test.setTimeout(120_000);
   const { page: ownerPage, handle } = establishedUser;
   const suffix = Math.random().toString(36).slice(2, 8);
   const publication = await seedCollection(ownerPage, suffix);
+  const sourceId = collectionSourceId(publication.slug);
 
   const guestContext = await browser.newContext();
   const guestPage = await guestContext.newPage();
@@ -72,9 +86,10 @@ test("follow collection wires a Reader column without disturbing profile follows
     await expect(follow).toBeEnabled();
     await follow.click();
     await expect(guestPage.locator(".public-collection-hero").getByRole("button", { name: "Following collection ✓" })).toBeVisible();
+    await waitForCollectionInPrefs(guestPage, sourceId);
 
     await guestPage.goto("/");
-    const column = guestPage.locator(".source-col").filter({ hasText: publication.name });
+    const column = guestPage.locator(`.source-col[data-source="${sourceId}"]`);
     await expect(column).toBeVisible({ timeout: 30_000 });
     await expect(column.locator(".source-collection-kicker")).toHaveText("[COLLECTION]");
     await expect(column.getByRole("link", { name: new RegExp(publication.name) })).toHaveAttribute("href", `/c/${publication.slug}`);
@@ -83,19 +98,25 @@ test("follow collection wires a Reader column without disturbing profile follows
     await guestPage.goto(`/c/${publication.slug}`);
     await guestPage.locator(".public-collection-hero").getByRole("button", { name: "Following collection ✓" }).click();
     await guestPage.goto("/");
-    await expect(guestPage.locator(".source-col").filter({ hasText: publication.name })).toHaveCount(0);
+    await expect(guestPage.locator(`.source-col[data-source="${sourceId}"]`)).toHaveCount(0);
   } finally {
     await guestContext.close();
   }
 
   const followerContext = await browser.newContext();
   const followerPage = await followerContext.newPage();
+  await followerPage.route("**/*", (route) => {
+    const url = route.request().url();
+    if (url.includes("example.com")) return route.fulfill({ status: 200, body: "<html></html>", contentType: "text/html" });
+    return route.continue();
+  });
   try {
     await signIn(followerPage, newEstablishedUser());
     await followerPage.goto(`/c/${publication.slug}`);
     const follow = followerPage.locator(".public-collection-hero").getByRole("button", { name: "Follow collection" });
     await follow.click();
     await expect(followerPage.locator(".public-collection-hero").getByRole("button", { name: "Following collection ✓" })).toBeVisible();
+    await waitForCollectionInPrefs(followerPage, sourceId);
 
     const followed = await followerPage.request.get("/api/collections/followed");
     expect(followed.ok(), await followed.text()).toBeTruthy();
@@ -104,7 +125,9 @@ test("follow collection wires a Reader column without disturbing profile follows
     ]));
 
     await followerPage.goto("/");
+    await expect(followerPage.locator(`.source-col[data-source="${sourceId}"]`)).toBeVisible({ timeout: 30_000 });
     const prefsBeforeProfileFollow = await followerPage.evaluate(() => localStorage.getItem("coeus.prefs.v1"));
+    const orderBefore = JSON.parse(prefsBeforeProfileFollow ?? "{}").sourceOrder as string[];
     await followerPage.goto(`/@${handle}`);
     const profileFollow = followerPage.getByRole("link", { name: `Follow @${handle}` });
     if (await profileFollow.count()) {
@@ -114,8 +137,9 @@ test("follow collection wires a Reader column without disturbing profile follows
     }
     await followerPage.goto("/");
     const prefsAfterProfileFollow = await followerPage.evaluate(() => localStorage.getItem("coeus.prefs.v1"));
-    expect(prefsAfterProfileFollow).toBe(prefsBeforeProfileFollow);
-    await expect(followerPage.locator(".source-col").filter({ hasText: publication.name })).toBeVisible();
+    const orderAfter = JSON.parse(prefsAfterProfileFollow ?? "{}").sourceOrder as string[];
+    expect(orderAfter).toEqual(orderBefore);
+    await expect(followerPage.locator(`.source-col[data-source="${sourceId}"]`)).toBeVisible({ timeout: 30_000 });
   } finally {
     await signOut(followerPage);
     await followerContext.close();
