@@ -37,6 +37,7 @@ const { ProfileFollowList } = await import("./ProfileFollowList");
 const { VisibilitySelect } = await import("./VisibilitySelect");
 const { DiscoverViewTabs } = await import("./DiscoverViewTabs");
 const { FollowingFeed } = await import("./FollowingFeed");
+const { AppProviders } = await import("./AppProviders");
 const { PostPublishPanel } = await import("./PostPublishPanel");
 
 interface FetchLog { url: string; method: string; body: unknown; }
@@ -326,21 +327,32 @@ test("DiscoverViewTabs marks the active view with aria-current", () => {
   assert.equal(screen.getByRole("link", { name: "Following" }).getAttribute("aria-current"), "page");
 });
 
-test("FollowingFeed renders collections and posts and the empty state names the cause", () => {
+test("FollowingFeed renders collections with Follow collection, entries copy, and an empty state", () => {
   const { rerender } = renderWithRouter(
-    <FollowingFeed
-      items={[
-        { kind: "collection", publishedAt: "2026-06-06T00:00:00.000Z", slug: "notes", name: "Field Notes", description: "d", curatorNote: "", attribution: "", itemCount: 2 },
-        { kind: "post", publishedAt: "2026-05-05T00:00:00.000Z", title: "A clip", url: "https://example.com/x", sourceName: "example.com", author: "", excerpt: "", commentary: "worth reading" },
-      ]}
-      hasMore
-      offset={0}
-      pageSize={20}
-    />
+    <AppProviders>
+      <FollowingFeed
+        items={[
+          {
+            kind: "collection",
+            publishedAt: "2026-06-06T00:00:00.000Z",
+            publicationId: "pub-field-notes",
+            slug: "notes",
+            name: "Field Notes",
+            description: "d",
+            curatorNote: "",
+            attribution: "",
+            itemCount: 2,
+          },
+        ]}
+        hasMore
+        offset={0}
+        pageSize={20}
+      />
+    </AppProviders>,
   );
   assert.ok(screen.getByRole("link", { name: "Field Notes" }));
-  assert.ok(screen.getByRole("link", { name: /a clip/i }));
-  assert.ok(screen.getByText("worth reading"));
+  assert.ok(screen.getByText("2 entries"));
+  assert.ok(screen.getByRole("button", { name: "Follow collection" }));
   assert.ok(screen.getByRole("link", { name: /older/i }));
 
   rerender(
@@ -350,7 +362,7 @@ test("FollowingFeed renders collections and posts and the empty state names the 
       </PathnameContext.Provider>
     </AppRouterContext.Provider>
   );
-  assert.ok(screen.getByText(/people you follow haven’t published/i));
+  assert.ok(screen.getByText(/haven’t published a collection you can see yet/i));
 });
 
 // ── PostPublishPanel ───────────────────────────────────────────────────────
