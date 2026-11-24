@@ -5,6 +5,15 @@ import {
   enrichHnEngagement,
   extractEngagementFromRssItem,
 } from "../conversations/engagement.server";
+import {
+  collectionSourceColumnName,
+  isCollectionSourceId,
+  parseCollectionSourceId,
+} from "./collectionSource.ts";
+import type { CollectionPublication, CollectionPublicationItem } from "../publications/collectionPublication";
+import { SupabaseCollectionPublicationStore } from "../publications/collectionPublicationStore.server";
+import { SupabaseProfileStore } from "../profiles/profileStore.server";
+import { createAdminSupabaseClient } from "../supabase.server";
 import { sourceByIdMap } from "./sources";
 import type { Article, Engagement, SourceDef, SourceFeed } from "../types";
 import { fetchFeedText } from "../safeFeedFetch.server";
@@ -74,7 +83,90 @@ type CacheEntry = {
   articles: CachedArticle[];
   error?: string;
   summaryQuality?: number;
+  displayName?: string;
+  homeUrl?: string;
+  curatorHandle?: string;
+  collectionKind?: "collection";
 };
+
+export type CollectionFeedReader = {
+  loadBySlug(slug: string): Promise<CollectionPublication | null>;
+  curatorHandle(ownerId: string): Promise<string | null>;
+};
+
+let collectionFeedReader: CollectionFeedReader | null = null;
+
+export function setCollectionFeedReader(reader: CollectionFeedReader | null): void {
+  collectionFeedReader = reader;
+}
+
+function defaultCollectionFeedReader(): CollectionFeedReader {
+  const supabase = createAdminSupabaseClient();
+  const publications = new SupabaseCollectionPublicationStore(supabase);
+  const profiles = new SupabaseProfileStore(supabase);
+  return {
+    loadBySlug: (slug) => publications.getBySlug(slug),
+    curatorHandle: async (ownerId) => (await profiles.get(ownerId))?.handle ?? null,
+  };
+}
+
+function getCollectionFeedReader(): CollectionFeedReader {
+  return collectionFeedReader ?? defaultCollectionFeedReader();
+}
+
+function collectionItemSummary(item: CollectionPublicationItem): string {
+  return (item.curatorComment || item.excerpt || "").trim();
+}
+
+async function networkFetchCollection(slug: string, sourceId: string): Promise<CacheEntry> {
+  const reader = getCollectionFeedReader();
+  try {
+    const publication = await reader.loadBySlug(slug);
+    if (!publication) {
+      return {
+        fetchedAt: Date.now(),
+        articles: [],
+        error: "Open it on Coeus to read it",
+        summaryQuality: SUMMARY_QUALITY_VERSION,
+      };
+    }
+    if (publication.visibility !== "public" && publication.visibility !== "unlisted") {
+      return {
+        fetchedAt: Date.now(),
+        articles: [],
+        error: "This collection is no longer published",
+        summaryQuality: SUMMARY_QUALITY_VERSION,
+      };
+    }
+    const curatorHandle = await reader.curatorHandle(publication.ownerId);
+    const articles: CachedArticle[] = publication.items.map((item) => ({
+      id: `${sourceId}:${item.url}`,
+      sourceId,
+      title: item.title,
+      url: item.url,
+      summary: collectionItemSummary(item),
+      author: item.author || item.sourceName || "",
+      publishedAt: publication.updatedAt,
+    }));
+
+    return {
+      fetchedAt: Date.now(),
+      articles,
+      summaryQuality: SUMMARY_QUALITY_VERSION,
+      displayName: collectionSourceColumnName(publication.name, curatorHandle ?? undefined),
+      homeUrl: `/c/${publication.slug}`,
+      curatorHandle: curatorHandle ?? undefined,
+      collectionKind: "collection",
+    };
+  } catch {
+    return {
+      fetchedAt: Date.now(),
+      articles: [],
+      error: "This collection is no longer published",
+      summaryQuality: SUMMARY_QUALITY_VERSION,
+    };
+  }
+}
 
 /** Process-local feed cache (survives across requests in Node). */
 const feedCache = new BoundedCache<string, CacheEntry>(CACHE_MAX_FEEDS);
@@ -152,6 +244,11 @@ async function networkFetch(sourceId: string, sourceById: Map<string, SourceDef>
       error: "Unknown source",
       summaryQuality: SUMMARY_QUALITY_VERSION,
     };
+  }
+
+  const collectionSlug = parseCollectionSourceId(sourceId);
+  if (collectionSlug) {
+    return networkFetchCollection(collectionSlug, sourceId);
   }
 
   try {
@@ -276,11 +373,12 @@ function materialize(
   sourceById: Map<string, SourceDef>
 ): SourceFeed {
   const def = sourceById.get(sourceId);
+  const collectionSource = isCollectionSourceId(sourceId);
   const cutoff = Date.now() - hours * 60 * 60 * 1000;
   const articles: Article[] = [];
 
   for (const a of entry.articles) {
-    if (a.publishedAt) {
+    if (!collectionSource && a.publishedAt) {
       const t = Date.parse(a.publishedAt);
       if (!Number.isNaN(t) && t < cutoff) continue;
     }
@@ -296,11 +394,13 @@ function materialize(
 
   return {
     id: sourceId,
-    name: def?.name ?? sourceId,
+    name: entry.displayName ?? def?.name ?? sourceId,
     topic: def?.topic ?? "all",
-    homeUrl: def?.homeUrl,
+    homeUrl: entry.homeUrl ?? def?.homeUrl,
     articles,
     error: entry.error,
+    kind: entry.collectionKind ?? (collectionSource ? "collection" : undefined),
+    curatorHandle: entry.curatorHandle,
   };
 }
 

@@ -14,12 +14,14 @@ import { isListable, type Viewer, type Visibility } from "../visibility.ts";
 export interface FollowedFeedCollection {
   kind: "collection";
   publishedAt: string;
+  publicationId?: string;
   slug: string;
   name: string;
   description: string;
   curatorNote: string;
   attribution: string;
   itemCount: number;
+  curatorHandle?: string;
 }
 
 export interface FollowedFeedPost {
@@ -34,6 +36,10 @@ export interface FollowedFeedPost {
 }
 
 export type FollowedFeedItem = FollowedFeedCollection | FollowedFeedPost;
+
+export function isFollowedFeedCollection(item: FollowedFeedItem): item is FollowedFeedCollection {
+  return item.kind === "collection";
+}
 
 /** One candidate plus the tier it must pass isListable at for this viewer. */
 export interface FollowedFeedCandidate {
@@ -56,6 +62,7 @@ export function combineFollowedFeed(
   const boundedOffset = Math.max(Math.trunc(offset), 0);
 
   const visible = candidates
+    .filter((candidate) => candidate.item.kind === "collection")
     .filter((candidate) => isListable(candidate.visibility, viewer))
     .map((candidate) => candidate.item)
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));

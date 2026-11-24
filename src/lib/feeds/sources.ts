@@ -1,3 +1,5 @@
+import { collectionFeedUrls, parseCollectionSourceId } from "./collectionSource.ts";
+import { isValidSlug } from "../publications/collectionPublication.ts";
 import type { SourceDef } from "../types";
 
 type SourceInput = Omit<
@@ -263,9 +265,34 @@ export function sanitizeCustomSources(value: unknown): SourceDef[] {
     const raw = candidate as Partial<SourceDef>;
     const id = typeof raw.id === "string" ? raw.id.trim().slice(0, 80) : "";
     const name = typeof raw.name === "string" ? raw.name.trim().slice(0, 120) : "";
+    if (!id || !name || builtInIds.has(id) || seen.has(id)) return [];
+
+    const collectionSlug = parseCollectionSourceId(id);
+    if (collectionSlug) {
+      if (!isValidSlug(collectionSlug)) return [];
+      const urls = collectionFeedUrls(collectionSlug);
+      seen.add(id);
+      return [{
+        id,
+        name,
+        feedUrl: urls.feedUrl,
+        homeUrl: urls.homeUrl,
+        topic: "all",
+        topics: [],
+        tags: ["coeus-collection"],
+        description: typeof raw.description === "string" ? raw.description : "Published collection on Coeus",
+        language: "Unknown",
+        region: "Global",
+        sourceType: "publisher",
+        cadence: "daily",
+        depth: "mixed",
+        defaultRank: 50,
+      }];
+    }
+
     const feedUrl = typeof raw.feedUrl === "string" ? raw.feedUrl.trim() : "";
     const homeUrl = typeof raw.homeUrl === "string" ? raw.homeUrl.trim() : feedUrl;
-    if (!id || !name || !feedUrl || builtInIds.has(id) || seen.has(id)) return [];
+    if (!feedUrl) return [];
     try {
       if (new URL(feedUrl).protocol !== "https:") return [];
       if (new URL(homeUrl).protocol !== "https:") return [];

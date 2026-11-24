@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { memo, useMemo, useState } from "react";
+import { parseCollectionSourceId } from "@/lib/feeds/collectionSource";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { formatEngagement } from "@/lib/conversations/engagement";
@@ -100,6 +102,7 @@ function SourceColumnInner({
   );
 
   const q = highlightQuery.trim();
+  const collectionSlug = source.kind === "collection" ? parseCollectionSourceId(source.id) : null;
 
   const handleRetry = async () => {
     if (!onRetry || retrying) return;
@@ -132,8 +135,13 @@ function SourceColumnInner({
         >
           ⋮⋮
         </button>
+        {source.kind === "collection" ? (
+          <p className="source-collection-kicker" aria-hidden="true">[COLLECTION]</p>
+        ) : null}
         <h3>
-          {source.homeUrl ? (
+          {collectionSlug ? (
+            <Link href={`/c/${collectionSlug}`}>{source.name}</Link>
+          ) : source.homeUrl ? (
             <a href={source.homeUrl} target="_blank" rel="noreferrer">
               {source.name}<ExternalLinkHint />
             </a>
