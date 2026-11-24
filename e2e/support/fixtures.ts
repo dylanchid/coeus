@@ -64,9 +64,23 @@ interface AuthFixtures {
   freshUserPage: Page;
   /** A signed-in account with a completed profile, plus its chosen handle. */
   establishedUser: { page: Page; handle: string };
+  /** When false, seed first-run skip so existing journeys skip guided setup. */
+  firstRun: boolean;
 }
 
 export const test = base.extend<AuthFixtures>({
+  firstRun: [false, { option: true }],
+  page: async ({ page, firstRun }, use) => {
+    if (!firstRun) {
+      await page.addInitScript(() => {
+        window.localStorage.setItem(
+          "coeus.setup.v1",
+          JSON.stringify({ version: 1, status: "skipped", hintDismissed: true })
+        );
+      });
+    }
+    await use(page);
+  },
   freshUserPage: async ({ page }, use) => {
     // A brand-new identity each test: the onboarding journey creates a profile
     // row, so a fixed user would only be "fresh" on the first run.

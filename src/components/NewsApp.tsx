@@ -21,11 +21,24 @@ import { ReaderContent } from "./ReaderContent";
 import { ReaderOverlays } from "./ReaderOverlays";
 import { ReaderIntro } from "./ReaderIntro";
 import { ReaderReturnBar } from "./ReaderReturnBar";
+import {
+  dismissFirstRunHint,
+  FirstRunReaderHint,
+  FirstRunSetup,
+  useFirstRunSetupGate,
+} from "./FirstRunSetup";
+import { useAuth } from "./AuthProvider";
 
 const EMPTY_SOURCE_IDS: string[] = [];
 
 export function NewsApp() {
   const { prefs, updatePrefs } = usePreferences();
+  const { status: authStatus, profile } = useAuth();
+  const { setupOpen, hintVisible, refresh: refreshSetupGate } = useFirstRunSetupGate(
+    prefs,
+    authStatus,
+    profile
+  );
   const { archive, updateArchive } = useArchive();
   const { slashOpen, closeSlash, openSettings, setReaderSlash } = useChrome();
   const { topic, persist, changeTopic, onSearchChange } = useNewsPrefs(updatePrefs);
@@ -174,6 +187,14 @@ export function NewsApp() {
         toggleCategory={toggleCategory}
       />
 
+      <FirstRunReaderHint
+        visible={hintVisible}
+        onDismiss={() => {
+          dismissFirstRunHint();
+          refreshSetupGate();
+        }}
+      />
+
       <ReaderFeedback
         statusText={statusText}
         loading={loading}
@@ -213,6 +234,13 @@ export function NewsApp() {
 
       <ReaderReturnBar show={showBackToTop} statusText={statusText} />
 
+      <FirstRunSetup
+        key={setupOpen ? "first-run-open" : "first-run-closed"}
+        open={setupOpen}
+        prefs={prefs}
+        onUpdatePrefs={(update) => updatePrefs(update)}
+        onFinished={refreshSetupGate}
+      />
     </AppShell>
   );
 }

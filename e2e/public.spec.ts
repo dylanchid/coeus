@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures";
 
 test("public shell stays usable without a signed-in Supabase session", async ({ page }) => {
   await page.goto("/");

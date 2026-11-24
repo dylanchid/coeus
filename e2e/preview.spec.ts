@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures";
 
 test("a blocked article renders the bounded reader fallback", async ({ page }) => {
   const article = {

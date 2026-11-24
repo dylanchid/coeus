@@ -20,9 +20,12 @@ import {
   storedSourceOrder,
 } from "./feeds/sources";
 
-const STORAGE_KEY = "coeus.prefs.v1";
-const LEGACY_BAREAGA_STORAGE_KEY = "bareaga.prefs.v1";
-const LEGACY_STORAGE_KEY = "brp.prefs.v1";
+export const PREFS_STORAGE_KEY = "coeus.prefs.v1";
+const STORAGE_KEY = PREFS_STORAGE_KEY;
+export const LEGACY_BAREAGA_PREFS_KEY = "bareaga.prefs.v1";
+const LEGACY_BAREAGA_STORAGE_KEY = LEGACY_BAREAGA_PREFS_KEY;
+export const LEGACY_BRP_PREFS_KEY = "brp.prefs.v1";
+const LEGACY_STORAGE_KEY = LEGACY_BRP_PREFS_KEY;
 
 const THEMES: ThemeMode[] = ["system", "light", "dark"];
 const FONTS: FontId[] = ["mono", "sans", "serif", "slab"];
@@ -124,6 +127,25 @@ function pick<T extends string | number>(
   fallback: T
 ): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+/** Raw browser snapshot from the three preference keys, without parsing or migration side effects. */
+export function readStoredPrefsSnapshot(
+  storage: Pick<Storage, "getItem"> = typeof window === "undefined" ? { getItem: () => null } : window.localStorage
+): { hasStoredPrefs: boolean; raw: string | null; hasLegacyBareagaKey: boolean; hasLegacyBrpKey: boolean } {
+  const hasCoeus = storage.getItem(STORAGE_KEY);
+  const hasLegacyBareagaKey = storage.getItem(LEGACY_BAREAGA_STORAGE_KEY) !== null;
+  const hasLegacyBrpKey = storage.getItem(LEGACY_STORAGE_KEY) !== null;
+  const raw =
+    hasCoeus ??
+    (hasLegacyBareagaKey ? storage.getItem(LEGACY_BAREAGA_STORAGE_KEY) : null) ??
+    (hasLegacyBrpKey ? storage.getItem(LEGACY_STORAGE_KEY) : null);
+  return {
+    hasStoredPrefs: Boolean(hasCoeus || hasLegacyBareagaKey || hasLegacyBrpKey),
+    raw,
+    hasLegacyBareagaKey,
+    hasLegacyBrpKey,
+  };
 }
 
 /** Sanitize partial prefs (load, import). Unknown ids/values fall back to defaults. */
