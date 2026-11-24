@@ -33,7 +33,7 @@ test("a curator publishes a public collection and it is findable from Discover a
   // Unpublished: the panel is already open and defaults to the collection's own visibility.
   const publishButton = page.getByRole("button", { name: "Publish collection" });
   await expect(publishButton).toBeVisible();
-  await expect(page.locator("[id^=publish-visibility-]")).toHaveValue("public");
+  await expect(page.getByRole("radio", { name: "Published" })).toHaveAttribute("aria-checked", "true");
   await publishButton.click();
   // The panel stays open after publishing and links the new page.
   const publishedLink = page.getByRole("link", { name: /^\/c\// });
@@ -46,9 +46,17 @@ test("a curator publishes a public collection and it is findable from Discover a
   await expect(page.getByRole("link", { name })).toBeVisible();
 
   await page.goto(`/c/${slug}`);
+  await expect(page.locator(".public-collection-kicker")).toHaveText("[PUBLISHED COLLECTION]");
   await expect(page.getByRole("link", { name: pieceTitle })).toBeVisible();
-  const curator = page.locator(".public-collection-curator").getByRole("link");
+  await expect(page.getByRole("link", { name: "RSS ↗" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Copy link" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Follow collection" })).toHaveCount(2);
+  const curator = page.locator(".public-collection-byline").getByRole("link");
   await expect(curator).toHaveAttribute("href", `/@${handle}`);
+
+  const og = await page.request.get(`/c/${slug}/opengraph-image`);
+  expect(og.status()).toBe(200);
+  expect(og.headers()["content-type"]).toMatch(/image\/png/);
 
   await curator.click();
   await expect(page).toHaveURL(new RegExp(`/@${handle}$`));
