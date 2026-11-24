@@ -66,17 +66,41 @@ export function isUnsafeIp(address: string): boolean {
   return isIP(address) === 4 ? ipv4IsUnsafe(address) : isIP(address) === 6 ? ipv6IsUnsafe(address) : true;
 }
 
+async function validatedAddresses(hostname: string, resolve: AddressResolver = dnsLookup) {
+  const addresses = isIP(hostname)
+    ? [{ address: hostname, family: isIP(hostname) as 4 | 6 }]
+    : await resolve(hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => isUnsafeIp(address))) throw new UnsafeOutboundUrlError();
+  return addresses;
+}
+
+/** SSRF guard for HTTP and HTTPS targets (e.g. bulk link resolve before fetch). */
+export async function isOutboundUrlAllowed(value: string, resolve: AddressResolver = dnsLookup): Promise<boolean> {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password || !url.hostname) {
+    return false;
+  }
+  try {
+    await validatedAddresses(url.hostname, resolve);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function validatedHttpsUrl(value: string, resolve: AddressResolver = dnsLookup): Promise<{ url: URL; address: string; family: 4 | 6 }> {
   let url: URL;
   try { url = new URL(value); } catch { throw new UnsafeOutboundUrlError("URL is not valid"); }
   if (url.protocol !== "https:" || url.username || url.password || !url.hostname) {
     throw new UnsafeOutboundUrlError("URL must be a credential-free HTTPS URL");
   }
-  const addresses = isIP(url.hostname)
-    ? [{ address: url.hostname, family: isIP(url.hostname) as 4 | 6 }]
-    : await resolve(url.hostname, { all: true, verbatim: true });
-  if (!addresses.length || addresses.some(({ address }) => isUnsafeIp(address))) throw new UnsafeOutboundUrlError();
-  const selected = addresses[0];
+  const addresses = await validatedAddresses(url.hostname, resolve);
+  const selected = addresses[0]!;
   return { url, address: selected.address, family: selected.family as 4 | 6 };
 }
 

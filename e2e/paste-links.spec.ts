@@ -36,7 +36,7 @@ test("mobile curator pastes fifteen links and publishes unlisted", async ({ esta
   await page.getByRole("button", { name: "Resolve" }).click();
   await page.getByRole("button", { name: "Add 15 entries" }).click();
 
-  await page.getByText("Publish & follow").click();
+  await page.getByText("Publish", { exact: true }).click();
   const sheet = page.locator(".mobile-publish-sheet");
   await expect(sheet).toBeVisible();
   await sheet.getByRole("button", { name: collectionName, exact: true }).click();

@@ -46,7 +46,7 @@ test("publish ladder radiogroup exposes three steps with helper text", () => {
       onUnpublish={() => undefined}
     />,
   );
-  fireEvent.click(screen.getByText("Publish & follow"));
+  fireEvent.click(screen.getByText("Publish"));
   const group = screen.getByRole("radiogroup", { name: "Visibility" });
   assert.equal(group.querySelectorAll('[role="radio"]').length, 3);
   fireEvent.click(screen.getByRole("radio", { name: "Published" }));
@@ -80,7 +80,7 @@ test("legacy followers step appears until another tier is chosen", () => {
       onUnpublish={() => undefined}
     />,
   );
-  fireEvent.click(screen.getByText("Publish & follow"));
+  fireEvent.click(screen.getByText("Publish"));
   assert.equal(screen.getByRole("radio", { name: /Followers only \(legacy\)/ }).getAttribute("aria-checked"), "true");
   fireEvent.click(screen.getByRole("radio", { name: "Unlisted" }));
   assert.equal(screen.queryByRole("radio", { name: /Followers only \(legacy\)/ }), null);
@@ -98,7 +98,7 @@ test("ladder radiogroup moves focus with arrow keys", () => {
       onUnpublish={() => undefined}
     />,
   );
-  fireEvent.click(screen.getByText("Publish & follow"));
+  fireEvent.click(screen.getByText("Publish"));
   const unlisted = screen.getByRole("radio", { name: "Unlisted" });
   unlisted.focus();
   fireEvent.keyDown(unlisted, { key: "ArrowDown" });
