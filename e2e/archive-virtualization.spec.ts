@@ -35,7 +35,7 @@ test("archive list stays windowed and keyboard-navigable at 5,000 items", async 
   }, items);
 
   await page.goto("/archive");
-  await expect(page.getByText(`${ITEM_COUNT} pieces`)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(`${ITEM_COUNT} saved items`)).toBeVisible({ timeout: 60_000 });
   const rows = page.locator("ol.archive-list > li");
   await expect(rows.first()).toBeVisible();
 

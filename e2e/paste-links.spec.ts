@@ -37,13 +37,14 @@ test("mobile curator pastes fifteen links and publishes unlisted", async ({ esta
   await page.getByRole("button", { name: "Add 15 entries" }).click();
 
   await page.getByText("Publish & follow").click();
-  await expect(page.locator(".mobile-publish-sheet")).toBeVisible();
-  await page.getByRole("button", { name: collectionName }).click();
-  await page.getByRole("button", { name: "Continue" }).first().click();
-  await page.getByLabel(/Curator note/i).fill("Pilot batch from phone");
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("radio", { name: "Unlisted" })).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  const sheet = page.locator(".mobile-publish-sheet");
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: collectionName, exact: true }).click();
+  await sheet.getByRole("button", { name: "Continue", exact: true }).click();
+  await sheet.getByLabel(/Curator note/i).fill("Pilot batch from phone");
+  await sheet.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(sheet.getByRole("radio", { name: "Unlisted" })).toHaveAttribute("aria-checked", "true");
+  await sheet.getByRole("button", { name: "Publish", exact: true }).click();
 
   const publicLink = page.getByRole("link", { name: "Open public page" });
   await expect(publicLink).toBeVisible({ timeout: 25_000 });
