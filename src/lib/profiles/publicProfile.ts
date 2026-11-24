@@ -1,15 +1,5 @@
 import type { Profile, ProfileLink } from "./profile.ts";
 import {
-  deriveInteractionFeed,
-  deriveReplyThreads,
-  likesSurface,
-  type LikesSurface,
-  type LoadedInteraction,
-  type LoadedReply,
-  type ProfileInteractionCard,
-  type ProfileReplyThread,
-} from "../conversations/conversationProfile.ts";
-import {
   DEFAULT_SECTION_SWITCHES,
   visibleSections,
   type ProfileSectionSwitches,
@@ -27,11 +17,10 @@ import { isListable, type Viewer, type Visibility } from "../visibility.ts";
  * boundary is exhaustively testable under `node --test` with no database, the
  * same way collectionPublication.test.mjs tests its snapshot.
  *
- * Phase 2: the collections AND posts filters both go through
- * `isListable(visibility, viewer)` from src/lib/visibility.ts — the one read
- * gate. The `viewer` is the canonical four-kind `Viewer` union, resolved once
- * by the page loader (which resolves the follow relationship for the
- * `followers` tier — plan risk R5) and passed in whole.
+ * Phase 2: the collections filter goes through `isListable(visibility, viewer)`
+ * from src/lib/visibility.ts — the one read gate. The `viewer` is the canonical
+ * four-kind `Viewer` union, resolved once by the page loader (which resolves the
+ * follow relationship for the `followers` tier — plan risk R5) and passed in whole.
  */
 
 export { DEFAULT_SECTION_SWITCHES };
@@ -88,25 +77,9 @@ export interface ProfileCollectionCard {
   isPinned: boolean;
 }
 
-/** What a post row renders as. Deliberately carries no author id, no post
- * uuid and no itemLocalId — none of those may cross to a viewer. */
-export interface ProfilePostCard {
-  title: string;
-  url: string;
-  sourceName: string;
-  author: string;
-  excerpt: string;
-  commentary: string;
-  visibility: Visibility;
-  publishedAt: string;
-  updatedAt: string;
-}
-
 export interface ProfileFigures {
   /** Visibility-cut total — never a raw count that could imply a hidden row. */
   collections: number;
-  /** Visibility-cut post total (design decision #11). */
-  posts: number;
   /** Person-follow counts, resolved by the page loader and gated by the
    * show_followers / show_following switches at the view layer. */
   followers: number;
@@ -122,22 +95,6 @@ export interface PublicProfileView {
   avatarUrl: string | null;
   coverUrl: string | null;
   collections: ProfileCollectionCard[];
-  posts: ProfilePostCard[];
-  /** Reposts this profile made, each already re-checked against its target's
-   * current visibility (canSeeIndirect). Empty when show_reposts is off for a
-   * visitor. */
-  reposts: ProfileInteractionCard[];
-  /** Likes this profile made, same indirect re-check. Empty unless
-   * `likes.render` — the surface gate below folds in likes_visibility. */
-  likes: ProfileInteractionCard[];
-  /** Reply threads this profile is a root author of. Empty when show_replies
-   * is off for a visitor. */
-  replies: ProfileReplyThread[];
-  /** Whether the Likes tab + sidebar strip render at all, and (owner only)
-   * whether they show marked-hidden. */
-  likesSurface: LikesSurface;
-  /** The owner's likes_visibility tier, for the glyph on their own view. */
-  likesVisibility: Visibility;
   figures: ProfileFigures;
   /** Which profile sections cross to this viewer. For a non-owner a
    * switched-off section is absent entirely; for the owner every section is
@@ -147,8 +104,6 @@ export interface PublicProfileView {
 }
 
 export interface DeriveProfileOptions {
-  /** This author's published posts, all tiers. The isListable cut happens here. */
-  posts?: readonly OwnedPost[];
   /** The owner's stored section switches. Required so the change is coherent
    * across every caller; DEFAULT_SECTION_SWITCHES covers a profile with no row. */
   sections: ProfileSectionSwitches;
@@ -157,25 +112,8 @@ export interface DeriveProfileOptions {
   followers?: number;
   /** People this profile follows (profile_follows). */
   following?: number;
-  /** Visibility-cut aggregate counts for routes that render a cursor page
-   * instead of the full card list. */
+  /** Visibility-cut aggregate count for the Collections cursor tab. */
   collectionCount?: number;
-  postCount?: number;
-  /** This profile's reposts and likes, each with its target freshly joined —
-   * dropped here unless canSeeIndirect() clears the target's CURRENT state. */
-  reposts?: readonly LoadedInteraction[];
-  likes?: readonly LoadedInteraction[];
-  /** This profile's reply rows (roots + two levels of descendants). */
-  replies?: readonly LoadedReply[];
-  /** rootReplyId → total nested descendant count (thread_descendant_counts).
-   * Lets a truncated thread link to the dedicated thread page. */
-  replyDescendantCounts?: ReadonlyMap<string, number>;
-  /**
-   * The set of target-owner ids that THIS viewer follows — resolved once by the
-   * loader across every distinct target owner in reposts/likes/replies, so the
-   * `followers`-tier target check never issues a query per row.
-   */
-  viewerFollowsTargetOwners?: ReadonlySet<string>;
 }
 
 function isLive(publication: OwnedPublication): boolean {
@@ -234,28 +172,6 @@ export function deriveCollectionCards(
   });
 }
 
-/** The post-card boundary: filter a loaded post list to what is listable for
- * `viewer` and map to cards. Shared by the whole page and the paginated Posts
- * tab loader. */
-export function derivePostCards(
-  posts: readonly OwnedPost[],
-  viewer: Viewer
-): ProfilePostCard[] {
-  return posts
-    .filter((post) => isListable(post.visibility, viewer))
-    .map((post) => ({
-      title: post.title,
-      url: post.url,
-      sourceName: post.sourceName,
-      author: post.author,
-      excerpt: post.excerpt,
-      commentary: post.commentary,
-      visibility: post.visibility,
-      publishedAt: post.publishedAt,
-      updatedAt: post.updatedAt,
-    }));
-}
-
 export function deriveProfileView(
   profile: Profile,
   publications: readonly OwnedPublication[],
@@ -263,25 +179,7 @@ export function deriveProfileView(
   options: DeriveProfileOptions
 ): PublicProfileView {
   const isOwner = viewer.kind === "owner";
-
   const collections = deriveCollectionCards(publications, viewer, profile.pinnedCollectionSlugs);
-
-  const switches = options.sections;
-  const follows = options.viewerFollowsTargetOwners ?? new Set<string>();
-  const followsOwner = (ownerId: string) => follows.has(ownerId);
-
-  const surface = likesSurface(switches, viewer);
-  const reposts = switches.showReposts || isOwner
-    ? deriveInteractionFeed(options.reposts ?? [], viewer, followsOwner)
-    : [];
-  const likes = surface.render
-    ? deriveInteractionFeed(options.likes ?? [], viewer, followsOwner)
-    : [];
-  const replies = switches.showReplies || isOwner
-    ? deriveReplyThreads(options.replies ?? [], viewer, followsOwner, options.replyDescendantCounts)
-    : [];
-
-  const posts = derivePostCards(options.posts ?? [], viewer);
 
   return {
     handle: profile.handle,
@@ -292,17 +190,10 @@ export function deriveProfileView(
     avatarUrl: profile.avatarUrl,
     coverUrl: profile.coverUrl,
     collections,
-    posts,
-    reposts,
-    likes,
-    replies,
-    likesSurface: surface,
-    likesVisibility: switches.likesVisibility as Visibility,
     figures: {
       // The rule: a figure equals the length of what actually crossed the
       // boundary, so a number can never imply a row this viewer cannot reach.
       collections: Math.max(0, Math.trunc(options.collectionCount ?? collections.length)),
-      posts: Math.max(0, Math.trunc(options.postCount ?? posts.length)),
       followers: Math.max(0, Math.trunc(options.followers ?? 0)),
       following: Math.max(0, Math.trunc(options.following ?? 0)),
     },

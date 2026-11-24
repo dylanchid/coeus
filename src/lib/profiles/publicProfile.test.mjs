@@ -4,7 +4,6 @@ import test from "node:test";
 import { deriveProfileView, DEFAULT_SECTION_SWITCHES } from "./publicProfile.ts";
 
 const PROFILE_ID = "00000000-0000-0000-0000-000000000001";
-const POST_AUTHOR_ID = "00000000-0000-0000-0000-000000000009";
 
 const OWNER = { kind: "owner", id: PROFILE_ID };
 const FOLLOWER = { kind: "follower", id: "00000000-0000-0000-0000-0000000000f0" };
@@ -24,7 +23,7 @@ function profile(overrides = {}) {
     pinnedCollectionSlugs: [],
     sections: DEFAULT_SECTION_SWITCHES,
     createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-02-02T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
@@ -46,39 +45,16 @@ function pub(overrides = {}) {
   };
 }
 
-function post(overrides = {}) {
-  return {
-    itemLocalId: "item-abc",
-    title: "A sourced clip",
-    url: "https://example.com/piece",
-    sourceName: "example.com",
-    author: "",
-    excerpt: "the passage worth carrying",
-    commentary: "why this matters",
-    visibility: "public",
-    publishedAt: "2026-05-05T00:00:00.000Z",
-    updatedAt: "2026-05-05T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
 const base = { sections: DEFAULT_SECTION_SWITCHES };
 
 test("the load-bearing test: a visitor view never carries profile.id, timestamps, or any inner id", () => {
-  const view = deriveProfileView(
-    profile(),
-    [],
-    ANON,
-    { ...base, posts: [post({ itemLocalId: "secret-local-id" })] }
-  );
+  const view = deriveProfileView(profile(), [pub()], ANON, base);
   assert.equal(Object.hasOwn(view, "id"), false);
   assert.equal(Object.hasOwn(view, "createdAt"), false);
   assert.equal(Object.hasOwn(view, "updatedAt"), false);
   const serialized = JSON.stringify(view);
   assert.equal(serialized.includes(PROFILE_ID), false);
-  assert.equal(serialized.includes(POST_AUTHOR_ID), false);
-  assert.equal(serialized.includes("secret-local-id"), false);
-  for (const card of view.posts) assert.equal(Object.hasOwn(card, "authorId"), false);
+  assert.equal(serialized.includes("pub-1"), false);
 });
 
 test("an owner view also omits id and timestamps", () => {
@@ -99,14 +75,8 @@ test("the view exposes exactly the public fields", () => {
     "figures",
     "handle",
     "isOwner",
-    "likes",
-    "likesSurface",
-    "likesVisibility",
     "links",
     "location",
-    "posts",
-    "replies",
-    "reposts",
     "visibleSections",
   ]);
 });
@@ -184,44 +154,6 @@ test("figures.collections always equals the number of cards that crossed", () =>
   const owner = deriveProfileView(profile(), publications, OWNER, base);
   assert.equal(owner.figures.collections, owner.collections.length);
   assert.equal(owner.figures.collections, 3);
-});
-
-// ── posts: the same gate ───────────────────────────────────────────────────
-
-test("posts filter through isListable exactly like collections", () => {
-  const posts = [
-    post({ itemLocalId: "pub", visibility: "public" }),
-    post({ itemLocalId: "fol", visibility: "followers" }),
-    post({ itemLocalId: "unl", visibility: "unlisted" }),
-    post({ itemLocalId: "prv", visibility: "private" }),
-  ];
-  const anon = deriveProfileView(profile(), [], ANON, { ...base, posts });
-  assert.equal(anon.posts.length, 1);
-  assert.equal(anon.posts[0].commentary, "why this matters");
-
-  const follower = deriveProfileView(profile(), [], FOLLOWER, { ...base, posts });
-  assert.equal(follower.posts.length, 2);
-
-  const owner = deriveProfileView(profile(), [], OWNER, { ...base, posts });
-  assert.equal(owner.posts.length, 4);
-});
-
-test("figures.posts always equals posts.length for every viewer kind", () => {
-  const posts = [
-    post({ itemLocalId: "a", visibility: "public" }),
-    post({ itemLocalId: "b", visibility: "followers" }),
-    post({ itemLocalId: "c", visibility: "private" }),
-  ];
-  for (const viewer of [ANON, SIGNED_IN, FOLLOWER, OWNER]) {
-    const view = deriveProfileView(profile(), [], viewer, { ...base, posts });
-    assert.equal(view.figures.posts, view.posts.length);
-  }
-});
-
-test("posts default to an empty list", () => {
-  const view = deriveProfileView(profile(), [], OWNER, base);
-  assert.deepEqual(view.posts, []);
-  assert.equal(view.figures.posts, 0);
 });
 
 // ── figures: followers / following ─────────────────────────────────────────

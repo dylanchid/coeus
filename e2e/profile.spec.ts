@@ -235,7 +235,7 @@ test("profile feed and thread cursor links walk real page boundaries", async ({ 
   const suffix = Math.random().toString(36).slice(2, 8);
   await seedPaginatedProfile(page, suffix);
 
-  for (const tab of ["collections", "posts"] as const) {
+  for (const tab of ["collections"] as const) {
     await page.goto(`/@${handle}?tab=${tab}`);
     const older = page.getByRole("link", { name: "Older →" });
     await expect(older).toBeVisible();
@@ -250,10 +250,7 @@ test("profile feed and thread cursor links walk real page boundaries", async ({ 
     await createReply(page, publication.id, `Thread reply ${suffix}-${index}`, root);
   });
 
-  await page.goto(`/@${handle}?tab=replies`);
-  const threadLink = page.getByRole("link", { name: "View all 201 replies →" });
-  await expect(threadLink).toBeVisible();
-  await threadLink.click();
+  await page.goto(`/@${handle}/replies/${root}`);
   await expect(page).toHaveURL(new RegExp(`/@${handle}/replies/${root}$`));
   await expect(page.getByRole("link", { name: "Older replies →" })).toBeVisible();
   await page.getByRole("link", { name: "Older replies →" }).click();

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test, { afterEach } from "node:test";
 import { JSDOM } from "jsdom";
 
@@ -28,13 +30,9 @@ const React = await import("react");
 const { cleanup, render, screen } = await import("@testing-library/react");
 const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime");
 const { PathnameContext } = await import("next/dist/shared/lib/hooks-client-context.shared-runtime");
-const { fireEvent, waitFor } = await import("@testing-library/react");
+const { fireEvent } = await import("@testing-library/react");
 const { ProfileTabs } = await import("./ProfileTabs");
 const { ProfileSidebar } = await import("./ProfileSidebar");
-const { ProfilePosts } = await import("./ProfilePosts");
-const { ProfileInteractions } = await import("./ProfileInteractions");
-const { ProfileReplies } = await import("./ProfileReplies");
-const { ReplyComposer } = await import("./ReplyComposer");
 const { ProfileFollowList } = await import("./ProfileFollowList");
 const { VisibilitySelect } = await import("./VisibilitySelect");
 const { DiscoverViewTabs } = await import("./DiscoverViewTabs");
@@ -63,21 +61,6 @@ function follower(overrides = {}) {
   };
 }
 const { deriveProfileView, DEFAULT_SECTION_SWITCHES } = await import("@/lib/profiles/publicProfile");
-
-function postCard(overrides = {}) {
-  return {
-    title: "A sourced clip",
-    url: "https://example.com/piece",
-    sourceName: "example.com",
-    author: "",
-    excerpt: "the passage worth carrying",
-    commentary: "why this matters",
-    visibility: "public" as const,
-    publishedAt: "2026-05-05T00:00:00.000Z",
-    updatedAt: "2026-05-05T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 const PROFILE_ID = "00000000-0000-0000-0000-000000000abc";
 
@@ -206,49 +189,21 @@ test("ProfileSidebar shows the owner a hidden-marked Followers figure", () => {
   assert.ok(screen.getByText(/Followers \(hidden\)/));
 });
 
-// ── Posts tab ──────────────────────────────────────────────────────────────
-
-test("ProfilePosts renders the commentary as a pull quote and the source link", () => {
-  render(<ProfilePosts posts={[postCard()]} isOwner={false} handle="ada" />);
-  const quote = screen.getByText("why this matters");
-  assert.equal(quote.tagName, "BLOCKQUOTE");
-  const link = screen.getByRole("link", { name: /a sourced clip/i });
-  assert.equal(link.getAttribute("href"), "https://example.com/piece");
-});
-
-test("ProfilePosts shows the owner an inline visibility glyph, the visitor none", () => {
-  const { rerender } = render(
-    <ProfilePosts posts={[postCard({ visibility: "followers" })]} isOwner handle="ada" />
-  );
-  assert.ok(screen.getByText("Followers only"));
-
-  rerender(<ProfilePosts posts={[postCard({ visibility: "followers" })]} isOwner={false} handle="ada" />);
-  assert.equal(screen.queryByText("Followers only"), null);
-});
-
-test("ProfilePosts empty state differs for owner and visitor", () => {
-  const { rerender } = render(<ProfilePosts posts={[]} isOwner handle="ada" />);
-  assert.ok(screen.getByText(/you haven’t published any posts/i));
-  rerender(<ProfilePosts posts={[]} isOwner={false} handle="ada" />);
-  assert.ok(screen.getByText(/@ada hasn’t published any posts/i));
-});
-
-test("ProfileTabs hides the Posts tab from a visitor with no posts, greys it for the owner", () => {
-  const { rerender } = renderWithRouter(
-    <ProfileTabs handle="ada" current="overview" isOwner={false} follow={null} tabStates={{ posts: "hidden" }} />
-  );
+test("ProfileTabs lists only Overview and Collections", () => {
+  renderWithRouter(<ProfileTabs handle="ada" current="overview" isOwner={false} follow={null} />);
+  assert.ok(screen.getByRole("link", { name: "Overview" }));
+  assert.ok(screen.getByRole("link", { name: "Collections" }));
   assert.equal(screen.queryByText("Posts"), null);
+  assert.equal(screen.queryByText("Reposts"), null);
+  assert.equal(screen.queryByText("Replies"), null);
+  assert.equal(screen.queryByText("Likes"), null);
+});
 
-  rerender(
-    <AppRouterContext.Provider value={{} as never}>
-      <PathnameContext.Provider value="/@ada">
-        <ProfileTabs handle="ada" current="overview" isOwner tabStates={{ posts: "greyed" }} />
-      </PathnameContext.Provider>
-    </AppRouterContext.Provider>
-  );
-  const greyed = screen.getByText("Posts");
-  assert.equal(greyed.tagName, "SPAN");
-  assert.equal(greyed.getAttribute("aria-disabled"), "true");
+test("the profile page loader does not import conversation or post publication stores", () => {
+  const pagePath = fileURLToPath(new URL("../app/u/[handle]/page.tsx", import.meta.url));
+  const source = readFileSync(pagePath, "utf8");
+  assert.equal(source.includes("postPublicationStore"), false);
+  assert.equal(source.includes("conversationProfileStore"), false);
 });
 
 // ── VisibilitySelect ───────────────────────────────────────────────────────
@@ -446,135 +401,3 @@ test("the derived view handed to the sidebar never serialises the profile UUID",
   assert.equal(JSON.stringify(view).includes(PROFILE_ID), false);
 });
 
-// ── Phase 3: Reposts / Likes tabs ─────────────────────────────────────────
-
-const TARGET_OWNER_ID = "00000000-0000-0000-0000-0000000000dd";
-
-function collectionInteraction(overrides = {}) {
-  return {
-    createdAt: "2026-08-08T00:00:00.000Z",
-    target: {
-      kind: "collection" as const,
-      slug: "field-notes",
-      name: "Field Notes",
-      visibility: "public" as const,
-      ownerId: TARGET_OWNER_ID,
-      ownerHandle: "curator",
-      ...overrides,
-    },
-  };
-}
-
-test("ProfileInteractions (reposts) renders a card from the freshly-joined target, no owner id", () => {
-  render(
-    <ProfileInteractions cards={[collectionInteraction()]} kind="reposts" isOwner={false} handle="ada" />
-  );
-  const link = screen.getByRole("link", { name: "Field Notes" });
-  assert.equal(link.getAttribute("href"), "/c/field-notes");
-  assert.ok(screen.getByText("@curator"));
-  assert.equal(document.body.innerHTML.includes(TARGET_OWNER_ID), false);
-});
-
-test("ProfileInteractions empty state names the profile and the kind", () => {
-  const { rerender } = render(<ProfileInteractions cards={[]} kind="likes" isOwner handle="ada" />);
-  assert.ok(screen.getByText("You haven’t liked anything yet."));
-  rerender(<ProfileInteractions cards={[]} kind="reposts" isOwner={false} handle="ada" />);
-  assert.ok(screen.getByText("@ada hasn’t reposted anything yet."));
-});
-
-test("the Reposts/Replies tabs and the Likes strip stay off a private-likes visitor view", () => {
-  const sections = { ...DEFAULT_SECTION_SWITCHES, likesVisibility: "private" as const };
-  const view = deriveProfileView(profile({ sections }), [], { kind: "signed-in", id: "v" }, {
-    sections,
-    likes: [collectionInteraction()],
-    reposts: [collectionInteraction()],
-  });
-  assert.equal(view.likes.length, 0, "no like rows cross");
-  assert.equal(view.likesSurface.render, false, "strip + tab suppressed");
-
-  render(<ProfileSidebar view={view} sectionSwitches={null} />);
-  assert.equal(screen.queryByText(/Likes/), null, "no Likes label, no count");
-});
-
-test("the Likes strip renders for the owner marked hidden when show_likes is off", () => {
-  const sections = { ...DEFAULT_SECTION_SWITCHES, showLikes: false };
-  const view = deriveProfileView(profile({ sections }), [], { kind: "owner", id: PROFILE_ID }, {
-    sections,
-    likes: [collectionInteraction()],
-  });
-  render(<ProfileSidebar view={view} sectionSwitches={sections} />);
-  assert.ok(screen.getByText("Likes (hidden)"));
-  assert.ok(screen.getByRole("link", { name: "View all" }));
-});
-
-// ── Phase 3: Replies tab ──────────────────────────────────────────────────
-
-function replyRow(id: string, parentId: string | null, overrides = {}) {
-  return {
-    id,
-    parentId,
-    body: `body ${id}`,
-    visibility: "public" as const,
-    createdAt: `2026-09-0${id}T00:00:00.000Z`,
-    updatedAt: `2026-09-0${id}T00:00:00.000Z`,
-    targetType: "collection" as const,
-    targetId: "col-1",
-    target: {
-      kind: "collection" as const,
-      slug: "field-notes",
-      name: "Field Notes",
-      visibility: "public" as const,
-      ownerId: TARGET_OWNER_ID,
-      ownerHandle: "curator",
-    },
-    parentAuthorHandle: null,
-    ...overrides,
-  };
-}
-
-test("ProfileReplies renders a root with target context, a response indented, a third level flattened", () => {
-  const view = deriveProfileView(profile(), [], { kind: "anonymous" }, {
-    sections: DEFAULT_SECTION_SWITCHES,
-    replies: [
-      replyRow("1", null),
-      replyRow("2", "1"),
-      replyRow("3", "2", { parentAuthorHandle: "mallory" }),
-    ],
-  });
-  renderWithRouter(<ProfileReplies threads={view.replies} isOwner={false} handle="ada" />);
-
-  assert.ok(screen.getByText(/On collection/), "the root shows its target as context");
-  assert.ok(screen.getByText("body 2"));
-  // The flattened third-level reply names the handle it responds to.
-  const lead = screen.getByText(/replying to/i);
-  assert.ok(lead.textContent.includes("@mallory"));
-  // Exactly one indent level: a single responses list.
-  assert.equal(document.querySelectorAll(".profile-reply-responses").length, 1);
-});
-
-test("ProfileReplies empty state", () => {
-  renderWithRouter(<ProfileReplies threads={[]} isOwner handle="ada" />);
-  assert.ok(screen.getByText("You haven’t replied to anything yet."));
-});
-
-test("ReplyComposer shows the inherited tier read-only and posts to /api/replies", async () => {
-  const log = stubPostFetch(() => 201);
-  renderWithRouter(
-    <ReplyComposer targetType="collection" targetId="col-1" parentId="root-1" targetVisibility="followers" />
-  );
-  const select = screen.getByRole("combobox") as HTMLSelectElement;
-  assert.equal(select.value, "followers");
-  assert.equal(select.disabled, true, "the tier is inherited, not chosen");
-
-  fireEvent.change(screen.getByRole("textbox", { name: "Reply" }), { target: { value: "  a considered reply  " } });
-  fireEvent.click(screen.getByRole("button", { name: "Reply" }));
-  await waitFor(() => assert.equal(log.length, 1));
-
-  assert.equal(log[0].url, "/api/replies");
-  assert.deepEqual(log[0].body, {
-    targetType: "collection",
-    targetId: "col-1",
-    parentId: "root-1",
-    body: "a considered reply",
-  });
-});

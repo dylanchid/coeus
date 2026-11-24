@@ -2,16 +2,13 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { ProfileView } from "@/components/ProfileView";
-import { deriveProfileView, deriveCollectionCards, derivePostCards } from "@/lib/profiles/publicProfile";
+import { deriveProfileView, deriveCollectionCards } from "@/lib/profiles/publicProfile";
 import { resolveProfileTab } from "@/lib/profiles/profileTabs";
 import { decodeProfileFeedCursor, PROFILE_FEED_PAGE_SIZE } from "@/lib/profiles/profileFeedCursor";
 import { loadProfileIdentity } from "@/lib/profiles/profilePageLoader.server";
 import { SupabaseProfileStore } from "@/lib/profiles/profileStore.server";
 import { SupabaseProfileFollowStore } from "@/lib/profiles/profileFollowStore.server";
-import { SupabasePostPublicationStore } from "@/lib/publications/postPublicationStore.server";
-import { SupabaseConversationProfileReader } from "@/lib/conversations/conversationProfileStore.server";
 import { authenticateArchiveRequest, createAdminSupabaseClient } from "@/lib/supabase.server";
-import type { ReplyComposeTarget } from "@/components/ProfileReplies";
 import type { Viewer } from "@/lib/visibility";
 import {
   PROFILE_NOT_FOUND_TITLE,
@@ -68,12 +65,10 @@ export default async function ProfilePage({
   const admin = createAdminSupabaseClient();
   const profileStore = new SupabaseProfileStore(admin);
   const followStore = new SupabaseProfileFollowStore(admin);
-  const postReader = new SupabasePostPublicationStore(admin);
-  const conversationReader = new SupabaseConversationProfileReader(admin);
 
-  // Collections and Posts use a keyset page only when active. Overview alone
-  // loads collection cards for its preview; sidebar figures use the
-  // visibility-cut aggregates below rather than a second card payload.
+  // Collections use a keyset page only when active. Overview alone loads
+  // collection cards for its preview; sidebar figures use the visibility-cut
+  // aggregate below rather than a second card payload.
   const activeParam = resolveProfileTab(query.tab);
   const feedCursor = decodeProfileFeedCursor(query.cursor);
   const feedRequest = { cursor: feedCursor, limit: PROFILE_FEED_PAGE_SIZE };
@@ -89,117 +84,31 @@ export default async function ProfilePage({
       : viewerId
         ? { kind: "signed-in", id: viewerId }
         : { kind: "anonymous" };
-  const canRenderLikes = isOwner || (
-    profile.sections.showLikes && (
-      profile.sections.likesVisibility === "public" ||
-      (profile.sections.likesVisibility === "followers" && viewer.kind === "follower")
-    )
-  );
-
-  const [
-    overviewPublications,
-    collectionCount,
-    postCount,
-    followers,
-    following,
-    reposts,
-    likes,
-    replies,
-    collectionsPage,
-    postsPage,
-  ] = await Promise.all([
+  const [overviewPublications, collectionCount, followers, following, collectionsPage] = await Promise.all([
     activeParam === "overview" ? profileStore.listOwnedPublications(profile.id) : Promise.resolve([]),
     profileStore.countVisibleOwnedPublications(profile.id, viewer),
-    postReader.countVisibleByAuthor(profile.id, viewer),
     followStore.countFollowers(profile.id),
     followStore.countFollowing(profile.id),
-    profile.sections.showReposts || isOwner
-      ? conversationReader.listRepostsByActor(profile.id)
-      : Promise.resolve([]),
-    canRenderLikes ? conversationReader.listLikesByActor(profile.id) : Promise.resolve([]),
-    profile.sections.showReplies || isOwner
-      ? conversationReader.listRepliesByActor(profile.id)
-      : Promise.resolve([]),
     activeParam === "collections"
       ? profileStore.pageOwnedPublications(profile.id, feedRequest)
       : Promise.resolve(null),
-    activeParam === "posts"
-      ? postReader.pageByAuthor(profile.id, feedRequest)
-      : Promise.resolve(null),
   ]);
   const publications = overviewPublications.length ? overviewPublications : (collectionsPage?.items ?? []);
-  const posts = postsPage?.items ?? [];
-
-  // The `followers`-tier target check in canSeeIndirect needs, for each row,
-  // whether THIS viewer follows that row's target owner — a different person
-  // from the profile owner. Resolve it once across every distinct target owner.
-  // A signed-in owner viewing their own profile short-circuits canSeeIndirect,
-  // so only a signed-in non-owner needs the lookup.
-  let viewerFollowsTargetOwners = new Set<string>();
-  if (viewerId && !isOwner) {
-    const targetOwnerIds = [
-      ...reposts,
-      ...likes,
-      ...replies,
-    ].flatMap((row) => (row.target ? [row.target.ownerId] : []));
-    viewerFollowsTargetOwners = await conversationReader.followsAmong(viewerId, targetOwnerIds);
-  }
-
-  // Per-root descendant totals, so a thread that runs past what the tab loads
-  // links to the dedicated thread page ("View all N replies"). One query,
-  // bounded by REPLY_ROOT_LIMIT roots; skipped when the Replies section will
-  // not render for this viewer anyway.
-  let replyDescendantCounts = new Map<string, number>();
-  if (profile.sections.showReplies || isOwner) {
-    const replyRootIds = replies.filter((row) => row.parentId === null).map((row) => row.id);
-    if (replyRootIds.length) {
-      replyDescendantCounts = await conversationReader.threadDescendantCounts(replyRootIds);
-    }
-  }
 
   const view = deriveProfileView(profile, publications, viewer, {
-    posts,
     sections: profile.sections,
     followers,
     following,
     collectionCount,
-    postCount,
-    reposts,
-    likes,
-    replies,
-    viewerFollowsTargetOwners,
-    replyDescendantCounts,
   });
 
-  // Owner-only: the ids each reply thread needs so the composer can post into
-  // it. Kept out of PublicProfileView so no target uuid crosses to a visitor.
-  const replyComposeTargets: Record<string, ReplyComposeTarget> = {};
-  if (isOwner) {
-    for (const row of replies) {
-      if (row.parentId === null && row.target) {
-        replyComposeTargets[row.id] = {
-          targetType: row.targetType,
-          targetId: row.targetId,
-          targetVisibility: row.target.visibility,
-        };
-      }
-    }
-  }
   const openEditor = isOwner && (query.edit === "1" || query.edit === "true");
 
-  // Apply the SAME viewer cut deriveProfileView uses, on the cursor page only.
   const paginatedCollections = collectionsPage
     ? {
         cards: deriveCollectionCards(collectionsPage.items, viewer, profile.pinnedCollectionSlugs),
         hasMore: collectionsPage.hasMore,
         nextCursor: collectionsPage.nextCursor,
-      }
-    : null;
-  const paginatedPosts = postsPage
-    ? {
-        cards: derivePostCards(postsPage.items, viewer),
-        hasMore: postsPage.hasMore,
-        nextCursor: postsPage.nextCursor,
       }
     : null;
 
@@ -208,12 +117,10 @@ export default async function ProfilePage({
       <ProfileView
         view={view}
         tab={resolveProfileTab(query.tab)}
-        follow={isOwner ? null : { profileId: profile.id, initialFollowing }}
+        follow={isOwner || viewerId === null ? null : { profileId: profile.id, initialFollowing }}
         sectionSwitches={isOwner ? profile.sections : null}
         openEditor={openEditor}
-        replyComposeTargets={replyComposeTargets}
         paginatedCollections={paginatedCollections}
-        paginatedPosts={paginatedPosts}
         onCursor={feedCursor !== null}
       />
     </AppShell>
