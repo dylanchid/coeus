@@ -76,7 +76,7 @@
 .profile-identity-name {
   margin: 0 0 0.2rem;
   color: var(--fg);
-  font: 700 clamp(1.5rem, 3.5vw, 2.4rem)/1.05 var(--font-display);
+  font: 700 clamp(1.5rem, 3.5vw, 2.4rem)/1.05 var(--font-public-title);
   letter-spacing: -0.03em;
 }
 .profile-handle { margin: 0; color: var(--handle); font-size: var(--text-meta); letter-spacing: 0.02em; font-family: var(--font); }
@@ -137,7 +137,7 @@
 .profile-shelf {
   display: grid;
   gap: 0;
-  border-top: 1px dashed var(--line);
+  border-top: 1px dashed var(--rule-group);
 }
 .profile-shelf-header,
 .profile-shelf-row {
@@ -146,14 +146,14 @@
   gap: var(--space-sm);
   align-items: baseline;
   padding: 0.65rem 0;
-  border-bottom: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--rule-group);
 }
 .profile-shelf-header {
   color: var(--handle);
-  font-size: var(--text-label);
+  font-size: var(--text-index);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  font-family: var(--font);
+  font-family: var(--font-mono);
 }
 .profile-shelf-col--items,
 .profile-shelf-col--updated {
@@ -179,7 +179,7 @@
   font-size: var(--text-meta);
 }
 .profile-shelf-row.is-unlisted {
-  outline: 1px dashed var(--handle);
+  outline: 1px dashed var(--rule-group);
   outline-offset: 2px;
 }
 .profile-shelf-row.is-unpublished { opacity: 0.55; }

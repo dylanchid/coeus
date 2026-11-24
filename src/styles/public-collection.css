@@ -1,8 +1,5 @@
 /* Published collection page — archival index layout (pub-1). */
 .public-collection-page {
-  --accent-band: #e8b49a;
-  --rule-group: #a39b8e;
-  --font-public-title: var(--font-newsreader);
   max-width: 52rem;
   margin: 0 auto;
   padding: 0 var(--space-md) var(--space-xl);
@@ -17,7 +14,7 @@
   padding: 0.65rem 1rem;
   background: var(--accent-band);
   color: var(--fg);
-  font: 600 var(--text-meta) var(--font-mono);
+  font: 600 var(--text-index) var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -78,7 +75,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(6rem, 11rem);
   gap: var(--space-md);
   margin-bottom: 0.75rem;
-  font: 600 var(--text-meta) var(--font-mono);
+  font: 600 var(--text-index) var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
@@ -113,7 +110,7 @@
 .public-collection-index-number {
   flex: 0 0 auto;
   width: 2.25rem;
-  font: 600 var(--text-meta) var(--font-mono);
+  font: 600 var(--text-index) var(--font-mono);
   color: var(--muted);
   text-align: right;
 }
