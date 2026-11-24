@@ -1345,6 +1345,53 @@ mark {
   font-size: var(--text-control);
 }
 
+.reader-intro {
+  max-width: 40rem;
+  padding: 1.5rem 0 2rem;
+  border-top: 1px solid var(--rule-subtle);
+  color: var(--text-secondary);
+}
+
+.reader-intro h1 {
+  margin: 0 0 0.75rem;
+  font-size: var(--text-title);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.reader-intro > p {
+  margin: 0 0 1.25rem;
+  line-height: 1.5;
+}
+
+.reader-intro-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.reader-intro-nav a {
+  color: var(--accent);
+  font-size: var(--text-control);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.reader-intro [role="status"] {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-control);
+}
+
+.source-directory-rating fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
 .reader-empty {
   max-width: 40rem;
   padding: 1.5rem 0;

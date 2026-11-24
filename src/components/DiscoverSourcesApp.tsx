@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SOURCE_CATALOG } from "@/lib/feeds/sources";
+import { DEFAULT_PREFS } from "@/lib/prefs";
 import type { SourceDef, UserPrefs } from "@/lib/types";
 import { AddSourceForm } from "./AddSourceForm";
 import { usePreferences } from "./AppProviders";
@@ -118,6 +119,8 @@ function compareSources(a: SourceDef, b: SourceDef, sort: SortMode, prefs: UserP
 
 export function SourcesApp() {
   const { prefs, updatePrefs: setSharedPrefs } = usePreferences();
+  const view = prefs ?? DEFAULT_PREFS;
+  const ready = prefs !== null;
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [sort, setSort] = useState<SortMode>("featured");
@@ -133,7 +136,6 @@ export function SourcesApp() {
   };
 
   const filtered = useMemo(() => {
-    if (!prefs) return [];
     const needle = query.trim().toLowerCase();
     return SOURCE_CATALOG.filter((source) => {
       if (!matchesCategory(source, category)) return false;
@@ -151,12 +153,10 @@ export function SourcesApp() {
         ...source.topics,
         ...source.tags,
       ].some((value) => value.toLowerCase().includes(needle));
-    }).sort((a, b) => compareSources(a, b, sort, prefs));
-  }, [prefs, query, category, language, region, sourceType, cadence, sort]);
+    }).sort((a, b) => compareSources(a, b, sort, view));
+  }, [view, query, category, language, region, sourceType, cadence, sort]);
 
-  if (!prefs) return <p className="boot">Loading source directory…</p>;
-
-  const enabled = new Set(prefs.sourceOrder);
+  const enabled = ready ? new Set(prefs.sourceOrder) : new Set<string>();
   const activeFilterCount = [language, region, sourceType, cadence].filter(
     (value) => value !== "all"
   ).length;
@@ -164,6 +164,7 @@ export function SourcesApp() {
   const detailSource = detailId ? SOURCE_CATALOG.find((source) => source.id === detailId) : undefined;
 
   const toggleSource = (id: string) => {
+    if (!ready) return;
     updatePrefs((current) => {
       const isEnabled = current.sourceOrder.includes(id);
       if (!isEnabled) {
@@ -185,6 +186,7 @@ export function SourcesApp() {
   };
 
   const rateSource = (id: string, rating: number) => {
+    if (!ready) return;
     updatePrefs((current) => {
       const sourceRatings = { ...current.sourceRatings };
       if (rating === 0) delete sourceRatings[id];
@@ -217,7 +219,7 @@ export function SourcesApp() {
             {SORT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
         </label>
-        <AddSourceForm prefs={prefs} onChange={setSharedPrefs} />
+        <AddSourceForm prefs={view} onChange={setSharedPrefs} />
       </section>
 
       <button
@@ -245,7 +247,7 @@ export function SourcesApp() {
             disabled={!activeFilterCount}
             onClick={() => { setLanguage("all"); setRegion("all"); setSourceType("all"); setCadence("all"); }}
           >Clear filters</button>
-          <p>{enabled.size} sources in your reader.</p>
+          <p>{ready ? enabled.size : view.sourceOrder.length} sources in your reader.</p>
         </aside>
 
         <section className="discover-results" aria-live="polite">
@@ -256,8 +258,8 @@ export function SourcesApp() {
           {filtered.length ? (
             <ol className="source-directory">
               {filtered.map((source, index) => {
-                const isEnabled = enabled.has(source.id);
-                const rating = prefs.sourceRatings[source.id] ?? 0;
+                const isEnabled = ready ? enabled.has(source.id) : view.sourceOrder.includes(source.id);
+                const rating = view.sourceRatings[source.id] ?? 0;
                 return (
                   <li key={source.id} className={isEnabled ? "is-added" : undefined}>
                     <span className="source-directory-rank">{String(index + 1).padStart(2, "0")}</span>
@@ -279,11 +281,20 @@ export function SourcesApp() {
                       <span>{source.cadence} · {source.depth}</span>
                       <div className="source-directory-rating">
                         <span>Your rating</span>
-                        <StarRating size="compact" value={rating} onChange={(value) => rateSource(source.id, value)} label={`Your rating for ${source.name}`} />
+                        <fieldset disabled={!ready}>
+                          <StarRating size="compact" value={rating} onChange={(value) => rateSource(source.id, value)} label={`Your rating for ${source.name}`} />
+                        </fieldset>
                       </div>
                     </div>
                     <div className="source-directory-actions">
-                      <button type="button" className={isEnabled ? "is-added" : undefined} onClick={() => toggleSource(source.id)}>{isEnabled ? "Added ✓" : "+ Add"}</button>
+                      <button
+                        type="button"
+                        className={isEnabled ? "is-added" : undefined}
+                        aria-disabled={!ready}
+                        onClick={() => toggleSource(source.id)}
+                      >
+                        {isEnabled ? "Added ✓" : "+ Add"}
+                      </button>
                       <a href={source.homeUrl} target="_blank" rel="noreferrer">Preview ↗<ExternalLinkHint /></a>
                     </div>
                   </li>
@@ -302,8 +313,8 @@ export function SourcesApp() {
       {detailSource ? (
         <SourceDetail
           source={detailSource}
-          isAdded={enabled.has(detailSource.id)}
-          rating={prefs.sourceRatings[detailSource.id] ?? 0}
+          isAdded={ready ? enabled.has(detailSource.id) : view.sourceOrder.includes(detailSource.id)}
+          rating={view.sourceRatings[detailSource.id] ?? 0}
           onToggle={() => toggleSource(detailSource.id)}
           onRate={(value) => rateSource(detailSource.id, value)}
           onClose={() => setDetailId(null)}
