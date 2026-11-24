@@ -817,6 +817,233 @@
   .archive-item-tools > div { right: auto; left: 0; }
 }
 
+.archive-select-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.75rem 0 0.35rem;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.archive-select-toolbar button,
+.archive-bulk-bar button,
+.archive-paste-links {
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--fg);
+  font: var(--text-label) var(--font);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.archive-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+}
+
+.archive-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-left: auto;
+}
+
+.archive-bulk-bar select {
+  min-height: 44px;
+}
+
+.archive-item.is-selected {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.archive-item-select {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.35rem 0.55rem 0;
+}
+
+.archive-item-select input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.archive-collection-tools {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.paste-links-backdrop,
+.mobile-publish-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, #000 45%, transparent);
+}
+
+.paste-links-dialog {
+  position: relative;
+  width: min(34rem, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 1rem 1.1rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.paste-links-head {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.75rem;
+  padding-right: 2rem;
+}
+
+.paste-links-close,
+.mobile-publish-close {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.paste-links-textarea {
+  width: 100%;
+  min-height: 10rem;
+  padding: 0.55rem;
+  border: 1px solid var(--line);
+  font: var(--text-control) var(--font);
+}
+
+.paste-links-review {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.paste-links-review label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.paste-links-title-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+}
+
+.paste-links-url {
+  color: var(--muted);
+  font-size: var(--text-label);
+  word-break: break-all;
+}
+
+.paste-links-hint {
+  color: var(--muted);
+}
+
+.paste-links-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.paste-links-actions .archive-primary-action,
+.mobile-publish-step .archive-primary-action {
+  min-height: 44px;
+}
+
+.mobile-publish-backdrop {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.mobile-publish-sheet {
+  position: relative;
+  width: 100%;
+  max-height: 92vh;
+  overflow: auto;
+  padding: 1rem 1rem calc(1.25rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.mobile-publish-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-bottom: 0.65rem;
+  font-weight: 600;
+}
+
+.mobile-publish-step {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.mobile-publish-step button,
+.mobile-publish-collection-pick button {
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--line);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-publish-collection-pick button.is-active {
+  border-color: var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+}
+
+.mobile-publish-done {
+  text-align: left;
+}
+
+.mobile-publish-signin a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .archive-publish-desktop {
+    display: none;
+  }
+
+  .archive-publish-panel > summary {
+    min-height: 44px;
+    cursor: pointer;
+  }
+}
+
+@media (min-width: 641px) {
+  .mobile-publish-backdrop {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .archive-item { transition: none; }
 }

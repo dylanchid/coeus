@@ -14,6 +14,16 @@ Object.defineProperty(dom.window.navigator, "clipboard", { configurable: true, v
 dom.window.HTMLElement.prototype.scrollIntoView = () => undefined;
 dom.window.requestAnimationFrame = (callback) => { callback(0); return 1; };
 dom.window.cancelAnimationFrame = () => undefined;
+dom.window.matchMedia = (query: string) => ({
+  matches: false,
+  media: query,
+  addEventListener: () => undefined,
+  removeEventListener: () => undefined,
+  dispatchEvent: () => false,
+  onchange: null,
+  addListener: () => undefined,
+  removeListener: () => undefined,
+} as MediaQueryList);
 
 const { cleanup, fireEvent, render, screen, waitFor } = await import("@testing-library/react");
 const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime");
@@ -63,7 +73,7 @@ test("Archive browse filters and title sort narrow the rendered pieces", async (
   await screen.findByRole("heading", { name: "Everything worth returning to." });
   fireEvent.click(screen.getByRole("button", { name: "Starred2" }));
   fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "title" } });
-  await waitFor(() => assert.match(screen.getByText(/2 pieces/).textContent ?? "", /2 pieces/));
+  await waitFor(() => assert.match(screen.getByText(/2 saved items/).textContent ?? "", /2 saved items/));
   const titles = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent ?? "");
   assert.ok(titles[0].startsWith("An app can be a home-cooked meal"));
   assert.ok(titles[1].startsWith("The Internet is for End Users"));
@@ -118,6 +128,23 @@ test("Archive collection publishing and unpublishing round-trip through their re
   const unpublishCall = calls.find((call) => call.url === "/api/collections/unpublish");
   assert.deepEqual(JSON.parse(unpublishCall?.body ?? "{}"), { collectionLocalId: "humane-internet" });
   await screen.findByText("Collection unpublished");
+});
+
+test("Archive select mode exposes bulk add and paste links beside a collection", async () => {
+  stubArchiveFetch((url) => {
+    if (url === "/api/collections") return response({ publications: [] });
+    if (url === "/api/posts") return response({ posts: [] });
+    if (url === "/api/archive/destinations") return response({ destinations: [] });
+    return response({ error: "not found" }, 404);
+  });
+  renderArchive();
+  await screen.findByRole("heading", { name: "Everything worth returning to." });
+  fireEvent.click(screen.getByRole("button", { name: /a humane internet/i }));
+  assert.ok(screen.getByRole("button", { name: "Paste links" }));
+  fireEvent.click(screen.getByRole("button", { name: "Select" }));
+  assert.ok(screen.getByLabelText("Select all visible"));
+  fireEvent.click(screen.getByLabelText("Select all visible"));
+  assert.ok(screen.getByRole("button", { name: "Add to collection →" }));
 });
 
 test("A new collection is personal, has no placeholder text, and its visibility follows what it was published as", async () => {
