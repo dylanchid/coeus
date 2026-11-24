@@ -19,6 +19,7 @@ import { ReaderToolbar } from "./ReaderToolbar";
 import { ReaderFeedback } from "./ReaderFeedback";
 import { ReaderContent } from "./ReaderContent";
 import { ReaderOverlays } from "./ReaderOverlays";
+import { ReaderIntro } from "./ReaderIntro";
 import { ReaderReturnBar } from "./ReaderReturnBar";
 
 const EMPTY_SOURCE_IDS: string[] = [];
@@ -144,7 +145,11 @@ export function NewsApp() {
   });
 
   if (!prefs) {
-    return <p className="boot">Loading…</p>;
+    return (
+      <AppShell section="reader">
+        <ReaderIntro />
+      </AppShell>
+    );
   }
 
   return (
