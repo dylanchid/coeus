@@ -124,10 +124,11 @@ test("a second signed-in user can follow a published collection", async ({ brows
     await followerPage.goto(`/c/${publication.slug}`);
     await expect(followerPage.getByRole("heading", { name: publication.name })).toBeVisible();
 
-    const follow = followerPage.getByRole("button", { name: "Follow collection" });
+    const heroActions = followerPage.locator(".public-collection-hero");
+    const follow = heroActions.getByRole("button", { name: "Follow collection" });
     await expect(follow).toBeEnabled();
     await follow.click();
-    await expect(followerPage.getByRole("button", { name: "Following collection ✓" })).toBeVisible();
+    await expect(heroActions.getByRole("button", { name: "Following collection ✓" })).toBeVisible();
 
     const followed = await followerPage.request.get("/api/collections/followed");
     expect(followed.ok(), await followed.text()).toBeTruthy();
