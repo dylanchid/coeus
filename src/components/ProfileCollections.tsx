@@ -1,57 +1,68 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
 import type { ProfileCollectionCard } from "@/lib/profiles/publicProfile";
 
-function pieceLabel(count: number): string {
-  return `${count} ${count === 1 ? "piece" : "pieces"}`;
+const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
+
+function formatUpdated(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "" : DATE_FORMAT.format(date);
 }
 
-function CollectionCard({ card }: { card: ProfileCollectionCard }) {
+function ShelfRow({ card }: { card: ProfileCollectionCard }) {
+  const unlisted = card.visibility === "unlisted";
   return (
-    <article className={`profile-collection${card.isUnpublished ? " is-unpublished" : ""}`}>
-      <h3>
+    <article
+      className={[
+        "profile-shelf-row",
+        unlisted ? "is-unlisted" : "",
+        card.isUnpublished ? "is-unpublished" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="profile-shelf-col profile-shelf-col--collection">
         {card.isUnpublished ? (
-          card.name
+          <span>{card.name}</span>
         ) : (
-          <a href={`/c/${card.slug}`}>{card.name}</a>
+          <Link href={`/c/${card.slug}`}>{card.name}</Link>
         )}
-      </h3>
-      {card.description ? <p>{card.description}</p> : null}
-      <p className="profile-collection-meta">
-        <span>{pieceLabel(card.itemCount)}</span>
-        {card.visibility === "unlisted" ? <span className="profile-collection-flag">Unlisted</span> : null}
+        {unlisted ? <span className="profile-collection-flag">Unlisted</span> : null}
         {card.isUnpublished ? <span className="profile-collection-flag">Unpublished</span> : null}
-      </p>
+      </div>
+      <div className="profile-shelf-col profile-shelf-col--items">{card.itemCount}</div>
+      <div className="profile-shelf-col profile-shelf-col--updated">{formatUpdated(card.updatedAt)}</div>
     </article>
   );
 }
 
 /**
- * The tab-driven feed column. `overview` shows the most recent few; the
- * `collections` tab shows all of them. Both read the same already-derived
- * card list — the boundary work happened in deriveProfileView().
+ * Editorial shelf: a tabular index of published collections for this profile.
  */
 export function ProfileCollections({
   cards,
-  heading,
-  limit,
   emptyMessage,
+  emptyAction = null,
 }: {
   cards: ProfileCollectionCard[];
-  heading?: string;
-  limit?: number;
   emptyMessage: string;
+  emptyAction?: ReactNode;
 }) {
-  const shown = typeof limit === "number" ? cards.slice(0, limit) : cards;
-
-  if (!shown.length) {
+  if (!cards.length) {
+    if (emptyAction) return <>{emptyAction}</>;
     return <p className="profile-feed-empty">{emptyMessage}</p>;
   }
 
   return (
-    <>
-      {heading ? <h2 className="profile-feed-heading">{heading}</h2> : null}
-      {shown.map((card) => (
-        <CollectionCard key={card.slug} card={card} />
+    <section className="profile-shelf" aria-label="Published collections">
+      <div className="profile-shelf-header">
+        <div className="profile-shelf-col profile-shelf-col--collection">[COLLECTION]</div>
+        <div className="profile-shelf-col profile-shelf-col--items">[ITEMS]</div>
+        <div className="profile-shelf-col profile-shelf-col--updated">[UPDATED]</div>
+      </div>
+      {cards.map((card) => (
+        <ShelfRow key={card.slug} card={card} />
       ))}
-    </>
+    </section>
   );
 }

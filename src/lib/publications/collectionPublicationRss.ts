@@ -1,6 +1,6 @@
 import type { CollectionPublication } from "./collectionPublication.ts";
 
-function escapeXml(value: string): string {
+export function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -9,7 +9,7 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function rfc822(iso: string): string {
+export function rfc822(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? new Date(0).toUTCString() : date.toUTCString();
 }

@@ -117,7 +117,6 @@ test("ProfileTabs renders the follow button for a signed-in non-owner, seeded an
   renderWithRouter(
     <ProfileTabs
       handle="ada"
-      current="overview"
       isOwner={false}
       follow={{ profileId: PROFILE_ID, initialFollowing: true }}
     />
@@ -125,17 +124,20 @@ test("ProfileTabs renders the follow button for a signed-in non-owner, seeded an
   const button = screen.getByRole("button", { name: /following/i });
   assert.equal(button.getAttribute("aria-pressed"), "true");
   assert.equal(fetchCalls, 0);
+  assert.ok(screen.getByRole("link", { name: "RSS ↗" }));
+  assert.ok(screen.getByRole("button", { name: "Copy link" }));
 });
 
 test("ProfileTabs shows the owner an Edit link and no follow button", () => {
-  renderWithRouter(<ProfileTabs handle="ada" current="overview" isOwner follow={null} />);
+  renderWithRouter(<ProfileTabs handle="ada" isOwner follow={null} />);
   assert.ok(screen.getByRole("link", { name: /edit profile/i }));
   assert.equal(screen.queryByRole("button", { name: /follow/i }), null);
   assert.equal(screen.queryByRole("link", { name: /follow @/i }), null);
+  assert.ok(screen.getByRole("link", { name: "RSS ↗" }));
 });
 
 test("ProfileTabs shows a logged-out visitor a Follow @handle sign-in link", () => {
-  renderWithRouter(<ProfileTabs handle="ada" current="overview" isOwner={false} follow={null} />);
+  renderWithRouter(<ProfileTabs handle="ada" isOwner={false} follow={null} />);
   const link = screen.getByRole("link", { name: "Follow @ada" });
   assert.equal(link.getAttribute("href"), "/signin?next=%2F%40ada");
   assert.ok(link.classList.contains("follow-control"));
@@ -166,37 +168,33 @@ test("ProfileSidebar renders SectionSwitches for the owner only", () => {
   assert.equal(screen.queryByRole("group", { name: /show on profile/i }), null);
 });
 
-test("ProfileSidebar hides the Followers figure from a visitor when the switch is off", () => {
-  const sections = { ...DEFAULT_SECTION_SWITCHES, showFollowers: false };
-  const view = deriveProfileView(profile({ sections }), [], { kind: "anonymous" }, {
-    sections,
+test("ProfileSidebar hides follower figures from visitors on the shelf", () => {
+  const view = deriveProfileView(profile(), [], { kind: "anonymous" }, {
+    sections: DEFAULT_SECTION_SWITCHES,
     followers: 9,
     following: 2,
   });
   render(<ProfileSidebar view={view} sectionSwitches={null} />);
   assert.equal(screen.queryByText("Followers"), null);
-  assert.ok(screen.getByText("Following"));
+  assert.equal(screen.queryByText("Following"), null);
+  assert.ok(screen.getByText("Collections"));
 });
 
-test("ProfileSidebar shows the owner a hidden-marked Followers figure", () => {
-  const sections = { ...DEFAULT_SECTION_SWITCHES, showFollowers: false };
-  const view = deriveProfileView(profile({ sections }), [], { kind: "owner", id: PROFILE_ID }, {
-    sections,
+test("ProfileSidebar shows the owner a quiet followers and following line", () => {
+  const view = deriveProfileView(profile(), [], { kind: "owner", id: PROFILE_ID }, {
+    sections: DEFAULT_SECTION_SWITCHES,
     followers: 9,
     following: 2,
   });
-  render(<ProfileSidebar view={view} sectionSwitches={sections} />);
-  assert.ok(screen.getByText(/Followers \(hidden\)/));
+  render(<ProfileSidebar view={view} sectionSwitches={DEFAULT_SECTION_SWITCHES} />);
+  assert.ok(screen.getByRole("link", { name: "9 followers" }));
+  assert.ok(screen.getByRole("link", { name: "2 following" }));
 });
 
-test("ProfileTabs lists only Overview and Collections", () => {
-  renderWithRouter(<ProfileTabs handle="ada" current="overview" isOwner={false} follow={null} />);
-  assert.ok(screen.getByRole("link", { name: "Overview" }));
-  assert.ok(screen.getByRole("link", { name: "Collections" }));
-  assert.equal(screen.queryByText("Posts"), null);
-  assert.equal(screen.queryByText("Reposts"), null);
-  assert.equal(screen.queryByText("Replies"), null);
-  assert.equal(screen.queryByText("Likes"), null);
+test("ProfileTabs has no legacy tab navigation links", () => {
+  renderWithRouter(<ProfileTabs handle="ada" isOwner={false} follow={null} />);
+  assert.equal(screen.queryByRole("link", { name: "Overview" }), null);
+  assert.equal(screen.queryByRole("link", { name: "Collections" }), null);
 });
 
 test("the profile page loader does not import conversation or post publication stores", () => {

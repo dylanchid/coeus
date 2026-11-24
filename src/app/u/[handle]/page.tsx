@@ -19,28 +19,29 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/**
- * `loadProfileIdentity` is a request-scoped `cache()` shared with
- * `generateMetadata`, so the two passes cost one `resolveHandle` query between
- * them. The render body then issues one parallel batch for everything the view
- * needs: the active tab's cards, aggregate sidebar figures, the person-follow counts, and — for a signed-in
- * non-owner — whether this viewer follows the profile (plan risk R5: resolved
- * once here, carried down as the Viewer).
- */
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const resolution = await loadProfileIdentity(handle);
   if (!resolution) return { title: PROFILE_NOT_FOUND_TITLE };
   const { profile } = resolution;
-  // No redirect handling here on purpose: when the page body calls
-  // permanentRedirect the response is a 308 with no rendered document, so this
-  // metadata is never delivered. Returning the canonical profile's metadata is
-  // harmless if a crawler ignores the redirect.
-  return pageMetadata({
+  const meta = pageMetadata({
     title: profileShareTitle(profile.displayName, profile.handle),
     path: `/@${profile.handle}`,
     description: profileShareDescription(profile.bio, profile.handle),
+    types: { "application/rss+xml": `/@${profile.handle}/rss.xml` },
   });
+  const ogImage = {
+    url: `/@${profile.handle}/opengraph-image`,
+    width: 1200,
+    height: 630,
+    alt: `${profile.displayName} (@${profile.handle}) on Coeus`,
+    type: "image/png",
+  };
+  return {
+    ...meta,
+    openGraph: { ...meta.openGraph, images: [ogImage] },
+    twitter: { ...meta.twitter, card: "summary_large_image" as const, images: [ogImage] },
+  };
 }
 
 export default async function ProfilePage({
@@ -56,8 +57,6 @@ export default async function ProfilePage({
   if (!resolution) notFound();
 
   const { profile } = resolution;
-  // A retired handle 308s straight to the canonical one, before any data load
-  // or render. permanentRedirect throws, so it must stay outside a try block.
   if (resolution.redirectFrom) permanentRedirect(`/@${profile.handle}`);
   const viewerId = await authenticateArchiveRequest();
   const isOwner = viewerId !== null && viewerId === profile.id;
@@ -66,16 +65,10 @@ export default async function ProfilePage({
   const profileStore = new SupabaseProfileStore(admin);
   const followStore = new SupabaseProfileFollowStore(admin);
 
-  // Collections use a keyset page only when active. Overview alone loads
-  // collection cards for its preview; sidebar figures use the visibility-cut
-  // aggregate below rather than a second card payload.
-  const activeParam = resolveProfileTab(query.tab);
+  const activeTab = resolveProfileTab(query.tab);
   const feedCursor = decodeProfileFeedCursor(query.cursor);
   const feedRequest = { cursor: feedCursor, limit: PROFILE_FEED_PAGE_SIZE };
 
-  // Resolve the relationship first: it defines the visibility-safe aggregate
-  // predicates below. Cursor tabs load only their own card slice; overview is
-  // the sole surface that needs the capped collection card list.
   const initialFollowing = viewerId && !isOwner ? await followStore.isFollowing(viewerId, profile.id) : false;
   const viewer: Viewer = isOwner
     ? { kind: "owner", id: viewerId! }
@@ -84,18 +77,15 @@ export default async function ProfilePage({
       : viewerId
         ? { kind: "signed-in", id: viewerId }
         : { kind: "anonymous" };
-  const [overviewPublications, collectionCount, followers, following, collectionsPage] = await Promise.all([
-    activeParam === "overview" ? profileStore.listOwnedPublications(profile.id) : Promise.resolve([]),
+
+  const [collectionsPage, collectionCount, followers, following] = await Promise.all([
+    profileStore.pageOwnedPublications(profile.id, feedRequest),
     profileStore.countVisibleOwnedPublications(profile.id, viewer),
     followStore.countFollowers(profile.id),
     followStore.countFollowing(profile.id),
-    activeParam === "collections"
-      ? profileStore.pageOwnedPublications(profile.id, feedRequest)
-      : Promise.resolve(null),
   ]);
-  const publications = overviewPublications.length ? overviewPublications : (collectionsPage?.items ?? []);
 
-  const view = deriveProfileView(profile, publications, viewer, {
+  const view = deriveProfileView(profile, collectionsPage.items, viewer, {
     sections: profile.sections,
     followers,
     following,
@@ -104,19 +94,17 @@ export default async function ProfilePage({
 
   const openEditor = isOwner && (query.edit === "1" || query.edit === "true");
 
-  const paginatedCollections = collectionsPage
-    ? {
-        cards: deriveCollectionCards(collectionsPage.items, viewer, profile.pinnedCollectionSlugs),
-        hasMore: collectionsPage.hasMore,
-        nextCursor: collectionsPage.nextCursor,
-      }
-    : null;
+  const paginatedCollections = {
+    cards: deriveCollectionCards(collectionsPage.items, viewer, profile.pinnedCollectionSlugs),
+    hasMore: collectionsPage.hasMore,
+    nextCursor: collectionsPage.nextCursor,
+  };
 
   return (
     <AppShell section="account">
       <ProfileView
         view={view}
-        tab={resolveProfileTab(query.tab)}
+        tab={activeTab}
         follow={isOwner || viewerId === null ? null : { profileId: profile.id, initialFollowing }}
         sectionSwitches={isOwner ? profile.sections : null}
         openEditor={openEditor}
