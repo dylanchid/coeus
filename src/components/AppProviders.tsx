@@ -1,9 +1,10 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { AuthProvider } from "./AuthProvider";
+import { AuthProvider, type AuthClientLike } from "./AuthProvider";
 import { ChromeProvider } from "./ChromeProvider";
 import { ProfileGate } from "./ProfileGate";
+import { FollowedCollectionsSync } from "./FollowedCollectionsSync";
 import { usePreferencesProvider, type PreferencesContextValue } from "./usePreferencesProvider";
 import { useArchiveProvider, type ArchiveContextValue } from "./useArchiveProvider";
 
@@ -18,14 +19,22 @@ const ArchiveContext = createContext<ArchiveContextValue | null>(null);
  * `useArchiveProvider` (each already memoizes its context value); this component
  * only wires the providers together in the required nesting order.
  */
-export function AppProviders({ children }: { children: React.ReactNode }) {
+export function AppProviders({
+  children,
+  authClient,
+}: {
+  children: React.ReactNode;
+  /** Test seam: in-memory auth client passed through to AuthProvider. */
+  authClient?: AuthClientLike;
+}) {
   const preferences = usePreferencesProvider();
   const archive = useArchiveProvider();
   return (
-    <AuthProvider>
+    <AuthProvider client={authClient}>
       <PreferencesContext.Provider value={preferences}>
         <ArchiveContext.Provider value={archive}>
           <ChromeProvider>
+            <FollowedCollectionsSync />
             {children}
             <ProfileGate />
           </ChromeProvider>

@@ -129,3 +129,13 @@ test("sanitizeCustomSources ignores non-array input and caps the list at 100", (
   }));
   assert.equal(sanitizeCustomSources(many).length, 100);
 });
+
+test("sanitizeCustomSources keeps third-party https rule unchanged", () => {
+  const httpOnly = {
+    id: "bad",
+    name: "Bad",
+    feedUrl: "http://example.com/feed",
+    homeUrl: "http://example.com",
+  };
+  assert.equal(sanitizeCustomSources([httpOnly]).length, 0);
+});

@@ -103,18 +103,29 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 function CollectionActionRow({
   publicationId,
+  slug,
+  name,
+  curatorHandle,
   rssHref,
   canonicalUrl,
   showRss,
 }: {
   publicationId: string;
+  slug: string;
+  name: string;
+  curatorHandle?: string;
   rssHref: string;
   canonicalUrl: string;
   showRss: boolean;
 }) {
   return (
     <div className="public-collection-actions">
-      <FollowButton publicationId={publicationId} />
+      <FollowButton
+        publicationId={publicationId}
+        slug={slug}
+        name={name}
+        curatorHandle={curatorHandle}
+      />
       {showRss ? (
         <a className="follow-control follow-control--secondary" href={rssHref}>
           RSS ↗
@@ -210,6 +221,9 @@ export default async function PublicCollectionPage({
           {publication.attribution ? <p className="public-collection-attribution">{publication.attribution}</p> : null}
           <CollectionActionRow
             publicationId={publication.id}
+            slug={publication.slug}
+            name={publication.name}
+            curatorHandle={curator?.handle}
             rssHref={rssHref}
             canonicalUrl={canonicalUrl}
             showRss={rssAvailable}
@@ -241,13 +255,16 @@ export default async function PublicCollectionPage({
             </footer>
             <CollectionActionRow
               publicationId={publication.id}
+              slug={publication.slug}
+              name={publication.name}
+              curatorHandle={curator?.handle}
               rssHref={rssHref}
               canonicalUrl={canonicalUrl}
               showRss={rssAvailable}
             />
           </section>
         ) : (
-          <p className="public-collection-empty">This collection doesn&rsquo;t have any pieces yet.</p>
+          <p className="public-collection-empty">This collection doesn&rsquo;t have any entries yet.</p>
         )}
       </div>
     </AppShell>

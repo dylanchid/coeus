@@ -12,10 +12,10 @@ import { readAllPages } from "../pagedRead.ts";
 export type { FollowedFeedItem, FollowedFeedPage } from "./followedFeed.ts";
 
 /**
- * The server reader behind the Discover "Following" view. It fetches raw
- * collection + post rows from people the viewer follows and hands them to
+ * The server reader behind the Discover "Following" view. It fetches published
+ * collections from people the viewer follows and hands them to
  * combineFollowedFeed() (followedFeed.ts), which owns the visibility cut and
- * ordering. Mirrors how listPublic() lives beside its pure snapshot helpers.
+ * ordering.
  */
 export interface FollowedFeedReader {
   listFollowedPeopleContent(viewerId: string, limit: number, offset: number): Promise<FollowedFeedPage>;
@@ -47,20 +47,17 @@ export class SupabaseFollowedFeedReader implements FollowedFeedReader {
     // Cap each table's fetch at what a full page could need; the union's top
     // rows are guaranteed to sit inside each table's own top rows.
     const cap = boundedOffset + boundedLimit + 1;
-    const [collections, posts] = await Promise.all([
-      this.collectionCandidates(followeeIds, cap),
-      this.postCandidates(followeeIds, cap),
-    ]);
+    const collections = await this.collectionCandidates(followeeIds, cap);
 
     // The viewer follows every author in the set, so `follower` is the right
     // viewer kind: it admits public + followers and rejects private + unlisted.
-    return combineFollowedFeed([...collections, ...posts], { kind: "follower", id: viewerId }, boundedLimit, boundedOffset);
+    return combineFollowedFeed(collections, { kind: "follower", id: viewerId }, boundedLimit, boundedOffset);
   }
 
   private async collectionCandidates(ownerIds: string[], cap: number): Promise<FollowedFeedCandidate[]> {
     const { data, error } = await this.supabase
       .from("collection_publications")
-      .select("slug,name,description,curator_note,attribution,visibility,published_at,collection_publication_items(count)")
+      .select("id,slug,name,description,curator_note,attribution,visibility,published_at,collection_publication_items(count)")
       .in("owner_id", ownerIds)
       .is("unpublished_at", null)
       .order("published_at", { ascending: false })
@@ -71,6 +68,7 @@ export class SupabaseFollowedFeedReader implements FollowedFeedReader {
       item: {
         kind: "collection",
         publishedAt: String(row.published_at),
+        publicationId: String(row.id),
         slug: String(row.slug),
         name: String(row.name),
         description: String(row.description ?? ""),
@@ -81,28 +79,6 @@ export class SupabaseFollowedFeedReader implements FollowedFeedReader {
     }));
   }
 
-  private async postCandidates(authorIds: string[], cap: number): Promise<FollowedFeedCandidate[]> {
-    const { data, error } = await this.supabase
-      .from("posts")
-      .select("title,url,source_name,author,excerpt,commentary,visibility,created_at")
-      .in("author_id", authorIds)
-      .order("created_at", { ascending: false })
-      .limit(cap);
-    if (error) throw error;
-    return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
-      visibility: row.visibility as Visibility,
-      item: {
-        kind: "post",
-        publishedAt: String(row.created_at),
-        title: String(row.title),
-        url: String(row.url),
-        sourceName: String(row.source_name ?? ""),
-        author: String(row.author ?? ""),
-        excerpt: String(row.excerpt ?? ""),
-        commentary: String(row.commentary ?? ""),
-      },
-    }));
-  }
 }
 
 function embeddedCount(value: unknown): number {

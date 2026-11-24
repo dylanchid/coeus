@@ -1020,10 +1020,20 @@ kbd {
 .source-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.35rem;
   margin-bottom: 0.65rem;
   border-bottom: 1px solid var(--rule-strong);
   padding-bottom: 0;
+}
+
+.source-collection-kicker {
+  flex: 0 0 100%;
+  margin: 0 0 0.1rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 
 .source-head h3 {
@@ -1033,6 +1043,7 @@ kbd {
   line-height: 1.2;
   letter-spacing: -0.02em;
   font-weight: 700;
+  flex: 1 1 auto;
 }
 
 .source-head h3 a {

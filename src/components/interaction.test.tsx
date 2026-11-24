@@ -173,7 +173,11 @@ test("mobile Settings behaves as a modal sheet", async () => {
     </div>;
   }
 
-  render(<Harness />);
+  render(
+    <AuthProvider client={fakeAuthClient(null) as never}>
+      <Harness />
+    </AuthProvider>,
+  );
   const opener = screen.getByRole("button", { name: "Open settings" });
   opener.focus();
   fireEvent.click(opener);
@@ -200,7 +204,11 @@ test("Settings keeps tab content and import feedback when switching sections", a
     dispatchEvent: () => true,
   });
 
-  render(<SettingsPanel open prefs={DEFAULT_PREFS} onClose={() => undefined} onChange={() => undefined} />);
+  render(
+    <AuthProvider client={fakeAuthClient(null) as never}>
+      <SettingsPanel open prefs={DEFAULT_PREFS} onClose={() => undefined} onChange={() => undefined} />
+    </AuthProvider>,
+  );
   const dialog = await screen.findByRole("dialog", { name: "Settings" });
   fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
   assert.ok(screen.getByRole("heading", { name: "Feed window" }));
@@ -233,7 +241,11 @@ test("mobile Settings traps reverse Tab within the dialog", async () => {
     dispatchEvent: () => true,
   });
 
-  render(<SettingsPanel open prefs={DEFAULT_PREFS} onClose={() => undefined} onChange={() => undefined} />);
+  render(
+    <AuthProvider client={fakeAuthClient(null) as never}>
+      <SettingsPanel open prefs={DEFAULT_PREFS} onClose={() => undefined} onChange={() => undefined} />
+    </AuthProvider>,
+  );
   const dialog = await screen.findByRole("dialog", { name: "Settings" });
   const done = screen.getByRole("button", { name: "Done" });
   done.focus();
@@ -264,7 +276,11 @@ test("desktop Settings stays a popover and returns focus after Escape", async ()
     </div>;
   }
 
-  render(<Harness />);
+  render(
+    <AuthProvider client={fakeAuthClient(null) as never}>
+      <Harness />
+    </AuthProvider>,
+  );
   const opener = screen.getByRole("button", { name: "Open settings" });
   opener.focus();
   fireEvent.click(opener);
@@ -923,54 +939,73 @@ test("Profile follow button shows a sign-in prompt on a 401, linking back to the
 
 // ── FollowButton ───────────────────────────────────────────────────────────
 
+const FOLLOW_BUTTON_PROPS = {
+  publicationId: "pub-1",
+  slug: "field-notes",
+  name: "Field Notes",
+  curatorHandle: "ada",
+};
+
+function renderFollowButton(props: Partial<typeof FOLLOW_BUTTON_PROPS> = {}, session: FakeSession = null) {
+  return render(
+    <AppProviders authClient={session ? fakeAuthClient(session) as never : undefined}>
+      <FollowButton {...FOLLOW_BUTTON_PROPS} {...props} />
+    </AppProviders>,
+  );
+}
+
+function stubCollectionsFetch(
+  handler: (url: string, method: string, body: unknown) => Response | Promise<Response>,
+) {
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const method = (init?.method ?? "GET").toUpperCase();
+    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    if (url.endsWith("/api/account/profile")) {
+      return new Response(JSON.stringify({ profile: { handle: "ada", displayName: "Ada", bio: "" } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return handler(url, method, body);
+  }) as typeof fetch;
+}
+
 test("FollowButton takes its label from the followed list", async () => {
-  globalThis.fetch = (async () => new Response(JSON.stringify({ publications: [{ id: "pub-1" }] }), {
+  stubCollectionsFetch(() => new Response(JSON.stringify({ publications: [{ id: "pub-1" }] }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
-  })) as typeof fetch;
+  }));
 
-  render(<FollowButton publicationId="pub-1" />);
+  renderFollowButton({}, { user: { id: "u1", email: "ada@example.com" } });
   const button = await screen.findByRole("button", { name: "Following collection ✓" });
   assert.equal(button.getAttribute("aria-pressed"), "true");
   assert.ok(button.classList.contains("follow-control--primary"));
   assert.equal(button.hasAttribute("disabled"), false);
 });
 
-test("FollowButton stays disabled until the followed list resolves", async () => {
-  let resolveList: (value: Response) => void = () => {};
-  const pending = new Promise<Response>((resolve) => { resolveList = resolve; });
-  globalThis.fetch = (() => pending) as typeof fetch;
-
-  render(<FollowButton publicationId="pub-1" />);
+test("FollowButton stays disabled until preferences resolve", async () => {
+  renderFollowButton();
   const button = screen.getByRole("button", { name: "Follow collection" });
   assert.equal(button.hasAttribute("disabled"), true);
-  assert.equal(button.getAttribute("aria-pressed"), "false");
-
-  resolveList(new Response(JSON.stringify({ publications: [] }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  }));
   await waitFor(() => assert.equal(button.hasAttribute("disabled"), false));
   assert.equal(button.getAttribute("aria-pressed"), "false");
 });
 
 test("FollowButton follow shows Undo, and Undo calls unfollow", async () => {
   const calls: { url: string; method: string; body: unknown }[] = [];
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    const method = (init?.method ?? "GET").toUpperCase();
-    const body = init?.body ? JSON.parse(String(init.body)) : null;
+  stubCollectionsFetch((url, method, body) => {
     calls.push({ url, method, body });
-    if (method === "GET") {
+    if (url.endsWith("/api/collections/followed")) {
       return new Response(JSON.stringify({ publications: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
     return new Response(null, { status: 204 });
-  }) as typeof fetch;
+  });
 
-  render(<FollowButton publicationId="pub-1" />);
+  renderFollowButton({}, { user: { id: "u1", email: "ada@example.com" } });
   const follow = await screen.findByRole("button", { name: "Follow collection" });
   await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
   fireEvent.click(follow);
@@ -978,7 +1013,7 @@ test("FollowButton follow shows Undo, and Undo calls unfollow", async () => {
   const undo = await screen.findByRole("button", { name: "Undo" });
   const followed = screen.getByRole("button", { name: "Following collection ✓" });
   assert.equal(followed.getAttribute("aria-pressed"), "true");
-  assert.match(screen.getByRole("status").textContent ?? "", /Following\. You’ll find it in Discover · Following\./);
+  assert.match(screen.getByRole("status").textContent ?? "", /New entries will appear in your Reader\./);
   fireEvent.click(undo);
 
   await waitFor(() => assert.ok(screen.getByRole("button", { name: "Follow collection" })));
@@ -995,19 +1030,18 @@ test("FollowButton follow shows Undo, and Undo calls unfollow", async () => {
 
 test("FollowButton unfollow from the done state is one click and shows no Undo", async () => {
   const calls: string[] = [];
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const method = (init?.method ?? "GET").toUpperCase();
-    calls.push(`${method} ${String(input)}`);
-    if (method === "GET") {
+  stubCollectionsFetch((url, method) => {
+    calls.push(`${method} ${url}`);
+    if (url.endsWith("/api/collections/followed")) {
       return new Response(JSON.stringify({ publications: [{ id: "pub-1" }] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
     return new Response(null, { status: 204 });
-  }) as typeof fetch;
+  });
 
-  render(<FollowButton publicationId="pub-1" />);
+  renderFollowButton({}, { user: { id: "u1", email: "ada@example.com" } });
   const followed = await screen.findByRole("button", { name: "Following collection ✓" });
   fireEvent.click(followed);
   await waitFor(() => assert.ok(screen.getByRole("button", { name: "Follow collection" })));
@@ -1028,17 +1062,17 @@ test("FollowButton hides Undo when the 8 second timer fires and keeps the confir
   }) as typeof setTimeout;
 
   try {
-    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      if ((init?.method ?? "GET").toUpperCase() === "GET") {
+    stubCollectionsFetch((url) => {
+      if (url.endsWith("/api/collections/followed")) {
         return new Response(JSON.stringify({ publications: [] }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }
       return new Response(null, { status: 204 });
-    }) as typeof fetch;
+    });
 
-    render(<FollowButton publicationId="pub-1" />);
+    renderFollowButton({}, { user: { id: "u1", email: "ada@example.com" } });
     const follow = await screen.findByRole("button", { name: "Follow collection" });
     await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
     fireEvent.click(follow);
@@ -1047,7 +1081,7 @@ test("FollowButton hides Undo when the 8 second timer fires and keeps the confir
 
     await act(async () => { undoCallback!(); });
     assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
-    assert.match(screen.getByRole("status").textContent ?? "", /Following\. You’ll find it in Discover · Following\./);
+    assert.match(screen.getByRole("status").textContent ?? "", /New entries will appear in your Reader\./);
     assert.equal(screen.getByRole("button", { name: "Following collection ✓" }).getAttribute("aria-pressed"), "true");
   } finally {
     globalThis.setTimeout = originalSetTimeout;
@@ -1068,17 +1102,17 @@ test("FollowButton clears the undo timer on unmount", async () => {
   }) as typeof clearTimeout;
 
   try {
-    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      if ((init?.method ?? "GET").toUpperCase() === "GET") {
+    stubCollectionsFetch((url) => {
+      if (url.endsWith("/api/collections/followed")) {
         return new Response(JSON.stringify({ publications: [] }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }
       return new Response(null, { status: 204 });
-    }) as typeof fetch;
+    });
 
-    const { unmount } = render(<FollowButton publicationId="pub-1" />);
+    const { unmount } = renderFollowButton({}, { user: { id: "u1", email: "ada@example.com" } });
     const follow = await screen.findByRole("button", { name: "Follow collection" });
     await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
     fireEvent.click(follow);
@@ -1091,33 +1125,29 @@ test("FollowButton clears the undo timer on unmount", async () => {
   }
 });
 
-test("FollowButton shows a sign-in link on a 401 without flipping state", async () => {
-  window.history.pushState({}, "", "/c/field-notes");
-  try {
-    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const method = (init?.method ?? "GET").toUpperCase();
-      if (method === "GET") {
-        return new Response(JSON.stringify({ publications: [] }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401 });
-    }) as typeof fetch;
+test("FollowButton signed-out follow adds a Reader source locally", async () => {
+  const calls: string[] = [];
+  stubCollectionsFetch((url, method) => {
+    calls.push(`${method} ${url}`);
+    return new Response(JSON.stringify({ publications: [] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  });
 
-    render(<FollowButton publicationId="pub-1" />);
-    const follow = await screen.findByRole("button", { name: "Follow collection" });
-    await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
-    fireEvent.click(follow);
+  renderFollowButton();
+  const follow = await screen.findByRole("button", { name: "Follow collection" });
+  await waitFor(() => assert.equal(follow.hasAttribute("disabled"), false));
+  fireEvent.click(follow);
 
-    const link = await screen.findByRole("link", { name: "Sign in" });
-    assert.equal(link.getAttribute("href"), "/signin?next=%2Fc%2Ffield-notes");
-    assert.match(screen.getByRole("status").textContent ?? "", /Sign in to follow this collection\./);
-    assert.equal(screen.getByRole("button", { name: "Follow collection" }).getAttribute("aria-pressed"), "false");
-    assert.equal(screen.queryByRole("button", { name: "Undo" }), null);
-  } finally {
-    window.history.pushState({}, "", "/");
-  }
+  await screen.findByRole("button", { name: "Following collection ✓" });
+  assert.match(screen.getByRole("status").textContent ?? "", /New entries will appear in your Reader\./);
+  assert.match(screen.getByRole("status").textContent ?? "", /Sign in to keep it on every device\./);
+  await waitFor(() => {
+    const saved = JSON.parse(localStorage.getItem("coeus.prefs.v1") ?? "{}");
+    assert.ok(saved.customSources?.some((source: { id: string }) => source.id === "c:field-notes"));
+  });
+  assert.ok(!calls.some((entry) => entry.startsWith("POST /api/collections/follow")));
 });
 
 // ── SectionSwitches ────────────────────────────────────────────────────────
