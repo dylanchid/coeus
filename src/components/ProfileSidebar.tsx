@@ -1,15 +1,11 @@
+import Link from "next/link";
 import type { ProfileSectionSwitches } from "@/lib/profiles/profileSections";
 import type { PublicProfileView } from "@/lib/profiles/publicProfile";
 import { SectionSwitches } from "./SectionSwitches";
 
 /**
- * The persistent right column: the figures row, bio, external links, and — for
- * the owner — the section-visibility control strip.
- *
- * The Followers figure counts *person* follows (profile_follows) as of Phase 2.
- * The Followers / Following figures are gated by the owner's show_* switches:
- * `view.visibleSections` already reflects that, so a switched-off figure is
- * simply absent for a visitor and rendered with a "hidden" marker for the owner.
+ * Persistent right column: collections count, owner-only follow counts, links,
+ * and section-visibility controls.
  */
 export function ProfileSidebar({
   view,
@@ -19,7 +15,6 @@ export function ProfileSidebar({
   sectionSwitches?: ProfileSectionSwitches | null;
 }) {
   const { followers, following } = view.figures;
-  const sections = view.visibleSections;
 
   return (
     <aside className="profile-sidebar" aria-label="Profile summary">
@@ -28,25 +23,19 @@ export function ProfileSidebar({
           <dt>Collections</dt>
           <dd>{view.figures.collections}</dd>
         </div>
-        {sections.followers ? (
-          <div className={`profile-figure${sections.followers.hidden ? " is-hidden-section" : ""}`}>
-            <dt>Followers{sections.followers.hidden ? " (hidden)" : ""}</dt>
-            <dd>{followers}</dd>
-          </div>
-        ) : null}
-        {sections.following ? (
-          <div className={`profile-figure${sections.following.hidden ? " is-hidden-section" : ""}`}>
-            <dt>Following{sections.following.hidden ? " (hidden)" : ""}</dt>
-            <dd>{following}</dd>
-          </div>
-        ) : null}
       </dl>
+
+      {view.isOwner ? (
+        <p className="profile-counts-quiet">
+          <Link href={`/@${view.handle}/followers`}>{followers} followers</Link>
+          <span aria-hidden="true"> · </span>
+          <Link href={`/@${view.handle}/following`}>{following} following</Link>
+        </p>
+      ) : null}
 
       {view.isOwner && sectionSwitches ? (
         <SectionSwitches isOwner initial={sectionSwitches} />
       ) : null}
-
-      {view.bio ? <p className="profile-sidebar-bio">{view.bio}</p> : null}
 
       {view.links.length ? (
         <ul className="profile-sidebar-links">

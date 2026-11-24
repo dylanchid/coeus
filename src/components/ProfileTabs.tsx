@@ -1,75 +1,48 @@
 import Link from "next/link";
-import { profileTabs, type ProfileTabId, type ProfileTabStates } from "@/lib/profiles/profileTabs";
+import { CopyLinkButton } from "./CopyLinkButton";
 import { ProfileFollowButton } from "./ProfileFollowButton";
 import type { ProfileFollowContext } from "./ProfileView";
 
 /**
- * The tab + actions row under the banner. Tabs are real links carrying `?tab=`
- * (not role=tablist — this is navigation, not in-page panels), so switching
- * tabs is a server render with no client navigation required. A greyed tab
- * (an owner's still-empty section) renders as plain text, not a link.
- *
- * The actions slot holds the owner's "Edit profile" link, a signed-in
- * non-owner's Follow control (seeded with `initialFollowing` from the server
- * so it is correct at first paint — plan risk R5), or a signed-out visitor's
- * sign-in link when `follow` is null.
+ * Profile action row: edit, follow, RSS, and copy link. Replaces the old tab nav;
+ * the shelf is the only profile view.
  */
 export function ProfileTabs({
   handle,
-  current,
   isOwner,
   follow = null,
-  tabStates = {},
 }: {
   handle: string;
-  current: ProfileTabId;
   isOwner: boolean;
   follow?: ProfileFollowContext | null;
-  /** Per-tab visible / greyed / hidden state for Posts, Reposts, Replies, Likes. */
-  tabStates?: ProfileTabStates;
 }) {
+  const profileUrl = `/@${handle}`;
+  const rssHref = `/@${handle}/rss.xml`;
+
   return (
-    <nav className="profile-tabs" aria-label="Profile sections">
-      {profileTabs(handle, current, tabStates).map((tab) =>
-        tab.greyed ? (
-          <span key={tab.id} className="profile-tab is-greyed" aria-disabled="true">
-            {tab.label}
-          </span>
-        ) : (
-          <Link
-            key={tab.id}
-            className="profile-tab"
-            href={tab.href}
-            aria-current={tab.current ? "page" : undefined}
-          >
-            {tab.label}
-          </Link>
-        )
-      )}
+    <nav className="profile-actions-row" aria-label="Profile actions">
       {isOwner ? (
-        <span className="profile-actions">
-          <Link className="profile-action" href={`/@${handle}?edit=1`}>
-            Edit profile
-          </Link>
-        </span>
+        <Link className="profile-action" href={`/@${handle}?edit=1`}>
+          Edit profile
+        </Link>
       ) : follow ? (
-        <span className="profile-actions">
-          <ProfileFollowButton
-            profileId={follow.profileId}
-            handle={handle}
-            initialFollowing={follow.initialFollowing}
-          />
-        </span>
+        <ProfileFollowButton
+          profileId={follow.profileId}
+          handle={handle}
+          initialFollowing={follow.initialFollowing}
+        />
       ) : (
-        <span className="profile-actions">
-          <Link
-            className="follow-control follow-control--secondary"
-            href={`/signin?next=${encodeURIComponent(`/@${handle}`)}`}
-          >
-            Follow @{handle}
-          </Link>
-        </span>
+        <Link
+          className="follow-control follow-control--secondary"
+          href={`/signin?next=${encodeURIComponent(profileUrl)}`}
+        >
+          Follow @{handle}
+        </Link>
       )}
+      <a className="follow-control follow-control--secondary" href={rssHref}>
+        RSS ↗
+      </a>
+      <CopyLinkButton url={profileUrl} className="follow-control follow-control--secondary" />
     </nav>
   );
 }

@@ -112,6 +112,26 @@ async function createReply(page: Page, targetId: string, body: string, parentId?
   return (await response.json() as { replyId: string }).replyId;
 }
 
+test("profile shelf shows collection index without visitor follow counts", async ({ browser, establishedUser }) => {
+  const { page: ownerPage, handle } = establishedUser;
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const publication = await seedCollection(ownerPage, suffix);
+
+  const visitorContext = await browser.newContext();
+  const visitorPage = await visitorContext.newPage();
+  try {
+    await visitorPage.goto(`/@${handle}`);
+    await expect(visitorPage.getByText("[COLLECTION]")).toBeVisible();
+    await expect(visitorPage.getByRole("link", { name: publication.name })).toBeVisible();
+    await expect(visitorPage.getByRole("link", { name: "RSS ↗" })).toBeVisible();
+    await expect(visitorPage.getByRole("button", { name: "Copy link" })).toBeVisible();
+    await expect(visitorPage.getByRole("link", { name: `Follow @${handle}` })).toBeVisible();
+    await expect(visitorPage.getByText("followers", { exact: false })).toHaveCount(0);
+  } finally {
+    await visitorContext.close();
+  }
+});
+
 test("a second signed-in user can follow a published collection", async ({ browser, establishedUser }) => {
   const { page: ownerPage, handle } = establishedUser;
   const suffix = Math.random().toString(36).slice(2, 8);

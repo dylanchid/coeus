@@ -45,17 +45,7 @@
   pointer-events: none;
 }
 
-.profile-cover-name {
-  position: absolute;
-  z-index: 1;
-  left: clamp(1rem, 3vw, 2rem);
-  bottom: clamp(0.6rem, 2vw, 1rem);
-  right: clamp(1rem, 3vw, 2rem);
-  margin: 0;
-  color: var(--fg);
-  font: 700 clamp(1.7rem, 4.5vw, 3rem)/1.02 var(--font-display);
-  letter-spacing: -0.03em;
-}
+/* Display name lives in the identity row (Newsreader), not over the cover. */
 
 /* —— Identity row: avatar overlaps the cover's lower-left —————— */
 .profile-identity {
@@ -83,39 +73,33 @@
 }
 
 .profile-identity-meta { min-width: 0; padding-bottom: 0.4rem; }
-.profile-handle { margin: 0; color: var(--handle); font-size: var(--text-meta); letter-spacing: 0.02em; }
+.profile-identity-name {
+  margin: 0 0 0.2rem;
+  color: var(--fg);
+  font: 700 clamp(1.5rem, 3.5vw, 2.4rem)/1.05 var(--font-display);
+  letter-spacing: -0.03em;
+}
+.profile-handle { margin: 0; color: var(--handle); font-size: var(--text-meta); letter-spacing: 0.02em; font-family: var(--font); }
+.profile-identity-bio {
+  margin: 0.35rem 0 0;
+  color: var(--fg);
+  font-size: var(--text-body);
+  line-height: 1.45;
+  max-width: 40rem;
+}
 .profile-location { margin: 0.15rem 0 0; color: var(--muted); font-size: var(--text-meta); }
 
-/* —— Tab + actions row ——————————————————————————————————— */
-.profile-tabs {
+/* —— Action row (replaces tab nav) ——————————————————————— */
+.profile-actions-row {
   display: flex;
   align-items: center;
-  gap: 0 1.1rem;
-  /* One scrollable row on narrow screens; tabs never wrap letter by letter. */
-  overflow-x: auto;
-  scrollbar-width: none;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.65rem;
   margin: var(--space-md) 0 0;
-  padding: 0 clamp(1rem, 3vw, 2rem);
+  padding: 0 clamp(1rem, 3vw, 2rem) var(--space-sm);
   border-bottom: 1px solid var(--header-rule);
 }
-.profile-tab {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  padding: 0.6rem 0;
-  color: var(--muted);
-  font-size: var(--text-meta);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-.profile-tab:hover { color: var(--fg); }
-.profile-tab[aria-current="page"] { color: var(--fg); border-bottom-color: var(--fg); }
-/* The owner's Posts tab before they have published a post: shown, not a link. */
-.profile-tab.is-greyed { color: var(--line); cursor: default; }
-
-.profile-actions { margin-left: auto; flex: 0 0 auto; white-space: nowrap; }
+.profile-actions-row .profile-follow { margin: 0; }
 .profile-action {
   display: inline-block;
   min-height: 32px;
@@ -149,22 +133,57 @@
   color: var(--handle);
 }
 
-.profile-collection { padding-bottom: var(--space-md); border-bottom: 1px solid var(--line); }
-.profile-collection:last-child { border-bottom: none; }
-.profile-collection h3 { margin: 0 0 0.3rem; font-size: var(--text-lead); }
-.profile-collection h3 a { color: var(--fg); text-decoration: none; }
-.profile-collection h3 a:hover { text-decoration: underline; }
-.profile-collection p { margin: 0 0 0.35rem; color: var(--fg); line-height: 1.55; }
-.profile-collection-meta {
-  margin: 0;
+/* —— Editorial shelf index —————————————————————————————— */
+.profile-shelf {
+  display: grid;
+  gap: 0;
+  border-top: 1px dashed var(--line);
+}
+.profile-shelf-header,
+.profile-shelf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5rem 7.5rem;
+  gap: var(--space-sm);
+  align-items: baseline;
+  padding: 0.65rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.profile-shelf-header {
+  color: var(--handle);
+  font-size: var(--text-label);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font);
+}
+.profile-shelf-col--items,
+.profile-shelf-col--updated {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.profile-shelf-col--collection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.6rem;
+  align-items: baseline;
+  min-width: 0;
+}
+.profile-shelf-col--collection a {
+  color: var(--fg);
+  text-decoration: none;
+  font-size: var(--text-lead);
+}
+.profile-shelf-col--collection a:hover { text-decoration: underline; }
+.profile-shelf-col--items,
+.profile-shelf-col--updated {
   color: var(--muted);
   font-size: var(--text-meta);
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
 }
-.profile-collection-flag { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; }
-.profile-collection.is-unpublished { opacity: 0.55; }
+.profile-shelf-row.is-unlisted {
+  outline: 1px dashed var(--handle);
+  outline-offset: 2px;
+}
+.profile-shelf-row.is-unpublished { opacity: 0.55; }
+.profile-collection-flag { color: var(--handle); text-transform: uppercase; letter-spacing: 0.06em; font-size: var(--text-label); }
 
 /* The colour-free tier glyph (● ◐ ◍ ○) — the sr-only label carries the name. */
 .visibility-glyph { display: inline-flex; align-items: center; color: var(--handle); }
@@ -275,7 +294,13 @@
 /* Owner-only: a section whose show_* switch is off still renders, dimmed. A
    visitor never reaches this class — the figure is absent from their view. */
 .profile-figure.is-hidden-section { opacity: 0.55; }
-.profile-sidebar-bio { margin: 0; color: var(--fg); line-height: 1.6; font-size: var(--text-body); }
+.profile-counts-quiet {
+  margin: 0;
+  font-size: var(--text-meta);
+  color: var(--muted);
+}
+.profile-counts-quiet a { color: var(--link); text-decoration: none; }
+.profile-counts-quiet a:hover { text-decoration: underline; }
 .profile-sidebar-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
 .profile-sidebar-links a { color: var(--link); font-size: var(--text-meta); word-break: break-word; }
 
@@ -375,6 +400,14 @@
 .profile-editor-error { color: var(--error); font-size: var(--text-meta); font-style: normal; }
 .profile-editor-ok { color: var(--muted); font-size: var(--text-meta); }
 .profile-editor-hint { margin: 0; color: var(--handle); font-size: var(--text-meta); }
+
+@media (max-width: 640px) {
+  .profile-shelf-header,
+  .profile-shelf-row {
+    grid-template-columns: minmax(0, 1fr) 3.5rem 5.5rem;
+    gap: 0.35rem;
+  }
+}
 
 @media (max-width: 780px) {
   .profile-cover { height: 200px; }

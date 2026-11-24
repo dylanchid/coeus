@@ -2,23 +2,13 @@ import { avatarInitials, generativeCover } from "@/lib/profiles/profileMedia";
 import type { PublicProfileView } from "@/lib/profiles/publicProfile";
 
 /**
- * Cover + overlapping avatar + identity (name, @handle, location). Server
- * component, zero client JS: the generative cover is an aria-hidden <pre> fed
- * by generativeCover(); uploaded images are plain <img> (user-supplied
- * Supabase Storage URLs, so no next/image remote config).
- *
- * The avatar is decorative and aria-hidden — the display name is right beside
- * it. The scrim (`.profile-cover::after`) keeps the name legible over either
- * cover mode.
+ * Cover + overlapping avatar + identity (Newsreader name, @handle, one-line bio).
  */
 export function ProfileBanner({ view }: { view: PublicProfileView }) {
   return (
     <header>
-      <div className="profile-cover">
+      <div className="profile-cover" aria-hidden={!view.coverUrl}>
         {view.coverUrl ? (
-          // Plain <img>, not next/image: user-uploaded Supabase Storage content
-          // we deliberately don't route through the image optimizer (cost, and
-          // the bucket is already CDN-cached with a random filename per upload).
           // eslint-disable-next-line @next/next/no-img-element
           <img className="profile-cover-media" src={view.coverUrl} alt="" aria-hidden="true" />
         ) : (
@@ -26,12 +16,11 @@ export function ProfileBanner({ view }: { view: PublicProfileView }) {
             {generativeCover(view.handle)}
           </pre>
         )}
-        <h1 className="profile-cover-name">{view.displayName}</h1>
       </div>
 
       <div className="profile-identity">
         {view.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- see cover note above
+          // eslint-disable-next-line @next/next/no-img-element
           <img className="profile-avatar" src={view.avatarUrl} alt="" aria-hidden="true" />
         ) : (
           <span className="profile-avatar-fallback" aria-hidden="true">
@@ -39,7 +28,9 @@ export function ProfileBanner({ view }: { view: PublicProfileView }) {
           </span>
         )}
         <div className="profile-identity-meta">
+          <h1 className="profile-identity-name">{view.displayName}</h1>
           <p className="profile-handle">@{view.handle}</p>
+          {view.bio ? <p className="profile-identity-bio">{view.bio}</p> : null}
           {view.location ? <p className="profile-location">{view.location}</p> : null}
         </div>
       </div>
