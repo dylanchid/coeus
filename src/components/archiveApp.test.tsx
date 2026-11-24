@@ -116,7 +116,7 @@ test("Archive collection publishing and unpublishing round-trip through their re
   renderArchive();
   await screen.findByRole("heading", { name: "Everything worth returning to." });
   fireEvent.click(screen.getByRole("button", { name: /a humane internet/i }));
-  fireEvent.click(screen.getByText("Publish & follow"));
+  fireEvent.click(screen.getByText("Publish"));
   assert.equal(screen.getByRole("radio", { name: "Published" }).getAttribute("aria-checked"), "true", "a public collection publishes as public by default");
   fireEvent.click(screen.getByRole("button", { name: "Publish collection" }));
   await screen.findByRole("button", { name: "Unpublish" });
@@ -172,7 +172,7 @@ test("A new collection is personal, has no placeholder text, and its visibility 
   const created = stored.collections.find((collection: { name: string }) => collection.name === "Field notes");
   assert.deepEqual([created.kind, created.visibility, created.description], ["personal", "private", ""]);
 
-  fireEvent.click(screen.getByText("Publish & follow"));
+  fireEvent.click(screen.getByText("Publish"));
   assert.equal(screen.getByRole("radio", { name: "Unlisted" }).getAttribute("aria-checked"), "true", "an undecided (private) collection defaults to link-only");
   fireEvent.click(screen.getByRole("radio", { name: "Published" }));
   fireEvent.click(screen.getByRole("button", { name: "Publish collection" }));

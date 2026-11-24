@@ -166,10 +166,19 @@ export function ArchiveWorkspace() {
         waitingForSync={sync.status === "syncing" || (sync.status === "synced" && sync.pending > 0)}
         publication={currentPublication}
         busy={publishBusy}
-        onPublish={(visibility, note, attribution) => {
+        onPublish={async (visibility, note, attribution) => {
           const id = selectedCollection?.id ?? collectionId;
-          if (!selectedCollection || id === "all" || id === "inbox") return Promise.resolve(null);
-          return publishCollection(id, visibility, note, attribution);
+          if (!selectedCollection || id === "all" || id === "inbox") return null;
+          const published = await publishCollection(id, visibility, note, attribution);
+          if (published) {
+            update((current) => ({
+              ...current,
+              collections: current.collections.map((collection) =>
+                collection.id === id ? { ...collection, visibility } : collection,
+              ),
+            }));
+          }
+          return published;
         }}
         signInHref="/signin?next=/archive"
       />

@@ -191,7 +191,7 @@ export function ArchivePublishPanel({ collectionId, collectionVisibility, waitin
           }
         }}
       >
-        Publish &amp; follow
+        Publish
       </summary>
       <div className="archive-sidebar-actions archive-publish-desktop" aria-label="Publish this collection">
         <p className="archive-sync-state" role="status">{statusLine}</p>

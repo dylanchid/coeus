@@ -31,7 +31,7 @@ export function SignInPanel({
   next?: string;
   errorMessage?: string | null;
   devSignIn?: boolean;
-  /** Modal variant: the heading is the centred Coeus wordmark (full text stays as the accessible name); intro copy is dropped. */
+  /** Modal variant: the heading is the centred Coeus wordmark (full text stays as the accessible name). */
   compact?: boolean;
 }) {
   const { signIn, unavailable } = useAuth();
@@ -60,14 +60,10 @@ export function SignInPanel({
         ) : (
           <h1 id="signin-heading">Sign in to Coeus</h1>
         )}
-        {compact ? (
-          <p className="signin-tagline">Curated by people</p>
-        ) : (
-          <p className="signin-lede">
-            Claim an @handle so your published collections have an address. Signing in also syncs your archive across
-            devices. Reading never needs an account.
-          </p>
-        )}
+        <p className="signin-lede">
+          Claim an @handle so your published collections have an address. Signing in also syncs your archive across
+          devices. Reading never needs an account.
+        </p>
         <p className="signin-lede">
           <Link href="/">Skip, just read →</Link>
         </p>

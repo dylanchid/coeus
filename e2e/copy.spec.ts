@@ -64,4 +64,15 @@ test.describe("copy and wayfinding", () => {
     await page.reload();
     await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   });
+
+  test("header sign-in modal shows the full lede and skip link", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    const modal = page.getByRole("dialog", { name: /sign in/i });
+    await expect(modal).toBeVisible();
+    await expect(modal.getByText(/Claim an @handle so your published collections have an address/i)).toBeVisible();
+    await expect(modal.getByRole("link", { name: /skip, just read/i })).toBeVisible();
+    const skipHref = await modal.getByRole("link", { name: /skip, just read/i }).getAttribute("href");
+    expect(skipHref).toBe("/");
+  });
 });
