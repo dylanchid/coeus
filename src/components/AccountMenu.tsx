@@ -28,9 +28,9 @@ export function AccountMenu() {
     const back = pathname.startsWith("/signin") || pathname === "/welcome" ? "/archive" : pathname;
     return (
       <UiDialog.Root open={signinOpen} onOpenChange={setSigninOpen}>
-        <UiDialog.Trigger className="account-signin">
-          <span className="account-signin-long">Sign in</span>
-          <span className="account-signin-short">Sign in</span>
+        <UiDialog.Trigger className="account-signin" aria-label="Sign in">
+          <span className="account-signin-long" aria-hidden="true">Sign in</span>
+          <span className="account-signin-short" aria-hidden="true">Sign in</span>
         </UiDialog.Trigger>
         <UiDialog.Portal>
           <UiDialog.Backdrop className="profile-gate-backdrop" />
