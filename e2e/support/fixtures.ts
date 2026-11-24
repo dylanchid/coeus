@@ -59,6 +59,16 @@ export async function signOut(page: Page): Promise<void> {
   await page.request.delete("/api/test/session");
 }
 
+/** Seed guided-setup skip before navigation (for pages outside the default `page` fixture). */
+export async function seedFirstRunSkipped(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "coeus.setup.v1",
+      JSON.stringify({ version: 1, status: "skipped", hintDismissed: true })
+    );
+  });
+}
+
 interface AuthFixtures {
   /** A signed-in account with no profile row — sitting at onboarding. */
   freshUserPage: Page;
@@ -72,12 +82,7 @@ export const test = base.extend<AuthFixtures>({
   firstRun: [false, { option: true }],
   page: async ({ page, firstRun }, use) => {
     if (!firstRun) {
-      await page.addInitScript(() => {
-        window.localStorage.setItem(
-          "coeus.setup.v1",
-          JSON.stringify({ version: 1, status: "skipped", hintDismissed: true })
-        );
-      });
+      await seedFirstRunSkipped(page);
     }
     await use(page);
   },

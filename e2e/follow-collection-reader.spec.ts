@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, signIn, signOut, test } from "./support/fixtures";
+import { expect, seedFirstRunSkipped, signIn, signOut, test } from "./support/fixtures";
 import { newEstablishedUser } from "./support/testUsers";
 
 type RemoteArchive = { archiveId: string; snapshot: { revision: number } };
@@ -73,6 +73,7 @@ test("follow collection wires a Reader column without disturbing profile follows
 
   const guestContext = await browser.newContext();
   const guestPage = await guestContext.newPage();
+  await seedFirstRunSkipped(guestPage);
   await guestPage.route("**/*", (route) => {
     const url = route.request().url();
     if (url.includes("example.com")) return route.fulfill({ status: 200, body: "<html></html>", contentType: "text/html" });
@@ -105,6 +106,7 @@ test("follow collection wires a Reader column without disturbing profile follows
 
   const followerContext = await browser.newContext();
   const followerPage = await followerContext.newPage();
+  await seedFirstRunSkipped(followerPage);
   await followerPage.route("**/*", (route) => {
     const url = route.request().url();
     if (url.includes("example.com")) return route.fulfill({ status: 200, body: "<html></html>", contentType: "text/html" });
