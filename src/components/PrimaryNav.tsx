@@ -14,7 +14,7 @@ export const SECTION_LABELS: Record<AppSection, string> = {
 type NavLink = { id: AppSection; href: string; label: string };
 
 const LINKS: NavLink[] = [
-  { id: "reader", href: "/", label: "Home" },
+  { id: "reader", href: "/", label: "Read" },
   { id: "discover", href: "/discover", label: "Discover" },
   { id: "archive", href: "/archive", label: "Archive" },
   { id: "sources", href: "/sources", label: "Sources" },

@@ -7,64 +7,64 @@ export const metadata: Metadata = pageMetadata({
   title: "About",
   path: "/about",
   description:
-    "How Coeus helps you find sources, read the open web, discover what people share, and keep what matters.",
+    "How Coeus helps you read Sources, keep saved items in collections, publish collections with your @handle, and let others Follow your work.",
 });
 
 const sections = [
   {
     number: "01",
-    id: "reader",
-    label: "Reader",
+    id: "read",
+    label: "READ",
     href: "/",
-    title: "Read the sources you chose.",
-    body: "The Reader brings articles from your feeds into one finite page. Switch between a source-by-source grid, balanced coverage, strict recency, or ranking based only on rules you set.",
+    title: "Read on a finite page.",
+    body: "The Reader loads Articles from the Sources you chose into one bounded view. Sources is where you find feeds—browse the directory or add any RSS, Atom, or blog URL.",
     details: [
+      "Choose balance, recency, or your own ranking rules",
       "Search across loaded headlines and summaries",
-      "Save articles or share a sourced clip",
-      "Reorder, hide, filter, and refresh sources",
-      "Keep publisher failures isolated",
+      "Add, remove, and preview Sources before they land in the Reader",
+      "Keep publisher failures isolated so one broken feed does not break the page",
     ],
   },
   {
     number: "02",
-    id: "sources",
-    label: "Sources",
-    href: "/sources",
-    title: "Build your reading stack.",
-    body: "Sources is the place to find publications for your Reader. Browse the directory by topic, region, language, type, and cadence, or paste any RSS, Atom, blog, or Substack URL.",
+    id: "save",
+    label: "SAVE",
+    href: "/archive",
+    title: "Keep saved items worth returning to.",
+    body: "The Archive holds saved items with their Source, notes, tags, state, and Collections. Your library stays portable instead of being locked inside Coeus.",
     details: [
-      "Add and remove feeds from your Reader",
-      "Preview a feed before adding it",
-      "Rate sources privately for your own sorting",
-      "Bring independent and specialist publications together",
+      "Save Articles from the Reader into your Archive",
+      "Search titles, notes, tags, Sources, and authors",
+      "Organize saved items into Collections with your own notes",
+      "Mark items unread, read, kept, or starred; export Markdown or CSV",
     ],
   },
   {
     number: "03",
-    id: "discover",
-    label: "Discover",
-    href: "/discover",
-    title: "Follow paths made by people.",
-    body: "Discover is for public collections, shared articles, and links with human context attached. It is the people-powered layer of Coeus—not another engagement-ranked feed.",
+    id: "publish",
+    label: "PUBLISH",
+    href: "/archive",
+    title: "Turn a Collection into a published collection.",
+    body: "When a Collection is ready, publish it: a stable link, an RSS feed, and visibility you control—Private, Unlisted, or Published.",
     details: [
-      "Browse shared articles and sourced passages",
-      "Follow public and community collections",
-      "Add your perspective without losing the original link",
-      "Save discoveries back to your Archive",
+      "Publish a Collection with a durable URL and feed",
+      "Move from Private to Unlisted to Published when you are ready",
+      "Attribution stays on the curator, not the algorithm",
+      "Readers can Follow collection to add it to their Reader",
     ],
   },
   {
     number: "04",
-    id: "archive",
-    label: "Archive",
-    href: "/archive",
-    title: "Keep what is worth returning to.",
-    body: "The Archive keeps saved reading with its source, notes, tags, state, and collections. Your library lives locally today and remains portable instead of being locked inside Coeus.",
+    id: "share",
+    label: "SHARE",
+    href: "/discover",
+    title: "Put your Profile on the open web.",
+    body: "Your Profile lives at /@handle with a public feed at /@handle/rss.xml. People can Follow collection for the Reader or Follow @handle for Discover · Following.",
     details: [
-      "Search titles, notes, tags, sources, and authors",
-      "Organize reading into personal collections",
-      "Mark items unread, read, kept, or starred",
-      "Export Markdown or CSV for other tools",
+      "Claim an @handle so published collections have a home",
+      "Share a Profile link and RSS outside Coeus",
+      "Follow collection subscribes a published collection to the Reader",
+      "Follow @handle surfaces a curator in Discover · Following only",
     ],
   },
 ];
@@ -77,10 +77,12 @@ export default function AboutPage() {
           <p className="about-kicker">About Coeus</p>
           <h1 id="about-title">A personal front page for the open web.</h1>
           <p>
-            Choose where your reading comes from, see why it is ordered the way
-            it is, and keep the pieces that matter. No infinite feed and no
-            hidden recommendation engine.
+            Read the sources you choose on one finite page. Keep what was worth it in collections,
+            publish them with your @handle, and anyone can follow them here or in any RSS reader.
           </p>
+          <Link className="about-primary-link" href="/archive">
+            Start a collection →
+          </Link>
           <Link className="about-primary-link" href="/">
             Open the Reader <span aria-hidden="true">↗</span>
           </Link>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useAuth, type OAuthProvider } from "./AuthProvider";
 import { UiButton } from "./ui/Button";
@@ -60,13 +61,16 @@ export function SignInPanel({
           <h1 id="signin-heading">Sign in to Coeus</h1>
         )}
         {compact ? (
-          <p className="signin-tagline">The shared web</p>
+          <p className="signin-tagline">Curated by people</p>
         ) : (
           <p className="signin-lede">
-            Your archive stays on this device until you sign in. Signing in syncs it, unlocks recovery, and lets you
-            publish collections and connect destinations.
+            Claim an @handle so your published collections have an address. Signing in also syncs your archive across
+            devices. Reading never needs an account.
           </p>
         )}
+        <p className="signin-lede">
+          <Link href="/">Skip, just read →</Link>
+        </p>
       </header>
 
       {error ? (

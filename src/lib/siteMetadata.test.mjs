@@ -71,7 +71,7 @@ test("noindex, nofollow, article type, and a summary card are explicit", () => {
   const metadata = pageMetadata({
     title: "Sign in",
     path: "/signin",
-    description: "Sign in to sync your archive, publish collections, and connect destinations.",
+    description: "Sign in to claim your @handle, publish collections, and sync your archive.",
     noindex: true,
     nofollow: true,
     twitterCard: "summary",
