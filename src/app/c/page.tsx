@@ -27,7 +27,7 @@ export default async function PublicCollectionsPage({ searchParams }: { searchPa
   const { items, hasMore } = await store.listPublic(PAGE_SIZE, offset);
 
   return (
-    <AppShell section="archive" footerNote={<>Public, human-curated collections.</>}>
+    <AppShell section="discover" footerNote={<>Public, human-curated collections.</>}>
       <div className="public-collection-page">
         <header>
           <p className="archive-eyebrow">Discover</p>

@@ -704,7 +704,7 @@ function renderAccountMenu(session: FakeSession, profile: unknown, signOutCalls:
 
 test("Account menu opens sign-in as a modal over the current page", async () => {
   renderAccountMenu(null, null);
-  const trigger = await screen.findByRole("button", { name: "Sign up / Log in" });
+  const trigger = await screen.findByRole("button", { name: "Sign in" });
   fireEvent.click(trigger);
   const dialog = await screen.findByRole("dialog", { name: "Sign in to Coeus" });
   assert.equal(dialog.getAttribute("aria-modal"), "true");
