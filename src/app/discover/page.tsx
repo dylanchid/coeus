@@ -63,12 +63,12 @@ export default async function DiscoverPage({
   const viewerId = await authenticateArchiveRequest();
   if (!viewerId) {
     return (
-      <AppShell section="discover" subline="Content from the people you follow.">
+      <AppShell section="discover" subline="New collections from the people you follow.">
         <div className="discover-page">
           <DiscoverViewTabs current="following" />
           <p className="discover-following-empty">
             <Link href={`/signin?next=${encodeURIComponent("/discover?view=following")}`}>Sign in</Link> to see
-            collections and posts from the people you follow.
+            collections from the people you follow.
           </p>
         </div>
       </AppShell>
@@ -82,7 +82,7 @@ export default async function DiscoverPage({
   );
 
   return (
-    <AppShell section="discover" subline="Content from the people you follow.">
+    <AppShell section="discover" subline="New collections from the people you follow.">
       <div className="discover-page">
         <DiscoverViewTabs current="following" />
         <FollowingFeed items={feed.items} hasMore={feed.hasMore} offset={offset} pageSize={PAGE_SIZE} />

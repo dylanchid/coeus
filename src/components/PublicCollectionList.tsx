@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { FollowButton } from "./FollowButton";
 
 export type PublicCollectionListItem = {
   id: string;
@@ -8,6 +9,7 @@ export type PublicCollectionListItem = {
   description: string;
   attribution: string;
   itemCount: number;
+  curatorHandle?: string;
 };
 
 /**
@@ -38,10 +40,16 @@ export function PublicCollectionList({
             <li key={item.id}>
               <h2><Link href={`/c/${item.slug}`}>{item.name}</Link></h2>
               <p className="public-collection-meta">
-                {item.itemCount} {item.itemCount === 1 ? "piece" : "pieces"}
+                {item.itemCount} {item.itemCount === 1 ? "entry" : "entries"}
                 {item.attribution ? ` — ${item.attribution}` : ""}
               </p>
               {item.description ? <p>{item.description}</p> : null}
+              <FollowButton
+                publicationId={item.id}
+                slug={item.slug}
+                name={item.name}
+                curatorHandle={item.curatorHandle}
+              />
             </li>
           ))}
         </ol>
@@ -62,7 +70,7 @@ export function NoPublicCollectionsYet() {
     <>
       <p>No one has published a collection yet.</p>
       <p>
-        Collections start in your <Link href="/archive">Archive</Link>: save pieces from the{" "}
+        Collections start in your <Link href="/archive">Archive</Link>: save articles from the{" "}
         <Link href="/">Reader</Link>, group them into a collection, then publish it to get a stable link and an
         RSS feed anyone can follow.
       </p>

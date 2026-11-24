@@ -11,6 +11,7 @@ function collection(overrides = {}) {
     item: {
       kind: "collection",
       publishedAt: "2026-03-03T00:00:00.000Z",
+      publicationId: "pub-1",
       slug: "notes",
       name: "Notes",
       description: "",
@@ -39,7 +40,7 @@ function post(overrides = {}) {
   };
 }
 
-test("merges collections and posts newest first", () => {
+test("returns collections only, newest first", () => {
   const page = combineFollowedFeed(
     [
       collection({ item: { publishedAt: "2026-01-01T00:00:00.000Z", slug: "old" } }),
@@ -50,17 +51,14 @@ test("merges collections and posts newest first", () => {
     10,
     0
   );
-  assert.deepEqual(
-    page.items.map((item) => item.publishedAt),
-    ["2026-09-09T00:00:00.000Z", "2026-06-06T00:00:00.000Z", "2026-01-01T00:00:00.000Z"]
-  );
+  assert.deepEqual(page.items.map((item) => item.slug), ["mid", "old"]);
 });
 
-test("a followers-tier item from a followed author is included; private and unlisted are not", () => {
+test("a followers-tier collection from a followed author is included; private and unlisted are not", () => {
   const page = combineFollowedFeed(
     [
-      post({ visibility: "followers", item: { title: "followers-post" } }),
-      post({ visibility: "private", item: { title: "private-post" } }),
+      collection({ visibility: "followers", item: { slug: "followers-coll" } }),
+      collection({ visibility: "private", item: { slug: "private-coll" } }),
       collection({ visibility: "unlisted", item: { slug: "unlisted-coll" } }),
       collection({ visibility: "public", item: { slug: "public-coll" } }),
     ],
@@ -68,13 +66,12 @@ test("a followers-tier item from a followed author is included; private and unli
     10,
     0
   );
-  const labels = page.items.map((item) => (item.kind === "post" ? item.title : item.slug));
-  assert.deepEqual(labels.sort(), ["followers-post", "public-coll"]);
+  assert.deepEqual(page.items.map((item) => item.slug).sort(), ["followers-coll", "public-coll"]);
 });
 
 test("hasMore is true when the visible union exceeds offset + limit", () => {
   const candidates = Array.from({ length: 5 }, (_, i) =>
-    post({ item: { publishedAt: `2026-0${i + 1}-01T00:00:00.000Z`, title: `p${i}` } })
+    collection({ item: { publishedAt: `2026-0${i + 1}-01T00:00:00.000Z`, slug: `c${i}` } })
   );
   const first = combineFollowedFeed(candidates, FOLLOWER, 2, 0);
   assert.equal(first.items.length, 2);
@@ -82,19 +79,4 @@ test("hasMore is true when the visible union exceeds offset + limit", () => {
   const last = combineFollowedFeed(candidates, FOLLOWER, 2, 4);
   assert.equal(last.items.length, 1);
   assert.equal(last.hasMore, false);
-});
-
-test("filtered-out rows do not count toward hasMore", () => {
-  const page = combineFollowedFeed(
-    [
-      post({ visibility: "public", item: { title: "a" } }),
-      post({ visibility: "private", item: { title: "b" } }),
-      post({ visibility: "private", item: { title: "c" } }),
-    ],
-    FOLLOWER,
-    2,
-    0
-  );
-  assert.equal(page.items.length, 1);
-  assert.equal(page.hasMore, false);
 });

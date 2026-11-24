@@ -76,6 +76,8 @@ export interface SourceFeed {
   homeUrl?: string;
   articles: Article[];
   error?: string;
+  kind?: "publisher" | "collection";
+  curatorHandle?: string;
 }
 
 export interface UserPrefs {
