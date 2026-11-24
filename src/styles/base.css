@@ -12,7 +12,7 @@
   --line: #2a2926;
   --panel: transparent;
   --error: #ff8e8e;
-  --handle: #6e6a62;
+  --handle: var(--muted);
   --accent: #e6e4df;
   --header-rule: #3a3834;
   --settings-bg: #141412;
@@ -68,6 +68,14 @@
   --font: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
   --font-display: var(--font);
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  --font-public-title: var(--font-newsreader), Georgia, serif;
+  --text-index: 0.8125rem;
+  --rule-group: #a39b8e;
+  --accent-band: #e8b49a;
+  --accent-band-ink: #9a4a2c;
+  --tint-published: #dfe6d6;
   color-scheme: dark;
 }
 
@@ -83,7 +91,6 @@ html[data-theme="light"] {
   --line: #d9d3c7;
   --panel: transparent;
   --error: #8b1e1e;
-  --handle: #8a857c;
   --accent: #161512;
   --header-rule: #d9d3c7;
   --settings-bg: #fffcf5;
@@ -107,7 +114,6 @@ html[data-theme="dark"] {
     --line: #d9d3c7;
     --panel: transparent;
     --error: #8b1e1e;
-    --handle: #8a857c;
     --accent: #161512;
     --header-rule: #d9d3c7;
     --settings-bg: #fffcf5;
@@ -135,7 +141,6 @@ html[data-palette="paper"] {
   --settings-border: #6a6458;
   --error: #ff9a8a;
   --accent: #e8a090;
-  --handle: #9a9280;
   color-scheme: dark;
 }
 
@@ -153,7 +158,6 @@ html[data-palette="terminal"] {
   --settings-border: #2a5a28;
   --error: #ff8a8a;
   --accent: #7dff7a;
-  --handle: #5d8a58;
   color-scheme: dark;
 }
 
@@ -171,7 +175,6 @@ html[data-palette="copper"] {
   --settings-border: #6a4a30;
   --error: #ff9a7a;
   --accent: #e8a060;
-  --handle: #a08060;
   color-scheme: dark;
 }
 
@@ -189,7 +192,6 @@ html[data-palette="rose"] {
   --settings-border: #6a3050;
   --error: #ff8eae;
   --accent: #f0a0c0;
-  --handle: #a08090;
   color-scheme: dark;
 }
 
@@ -207,7 +209,6 @@ html[data-theme="light"][data-palette="paper"] {
   --settings-border: #1c1914;
   --error: #8b1e1e;
   --accent: #8b2e1a;
-  --handle: #8a8272;
   color-scheme: light;
 }
 
@@ -225,7 +226,6 @@ html[data-theme="light"][data-palette="terminal"] {
   --settings-border: #10240f;
   --error: #8b1e1e;
   --accent: #0d6b0a;
-  --handle: #6b8a67;
   color-scheme: light;
 }
 
@@ -243,7 +243,6 @@ html[data-theme="light"][data-palette="copper"] {
   --settings-border: #2a1a0e;
   --error: #8b2a12;
   --accent: #9a4a10;
-  --handle: #8a6c4e;
   color-scheme: light;
 }
 
@@ -261,7 +260,6 @@ html[data-theme="light"][data-palette="rose"] {
   --settings-border: #2a1219;
   --error: #8b1e3a;
   --accent: #a3194f;
-  --handle: #94707e;
   color-scheme: light;
 }
 
@@ -280,7 +278,6 @@ html[data-theme="light"][data-palette="rose"] {
     --settings-border: #1c1914;
     --error: #8b1e1e;
     --accent: #8b2e1a;
-    --handle: #8a8272;
     color-scheme: light;
   }
 
@@ -298,7 +295,6 @@ html[data-theme="light"][data-palette="rose"] {
     --settings-border: #10240f;
     --error: #8b1e1e;
     --accent: #0d6b0a;
-    --handle: #6b8a67;
     color-scheme: light;
   }
 
@@ -316,7 +312,6 @@ html[data-theme="light"][data-palette="rose"] {
     --settings-border: #2a1a0e;
     --error: #8b2a12;
     --accent: #9a4a10;
-    --handle: #8a6c4e;
     color-scheme: light;
   }
 
@@ -334,7 +329,6 @@ html[data-theme="light"][data-palette="rose"] {
     --settings-border: #2a1219;
     --error: #8b1e3a;
     --accent: #a3194f;
-    --handle: #94707e;
     color-scheme: light;
   }
 }
@@ -429,4 +423,31 @@ main {
   max-width: var(--content-max);
   margin: 0 auto;
   padding: 1.1rem var(--pad-inline) 3rem;
+}
+
+/* —— Public look pin (look-1): Archive Paper light on canonical public routes —— */
+html:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-theme]:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-palette]:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-font]:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-theme][data-palette]:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-theme][data-font]:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-palette][data-font]:has(.public-collection-page, .profile-page, .about-page, .signin-page),
+html[data-theme][data-palette][data-font]:has(.public-collection-page, .profile-page, .about-page, .signin-page) {
+  --bg: #f4f1ea;
+  --fg: #161512;
+  --muted: #6a6560;
+  --link: #0b3d91;
+  --visited: #5b2a86;
+  --line: #d9d3c7;
+  --border: #cfc9bd;
+  --header-rule: #d9d3c7;
+  --accent: #161512;
+  --settings-bg: #fffcf5;
+  --settings-border: #161512;
+  --mark: #ffe566;
+  --error: #8b1e1e;
+  --font: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font);
+  color-scheme: light;
 }
