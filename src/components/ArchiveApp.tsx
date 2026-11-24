@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ArchiveCollection, ArchiveData, ArchiveItem, CollectionVisibility } from "@/lib/archive";
+import { addItemsToCollection } from "@/lib/archive/archiveDomain";
+import { checkArchiveBudget } from "@/lib/archive/archiveBudget";
 import { archiveToCsv, archiveToMarkdown } from "@/lib/archive/archiveExport";
 import { useArchive } from "./AppProviders";
 import { useAuth } from "./AuthProvider";
 import { AppShell } from "./AppShell";
 import { ArchiveSidebar } from "./ArchiveSidebar";
 import { ArchiveList } from "./ArchiveList";
+import { PasteLinksDialog } from "./PasteLinksDialog";
+import { MobilePublishSheet } from "./MobilePublishSheet";
 import type { PublishedPost } from "./PostPublishPanel";
 import { useArchiveFilters } from "./useArchiveFilters";
 import { usePublications } from "./usePublications";
@@ -26,8 +30,17 @@ export function ArchiveWorkspace() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [shareNotice, setShareNotice] = useState("");
   const [accountBusy, setAccountBusy] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [mobilePublishOpen, setMobilePublishOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkTargetCollectionId, setBulkTargetCollectionId] = useState("");
 
   const update = (recipe: (current: ArchiveData) => ArchiveData) => { void updateArchive(recipe); };
+  const applyArchive = useCallback(
+    (recipe: (current: ArchiveData) => ArchiveData) => updateArchive(recipe),
+    [updateArchive],
+  );
   const requestJson = async (url: string, init?: RequestInit) => {
     const response = await fetch(url, { credentials: "same-origin", cache: "no-store", ...init });
     if (response.status === 401) throw new Error("Sign in to sync, publish or restore your archive.");
@@ -52,6 +65,54 @@ export function ArchiveWorkspace() {
     update((current) => ({ ...current, collections: [...current.collections, collection] }));
     setCollectionId(collection.id); setNewCollection(""); setNewCollectionVisibility("private"); setComposerOpen(false);
   };
+  const createCollectionByName = (name: string) => {
+    const collection: ArchiveCollection = { id: `collection-${Date.now()}`, name, description: "", visibility: "private", kind: "personal", createdAt: new Date().toISOString() };
+    update((current) => ({ ...current, collections: [...current.collections, collection] }));
+    setCollectionId(collection.id);
+  };
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const selectAllVisible = useCallback(() => {
+    const ids = filters.visible.map((item) => item.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selectedIds.has(id));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [filters.visible, selectedIds]);
+  const bulkAddToCollection = useCallback(() => {
+    if (!bulkTargetCollectionId || !selectedIds.size || !data) return;
+    const next = addItemsToCollection(data, [...selectedIds], bulkTargetCollectionId);
+    const violation = checkArchiveBudget({
+      syncVersion: 1,
+      revision: 0,
+      generatedAt: new Date().toISOString(),
+      archive: next,
+      entityVersions: {},
+    });
+    if (violation) {
+      setShareNotice(violation.message);
+      return;
+    }
+    void updateArchive(() => next).then((ok) => {
+      if (ok) {
+        const target = data.collections.find((collection) => collection.id === bulkTargetCollectionId)?.name ?? "collection";
+        setShareNotice(`Added ${selectedIds.size} saved items to ${target}`);
+        setSelectedIds(new Set());
+        setSelectMode(false);
+      }
+    });
+  }, [bulkTargetCollectionId, data, selectedIds, updateArchive]);
+  const selectedIdsReadonly = useMemo(() => selectedIds as ReadonlySet<string>, [selectedIds]);
+  const canPaste = Boolean(selectedCollection && selectedCollection.id !== "all" && selectedCollection.id !== "inbox");
   // Publishing is the moment visibility is decided, so the archive collection
   // follows it; otherwise the sidebar can say "public" while /c lists nothing.
   const publishSelected = async (visibility: CollectionVisibility, note: string, attribution: string) => {
@@ -77,9 +138,41 @@ export function ArchiveWorkspace() {
 
   if (!data) return <p className="boot">Opening your archive…</p>;
   return <div className="archive-page"><section className="archive-overview" aria-labelledby="archive-title"><div className="archive-overview-copy"><p className="archive-eyebrow">{selectedCollection ? `${selectedCollection.kind} collection · ${selectedCollection.visibility}` : "Personal library"}</p><h1 id="archive-title">{selectedCollection?.name ?? "Everything worth returning to."}</h1>{selectedCollection?.description ? <p>{selectedCollection.description}</p> : null}</div></section>
-      <div className="archive-workspace"><ArchiveSidebar data={data} collectionId={collectionId} setCollectionId={setCollectionId} selectedCollection={selectedCollection} newCollection={newCollection} setNewCollection={setNewCollection} newCollectionVisibility={newCollectionVisibility} setNewCollectionVisibility={setNewCollectionVisibility} composerOpen={composerOpen} setComposerOpen={setComposerOpen} createCollection={createCollection} exportMarkdown={exportMarkdown} exportCsv={exportCsv} exportArchiveJson={exportArchiveJson} publication={currentPublication} publishBusy={publishBusy} publishCollection={(visibility, note, attribution) => void publishSelected(visibility, note, attribution)} unpublishCollection={() => void unpublishCollection(selectedCollection!.id)} sync={sync} retrySync={retrySync} revisions={recovery.revisions} contentSnapshots={recovery.contentSnapshots} recoveryBusy={recovery.recoveryBusy} refreshRecovery={recovery.refreshRecovery} restoreRevision={recovery.restoreRevision} auth={auth} accountBusy={accountBusy} signOut={signOut} deleteAccount={deleteAccount} onNotice={setShareNotice} />
-        <ArchiveList data={data} query={filters.query} setQuery={filters.setQuery} filter={filters.filter} setFilter={filters.setFilter} sort={filters.sort} setSort={filters.setSort} counts={filters.counts} visible={filters.visible} patchItem={patchItem} recoveryBusy={recovery.recoveryBusy} captureContent={recovery.captureContent} onNotice={setShareNotice} shareNotice={shareNotice} showPostPanels={false} postsByItem={NO_POSTS} />
+      <div className="archive-workspace"><ArchiveSidebar data={data} collectionId={collectionId} setCollectionId={setCollectionId} selectedCollection={selectedCollection} newCollection={newCollection} setNewCollection={setNewCollection} newCollectionVisibility={newCollectionVisibility} setNewCollectionVisibility={setNewCollectionVisibility} composerOpen={composerOpen} setComposerOpen={setComposerOpen} createCollection={createCollection} exportMarkdown={exportMarkdown} exportCsv={exportCsv} exportArchiveJson={exportArchiveJson} publication={currentPublication} publishBusy={publishBusy} publishCollection={(visibility, note, attribution) => void publishSelected(visibility, note, attribution)} unpublishCollection={() => void unpublishCollection(selectedCollection!.id)} onOpenMobilePublish={() => setMobilePublishOpen(true)} onPasteLinks={canPaste ? () => setPasteOpen(true) : undefined} sync={sync} retrySync={retrySync} revisions={recovery.revisions} contentSnapshots={recovery.contentSnapshots} recoveryBusy={recovery.recoveryBusy} refreshRecovery={recovery.refreshRecovery} restoreRevision={recovery.restoreRevision} auth={auth} accountBusy={accountBusy} signOut={signOut} deleteAccount={deleteAccount} onNotice={setShareNotice} />
+        <ArchiveList data={data} query={filters.query} setQuery={filters.setQuery} filter={filters.filter} setFilter={filters.setFilter} sort={filters.sort} setSort={filters.setSort} counts={filters.counts} visible={filters.visible} patchItem={patchItem} recoveryBusy={recovery.recoveryBusy} captureContent={recovery.captureContent} onNotice={setShareNotice} shareNotice={shareNotice} showPostPanels={false} postsByItem={NO_POSTS} selectMode={selectMode} setSelectMode={setSelectMode} selectedIds={selectedIdsReadonly} onToggleSelected={toggleSelected} onSelectAllVisible={selectAllVisible} bulkTargetCollectionId={bulkTargetCollectionId} setBulkTargetCollectionId={setBulkTargetCollectionId} onBulkAddToCollection={bulkAddToCollection} />
       </div>
+      {canPaste && selectedCollection ? (
+        <PasteLinksDialog
+          open={pasteOpen}
+          onClose={() => setPasteOpen(false)}
+          collectionId={selectedCollection.id}
+          collectionName={selectedCollection.name}
+          data={data}
+          onApply={applyArchive}
+          onNotice={setShareNotice}
+        />
+      ) : null}
+      <MobilePublishSheet
+        open={mobilePublishOpen}
+        onClose={() => setMobilePublishOpen(false)}
+        data={data}
+        collectionId={collectionId}
+        setCollectionId={setCollectionId}
+        selectedCollection={selectedCollection}
+        onCreateCollection={createCollectionByName}
+        onOpenPasteLinks={() => { setMobilePublishOpen(false); if (canPaste) setPasteOpen(true); }}
+        onOpenSelectItems={() => { setMobilePublishOpen(false); setSelectMode(true); }}
+        authSignedIn={auth.status !== "signed-out" && auth.status !== "loading"}
+        waitingForSync={sync.status === "syncing" || (sync.status === "synced" && sync.pending > 0)}
+        publication={currentPublication}
+        busy={publishBusy}
+        onPublish={(visibility, note, attribution) => {
+          const id = selectedCollection?.id ?? collectionId;
+          if (!selectedCollection || id === "all" || id === "inbox") return Promise.resolve(null);
+          return publishCollection(id, visibility, note, attribution);
+        }}
+        signInHref="/signin?next=/archive"
+      />
   </div>;
 }
 

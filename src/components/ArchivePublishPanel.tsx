@@ -21,7 +21,7 @@ export function defaultPublishVisibility(collectionVisibility: PublicationVisibi
   return collectionVisibility === "private" ? "unlisted" : collectionVisibility;
 }
 
-function PublishLadderRadiogroup({
+export function PublishLadderRadiogroup({
   idPrefix,
   value,
   onChange,
@@ -98,7 +98,57 @@ function PublishLadderRadiogroup({
   );
 }
 
-export function ArchivePublishPanel({ collectionId, collectionVisibility, waitingForSync, publication, busy, onPublish, onUnpublish }: {
+export function PublishCollectionForm({
+  idPrefix,
+  curatorNote,
+  setCuratorNote,
+  attribution,
+  setAttribution,
+  showVisibility,
+  visibility,
+  setVisibility,
+  storedVisibility,
+}: {
+  idPrefix: string;
+  curatorNote: string;
+  setCuratorNote: (value: string) => void;
+  attribution: string;
+  setAttribution: (value: string) => void;
+  showVisibility: boolean;
+  visibility: PublicationVisibility;
+  setVisibility: (value: PublicationVisibility) => void;
+  storedVisibility: PublicationVisibility | undefined;
+}) {
+  return (
+    <>
+      {showVisibility ? (
+        <PublishLadderRadiogroup
+          idPrefix={idPrefix}
+          value={visibility}
+          onChange={setVisibility}
+          storedVisibility={storedVisibility}
+        />
+      ) : null}
+      <label htmlFor={`${idPrefix}-curator-note`}>Curator note</label>
+      <textarea
+        id={`${idPrefix}-curator-note`}
+        value={curatorNote}
+        onChange={(event) => setCuratorNote(event.target.value)}
+        placeholder="Why does this collection matter? What should followers expect?"
+      />
+      <label htmlFor={`${idPrefix}-attribution`}>Attribution</label>
+      <input
+        id={`${idPrefix}-attribution`}
+        type="text"
+        value={attribution}
+        onChange={(event) => setAttribution(event.target.value)}
+        placeholder="Curated by…"
+      />
+    </>
+  );
+}
+
+export function ArchivePublishPanel({ collectionId, collectionVisibility, waitingForSync, publication, busy, onPublish, onUnpublish, onOpenMobileSheet }: {
   collectionId: string;
   collectionVisibility: PublicationVisibility;
   /** Publishing reads the server's copy of the archive, so it waits until local changes have synced. */
@@ -107,6 +157,7 @@ export function ArchivePublishPanel({ collectionId, collectionVisibility, waitin
   busy: boolean;
   onPublish: (visibility: PublicationVisibility, curatorNote: string, attribution: string) => void;
   onUnpublish: () => void;
+  onOpenMobileSheet?: () => void;
 }) {
   const [visibility, setVisibility] = useState<PublicationVisibility>(publication?.visibility ?? defaultPublishVisibility(collectionVisibility));
   const [curatorNote, setCuratorNote] = useState(publication?.curatorNote ?? "");
@@ -130,30 +181,30 @@ export function ArchivePublishPanel({ collectionId, collectionVisibility, waitin
   );
 
   return (
-    <details className="archive-portability" open={startOpen || undefined}>
-      <summary>Publish &amp; follow</summary>
-      <div className="archive-sidebar-actions" aria-label="Publish this collection">
+    <details className="archive-portability archive-publish-panel" open={startOpen || undefined}>
+      <summary
+        onClick={(event) => {
+          if (!onOpenMobileSheet) return;
+          if (window.matchMedia("(max-width: 640px)").matches) {
+            event.preventDefault();
+            onOpenMobileSheet();
+          }
+        }}
+      >
+        Publish &amp; follow
+      </summary>
+      <div className="archive-sidebar-actions archive-publish-desktop" aria-label="Publish this collection">
         <p className="archive-sync-state" role="status">{statusLine}</p>
-        <PublishLadderRadiogroup
+        <PublishCollectionForm
           idPrefix={idPrefix}
-          value={visibility}
-          onChange={pickVisibility}
+          curatorNote={curatorNote}
+          setCuratorNote={setCuratorNote}
+          attribution={attribution}
+          setAttribution={setAttribution}
+          showVisibility
+          visibility={visibility}
+          setVisibility={pickVisibility}
           storedVisibility={publication?.visibility}
-        />
-        <label htmlFor={`publish-curator-note-${collectionId}`}>Curator note</label>
-        <textarea
-          id={`publish-curator-note-${collectionId}`}
-          value={curatorNote}
-          onChange={(event) => setCuratorNote(event.target.value)}
-          placeholder="Why does this collection matter? What should followers expect?"
-        />
-        <label htmlFor={`publish-attribution-${collectionId}`}>Attribution</label>
-        <input
-          id={`publish-attribution-${collectionId}`}
-          type="text"
-          value={attribution}
-          onChange={(event) => setAttribution(event.target.value)}
-          placeholder="Curated by…"
         />
         <button
           type="button"

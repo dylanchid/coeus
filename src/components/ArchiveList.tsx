@@ -22,8 +22,8 @@ function relativeDate(iso: string): string {
   return `${days} days ago`;
 }
 
-/** Search controls and saved-piece cards; mutations are injected by ArchiveApp. */
-export function ArchiveList({ data, query, setQuery, filter, setFilter, sort, setSort, counts, visible, patchItem, recoveryBusy, captureContent, onNotice, shareNotice, showPostPanels, postsByItem }: {
+/** Search controls and saved-item cards; mutations are injected by ArchiveApp. */
+export function ArchiveList({ data, query, setQuery, filter, setFilter, sort, setSort, counts, visible, patchItem, recoveryBusy, captureContent, onNotice, shareNotice, showPostPanels, postsByItem, selectMode, setSelectMode, selectedIds, onToggleSelected, onSelectAllVisible, bulkTargetCollectionId, setBulkTargetCollectionId, onBulkAddToCollection }: {
   data: ArchiveData;
   query: string;
   setQuery: (value: string) => void;
@@ -40,7 +40,23 @@ export function ArchiveList({ data, query, setQuery, filter, setFilter, sort, se
   shareNotice: string;
   showPostPanels: boolean;
   postsByItem: ReadonlyMap<string, PublishedPost>;
+  selectMode?: boolean;
+  setSelectMode?: (value: boolean) => void;
+  selectedIds?: ReadonlySet<string>;
+  onToggleSelected?: (id: string) => void;
+  onSelectAllVisible?: () => void;
+  bulkTargetCollectionId?: string;
+  setBulkTargetCollectionId?: (id: string) => void;
+  onBulkAddToCollection?: () => void;
 }) {
+  const selectionEnabled = selectMode ?? false;
+  const setSelectionEnabled = setSelectMode ?? (() => undefined);
+  const selected = selectedIds ?? new Set<string>();
+  const toggleSelected = onToggleSelected ?? (() => undefined);
+  const selectAllVisible = onSelectAllVisible ?? (() => undefined);
+  const bulkCollection = bulkTargetCollectionId ?? "";
+  const setBulkCollection = setBulkTargetCollectionId ?? (() => undefined);
+  const bulkAdd = onBulkAddToCollection ?? (() => undefined);
   const [postPanelItemId, setPostPanelItemId] = useState<string | null>(null);
   const [openDetails, setOpenDetails] = useState<Record<string, { note: boolean; organize: boolean }>>({});
   const itemPositions = useMemo(
@@ -84,10 +100,35 @@ export function ArchiveList({ data, query, setQuery, filter, setFilter, sort, se
       return { ...current, [itemId]: { ...previous, [detail]: open } };
     });
   }, []);
-  return <section className="archive-main" aria-label="Saved pieces">
+  const namedCollections = data.collections.filter((collection) => collection.id !== "inbox" && collection.id !== "all");
+  const selectedCount = visible.filter((item) => selected.has(item.id)).length;
+  const allVisibleSelected = visible.length > 0 && selectedCount === visible.length;
+
+  return <section className="archive-main" aria-label="Saved items">
     {shareNotice ? <p className="archive-notice" role="status">{shareNotice}</p> : null}
     <div className="archive-controls"><div className="archive-search"><label htmlFor="archive-search">Search this view</label><span aria-hidden="true">⌕</span><input id="archive-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Titles, notes, tags, authors…" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear archive search">×</button> : null}</div><div className="archive-filters" role="group" aria-label="Filter archive">{FILTERS.map((value) => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}><span>{value === "all" ? "All" : value[0].toUpperCase() + value.slice(1)}</span><small>{counts[value]}</small></button>)}</div></div>
-    <div className="archive-result-meta"><span>{visible.length} {visible.length === 1 ? "piece" : "pieces"}{query ? ` matching “${query}”` : ""}</span><label htmlFor="archive-sort">Sort <select id="archive-sort" value={sort} onChange={(event) => setSort(event.target.value as ArchiveSort)}><option value="newest">Newest saved</option><option value="oldest">Oldest saved</option><option value="title">Title A–Z</option></select></label></div>
+    <div className="archive-result-meta"><span>{visible.length} {visible.length === 1 ? "saved item" : "saved items"}{query ? ` matching “${query}”` : ""}</span><label htmlFor="archive-sort">Sort <select id="archive-sort" value={sort} onChange={(event) => setSort(event.target.value as ArchiveSort)}><option value="newest">Newest saved</option><option value="oldest">Oldest saved</option><option value="title">Title A–Z</option></select></label></div>
+    <div className="archive-select-toolbar">
+      <button type="button" aria-pressed={selectionEnabled} onClick={() => setSelectionEnabled(!selectionEnabled)}>{selectionEnabled ? "Done selecting" : "Select"}</button>
+      {selectionEnabled ? (
+        <>
+          <label className="archive-select-all">
+            <input type="checkbox" checked={allVisibleSelected} onChange={selectAllVisible} />
+            Select all visible
+          </label>
+          {selectedCount ? (
+            <div className="archive-bulk-bar" role="group" aria-label="Add selected saved items to a collection">
+              <label htmlFor="archive-bulk-collection">Collection</label>
+              <select id="archive-bulk-collection" value={bulkCollection} onChange={(event) => setBulkCollection(event.target.value)}>
+                <option value="">Choose…</option>
+                {namedCollections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+              </select>
+              <button type="button" className="archive-primary-action" disabled={!bulkCollection} onClick={bulkAdd}>Add to collection →</button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </div>
     {visible.length ? <ol
       ref={listRef}
       className="archive-list"
@@ -97,12 +138,12 @@ export function ArchiveList({ data, query, setQuery, filter, setFilter, sort, se
     >{virtualizer.getVirtualItems().map((row) => {
       const item = visible[row.index];
       if (!item) return null;
-      return <ArchiveListItem key={item.id} item={item} measureRef={virtualizer.measureElement} rowIndex={row.index} rowCount={visible.length} rowStart={row.start - virtualizer.options.scrollMargin} itemPosition={itemPositions.get(item.id) ?? 0} collections={data.collections} patchItem={patchItem} recoveryBusy={recoveryBusy} captureContent={captureContent} onNotice={onNotice} showPostPanels={showPostPanels} postPanelItemId={postPanelItemId} setPostPanelItemId={setPostPanelItemId} post={postsByItem.get(item.id) ?? null} noteOpen={openDetails[item.id]?.note ?? false} organizeOpen={openDetails[item.id]?.organize ?? false} onDetailToggle={(detail, open) => setDetailOpen(item.id, detail, open)} />;
-    })}</ol> : data.items.length === 0 ? <div className="archive-empty"><span aria-hidden="true">◇</span><p>Nothing saved yet.</p><small>Use <strong>+ Save</strong> on any story in the <Link href="/">Reader</Link>. Saved pieces land here with their source, ready for notes, tags, and collections you can publish.</small></div> : <div className="archive-empty"><span aria-hidden="true">◇</span>{query || filter !== "all" ? <><p>No pieces found.</p><small>Try a broader search or another filter.</small></> : <><p>This collection is empty.</p><small>Open <strong>Organize</strong> on any saved piece and choose this collection to add it.</small></>}{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</button> : null}</div>}
+      return <ArchiveListItem key={item.id} item={item} measureRef={virtualizer.measureElement} rowIndex={row.index} rowCount={visible.length} rowStart={row.start - virtualizer.options.scrollMargin} itemPosition={itemPositions.get(item.id) ?? 0} collections={data.collections} patchItem={patchItem} recoveryBusy={recoveryBusy} captureContent={captureContent} onNotice={onNotice} showPostPanels={showPostPanels} postPanelItemId={postPanelItemId} setPostPanelItemId={setPostPanelItemId} post={postsByItem.get(item.id) ?? null} noteOpen={openDetails[item.id]?.note ?? false} organizeOpen={openDetails[item.id]?.organize ?? false} onDetailToggle={(detail, open) => setDetailOpen(item.id, detail, open)} selectMode={selectionEnabled} selected={selected.has(item.id)} onToggleSelected={() => toggleSelected(item.id)} />;
+    })}</ol> : data.items.length === 0 ? <div className="archive-empty"><span aria-hidden="true">◇</span><p>Nothing saved yet.</p><small>Use <strong>+ Save</strong> on any article in the <Link href="/">Reader</Link>. Saved items land here with their source, ready for notes, tags, and collections you can publish.</small></div> : <div className="archive-empty"><span aria-hidden="true">◇</span>{query || filter !== "all" ? <><p>No saved items found.</p><small>Try a broader search or another filter.</small></> : <><p>This collection is empty.</p><small>Open <strong>Organize</strong> on any saved item and choose this collection to add it.</small></>}{query || filter !== "all" ? <button type="button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</button> : null}</div>}
   </section>;
 }
 
-function ArchiveListItem({ item, measureRef, rowIndex, rowCount, rowStart, itemPosition, collections, patchItem, recoveryBusy, captureContent, onNotice, showPostPanels, postPanelItemId, setPostPanelItemId, post, noteOpen, organizeOpen, onDetailToggle }: {
+function ArchiveListItem({ item, measureRef, rowIndex, rowCount, rowStart, itemPosition, collections, patchItem, recoveryBusy, captureContent, onNotice, showPostPanels, postPanelItemId, setPostPanelItemId, post, noteOpen, organizeOpen, onDetailToggle, selectMode, selected, onToggleSelected }: {
   item: ArchiveItem;
   measureRef: (element: HTMLElement | null) => void;
   rowIndex: number;
@@ -121,6 +162,9 @@ function ArchiveListItem({ item, measureRef, rowIndex, rowCount, rowStart, itemP
   noteOpen: boolean;
   organizeOpen: boolean;
   onDetailToggle: (detail: "note" | "organize", open: boolean) => void;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelected: () => void;
 }) {
-  return <li ref={measureRef} data-index={rowIndex} data-item-id={item.id} aria-setsize={rowCount} aria-posinset={rowIndex + 1} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${rowStart}px)` }} className={`archive-item is-${item.state}`}><div className="archive-item-index" aria-hidden="true"><span>{String(itemPosition).padStart(2, "0")}</span>{item.state === "unread" ? <i /> : null}</div><article><header className="archive-item-header"><div className="archive-item-meta"><span className="archive-source">{item.sourceName}</span><span>{item.topic}</span><span>Saved {relativeDate(item.savedAt)}</span></div><button className="archive-star" type="button" aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`} aria-pressed={item.starred} onClick={() => patchItem(item.id, { starred: !item.starred })}><span aria-hidden="true">{item.starred ? "★" : "☆"}</span></button></header><h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}<span className="archive-external" aria-hidden="true">↗</span><ExternalLinkHint /></a></h2>{item.summary ? <p className="archive-summary">{item.summary}</p> : null}{item.note ? <blockquote><span>Your note</span>{item.note}</blockquote> : null}{item.tags.length ? <div className="archive-tags" aria-label="Tags">{item.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div> : null}<div className="archive-item-actions"><label className="archive-state"><span className="visually-hidden">Reading state for {item.title}</span><i className={`archive-state-dot is-${item.state}`} aria-hidden="true" /><select value={item.state} onChange={(event) => patchItem(item.id, { state: event.target.value as ArchiveState })}><option value="unread">Unread</option><option value="read">Read</option><option value="kept">Kept</option></select></label><details className="archive-note-editor" open={noteOpen} onToggle={(event) => onDetailToggle("note", event.currentTarget.open)}><summary>{item.note ? "Edit note" : "Add a note"}</summary><label><span>Why this matters</span><textarea key={item.note} defaultValue={item.note} placeholder="Capture the idea, connection, or question you want to return to…" onBlur={(event) => patchItem(item.id, { note: event.target.value.trim() })} /></label></details><details className="archive-item-tools" open={organizeOpen} onToggle={(event) => onDetailToggle("organize", event.currentTarget.open)}><summary>Organize</summary><div><label><span>Collection</span><select aria-label={`Collection for ${item.title}`} value={item.collectionIds[0] ?? ""} onChange={(event) => patchItem(item.id, { collectionIds: event.target.value ? [event.target.value] : [] })}><option value="">No collection</option>{organizeOpen ? collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>) : null}</select></label><button type="button" onClick={() => void navigator.clipboard.writeText(itemToMarkdown(item)).then(() => onNotice("Markdown clip copied"))}>Copy Markdown</button><button type="button" disabled={recoveryBusy} onClick={() => void captureContent(item.id)}>Capture private copy</button></div></details>{showPostPanels ? postPanelItemId === item.id ? <PostPublishPanel key={item.id} itemLocalId={item.id} initialPost={post} /> : <button type="button" onClick={() => setPostPanelItemId(item.id)}>{post ? "Edit published post" : "Publish as post"}</button> : null}</div></article></li>;
+  return <li ref={measureRef} data-index={rowIndex} data-item-id={item.id} aria-setsize={rowCount} aria-posinset={rowIndex + 1} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${rowStart}px)` }} className={`archive-item is-${item.state}${selected ? " is-selected" : ""}`}>{selectMode ? <label className="archive-item-select"><input type="checkbox" checked={selected} onChange={onToggleSelected} aria-label={`Select ${item.title}`} /></label> : null}<div className="archive-item-index" aria-hidden="true"><span>{String(itemPosition).padStart(2, "0")}</span>{item.state === "unread" ? <i /> : null}</div><article><header className="archive-item-header"><div className="archive-item-meta"><span className="archive-source">{item.sourceName}</span><span>{item.topic}</span><span>Saved {relativeDate(item.savedAt)}</span></div><button className="archive-star" type="button" aria-label={item.starred ? `Unstar ${item.title}` : `Star ${item.title}`} aria-pressed={item.starred} onClick={() => patchItem(item.id, { starred: !item.starred })}><span aria-hidden="true">{item.starred ? "★" : "☆"}</span></button></header><h2><a href={item.url} target="_blank" rel="noreferrer">{item.title}<span className="archive-external" aria-hidden="true">↗</span><ExternalLinkHint /></a></h2>{item.summary ? <p className="archive-summary">{item.summary}</p> : null}{item.note ? <blockquote><span>Your note</span>{item.note}</blockquote> : null}{item.tags.length ? <div className="archive-tags" aria-label="Tags">{item.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div> : null}<div className="archive-item-actions"><label className="archive-state"><span className="visually-hidden">Reading state for {item.title}</span><i className={`archive-state-dot is-${item.state}`} aria-hidden="true" /><select value={item.state} onChange={(event) => patchItem(item.id, { state: event.target.value as ArchiveState })}><option value="unread">Unread</option><option value="read">Read</option><option value="kept">Kept</option></select></label><details className="archive-note-editor" open={noteOpen} onToggle={(event) => onDetailToggle("note", event.currentTarget.open)}><summary>{item.note ? "Edit note" : "Add a note"}</summary><label><span>Why this matters</span><textarea key={item.note} defaultValue={item.note} placeholder="Capture the idea, connection, or question you want to return to…" onBlur={(event) => patchItem(item.id, { note: event.target.value.trim() })} /></label></details><details className="archive-item-tools" open={organizeOpen} onToggle={(event) => onDetailToggle("organize", event.currentTarget.open)}><summary>Organize</summary><div><label><span>Collection</span><select aria-label={`Collection for ${item.title}`} value={item.collectionIds[0] ?? ""} onChange={(event) => patchItem(item.id, { collectionIds: event.target.value ? [event.target.value] : [] })}><option value="">No collection</option>{organizeOpen ? collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>) : null}</select></label><button type="button" onClick={() => void navigator.clipboard.writeText(itemToMarkdown(item)).then(() => onNotice("Markdown clip copied"))}>Copy Markdown</button><button type="button" disabled={recoveryBusy} onClick={() => void captureContent(item.id)}>Capture private copy</button></div></details>{showPostPanels ? postPanelItemId === item.id ? <PostPublishPanel key={item.id} itemLocalId={item.id} initialPost={post} /> : <button type="button" onClick={() => setPostPanelItemId(item.id)}>{post ? "Edit published post" : "Publish as post"}</button> : null}</div></article></li>;
 }

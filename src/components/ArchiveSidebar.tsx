@@ -19,7 +19,7 @@ export function ArchiveSidebar({
   composerOpen, setComposerOpen, createCollection, exportMarkdown, exportCsv, exportArchiveJson,
   publication, publishBusy, publishCollection, unpublishCollection, sync, retrySync, revisions,
   contentSnapshots, recoveryBusy, refreshRecovery, restoreRevision, auth, accountBusy, signOut,
-  deleteAccount, onNotice,
+  deleteAccount, onNotice, onPasteLinks, onOpenMobilePublish,
 }: {
   data: ArchiveData;
   collectionId: string;
@@ -51,6 +51,8 @@ export function ArchiveSidebar({
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   onNotice: (message: string) => void;
+  onPasteLinks?: () => void;
+  onOpenMobilePublish?: () => void;
 }) {
   const namedCollections = data.collections.filter((collection) => collection.id !== "inbox");
   const inbox = data.collections.find((collection) => collection.id === "inbox");
@@ -74,7 +76,12 @@ export function ArchiveSidebar({
     <details className="archive-portability"><summary>Export &amp; share</summary><div className="archive-sidebar-actions" aria-label="Archive portability">
       <button type="button" onClick={exportMarkdown}>Markdown <span aria-hidden="true">↓</span></button><button type="button" onClick={exportCsv}>Notion CSV <span aria-hidden="true">↓</span></button><button type="button" onClick={() => void exportArchiveJson()}>Full JSON archive <span aria-hidden="true">↓</span></button>
     </div></details>
-    {selectedCollection && selectedCollection.id !== "inbox" ? <ArchivePublishPanel key={selectedCollection.id} collectionId={selectedCollection.id} collectionVisibility={selectedCollection.visibility} waitingForSync={sync.status === "syncing" || (sync.status === "synced" && sync.pending > 0)} publication={publication} busy={publishBusy} onPublish={publishCollection} onUnpublish={unpublishCollection} /> : null}
+    {selectedCollection && selectedCollection.id !== "inbox" && selectedCollection.id !== "all" ? (
+      <div className="archive-collection-tools">
+        {onPasteLinks ? <button type="button" className="archive-paste-links" onClick={onPasteLinks}>Paste links</button> : null}
+        <ArchivePublishPanel key={selectedCollection.id} collectionId={selectedCollection.id} collectionVisibility={selectedCollection.visibility} waitingForSync={sync.status === "syncing" || (sync.status === "synced" && sync.pending > 0)} publication={publication} busy={publishBusy} onPublish={publishCollection} onUnpublish={unpublishCollection} onOpenMobileSheet={onOpenMobilePublish} />
+      </div>
+    ) : null}
     <details className="archive-portability"><summary>Sync, recovery &amp; account</summary><div className="archive-sidebar-actions" aria-label="Archive sync and recovery">
       <p className="archive-sync-state" role="status">Sync: {sync.status}{sync.pending ? ` · ${sync.pending} queued` : ""}{sync.conflicts ? ` · ${sync.conflicts} conflicts retained` : ""}</p>
       {sync.message && sync.status !== "synced" ? <p className="archive-sync-state" role="status">{sync.message}</p> : null}{sync.recoveredCorruptQueue ? <p className="archive-sync-state" role="alert">A damaged offline queue was set aside for recovery; export your archive if recent edits are missing.</p> : null}{sync.paused ? <button type="button" onClick={retrySync}>Retry sync now</button> : null}
