@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./support/fixtures";
 
 const PAPER_BG = "rgb(244, 241, 234)";
 const PAPER_FG = "rgb(22, 21, 18)";
