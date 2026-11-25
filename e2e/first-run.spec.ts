@@ -83,11 +83,32 @@ test.describe("guided first-run setup", () => {
         JSON.stringify({
           version: 1,
           sourceOrder: [...order, "c:curators-desk"],
+          customSources: [{
+            id: "c:curators-desk",
+            name: "Curator's desk",
+            feedUrl: "/c/curators-desk/rss.xml",
+            homeUrl: "/c/curators-desk",
+            topic: "all",
+            topics: [],
+            tags: ["coeus-collection"],
+            description: "Published collection on Coeus",
+            language: "Unknown",
+            region: "Global",
+            sourceType: "publisher",
+            cadence: "daily",
+            depth: "mixed",
+            defaultRank: 50,
+          }],
         })
       );
     }, [...DEFAULT_READER_ORDER]);
     await page.goto("/");
     await expect(page.getByRole("dialog", { name: /pick a few worlds/i })).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => page.evaluate(() => {
+      const raw = window.localStorage.getItem("coeus.prefs.v1");
+      if (!raw) return false;
+      return (JSON.parse(raw) as { sourceOrder?: string[] }).sourceOrder?.includes("c:curators-desk") ?? false;
+    })).toBe(true);
     await page.getByRole("button", { name: "Skip, just read" }).click();
     await expect.poll(async () => {
       const stored = await page.evaluate(() => window.localStorage.getItem("coeus.prefs.v1"));

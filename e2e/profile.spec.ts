@@ -293,7 +293,7 @@ test("profile feed and thread cursor links walk real page boundaries", async ({ 
   try {
     const visitorPage = await visitorContext.newPage();
     await visitorPage.goto(`/@${handle}/replies/${root}`);
-    await expect(visitorPage.getByRole("heading", { name: /Collection not found/i })).toBeVisible();
+    await expect(visitorPage.getByText("404")).toBeVisible();
   } finally {
     await visitorContext.close();
   }

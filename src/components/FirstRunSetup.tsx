@@ -113,14 +113,19 @@ export function FirstRunSetup({
   }, [searchParams, onFinished]);
 
   const finish = useCallback(
-    (status: "skipped" | "done", topicAreaIds: string[] | undefined, showHint: boolean) => {
+    (
+      status: "skipped" | "done",
+      topicAreaIds: string[] | undefined,
+      showHint: boolean,
+      flushPrefs = false,
+    ) => {
       writeSetupRecord({
         version: 1,
         status,
         topicAreaIds,
         hintDismissed: status === "skipped" || !showHint,
       });
-      onFlushPrefs?.();
+      if (flushPrefs) onFlushPrefs?.();
       onFinished();
     },
     [onFinished, onFlushPrefs]
@@ -128,7 +133,8 @@ export function FirstRunSetup({
 
   const skipSetup = useCallback(
     (status: "skipped" | "done") => {
-      finish(status, status === "done" ? topicAreasRef.current : undefined, status === "done");
+      const topicAreaIds = status === "done" ? topicAreasRef.current : undefined;
+      finish(status, topicAreaIds, status === "done", status === "done");
     },
     [finish]
   );
