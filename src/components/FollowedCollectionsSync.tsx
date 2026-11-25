@@ -35,13 +35,14 @@ export function FollowedCollectionsSync() {
             id: string;
             slug: string;
             name: string;
-            ownerId: string;
+            curatorHandle?: string;
           }>;
         };
         const publications: FollowedCollectionRow[] = body.publications.map((entry) => ({
           id: entry.id,
           slug: entry.slug,
           name: entry.name,
+          curatorHandle: entry.curatorHandle,
         }));
         const next = mergeFollowedCollections(prefs, publications);
         if (JSON.stringify(next.customSources) !== JSON.stringify(prefs.customSources)

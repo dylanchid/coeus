@@ -35,8 +35,21 @@ function archiveWithPrivateHumaneInternet(): ArchiveData {
   };
 }
 
-/** Mirrors ArchiveWorkspace mobile onPublish: update local collection visibility after publish. */
-function MobilePublishHarness() {
+function applyPublishedVisibility(
+  data: ArchiveData,
+  collectionId: string,
+  visibility: PublicationVisibility,
+): ArchiveData {
+  return {
+    ...data,
+    collections: data.collections.map((collection) =>
+      collection.id === collectionId ? { ...collection, visibility } : collection,
+    ),
+  };
+}
+
+/** Parent shell only supplies archive state; MobilePublishSheet is the component under test. */
+function MobilePublishParent() {
   const [data, setData] = useState(archiveWithPrivateHumaneInternet);
   const selected = data.collections.find((collection) => collection.id === "humane-internet");
 
@@ -47,12 +60,7 @@ function MobilePublishHarness() {
       visibility,
       collectionLocalId: "humane-internet",
     } as CollectionPublication;
-    setData((current) => ({
-      ...current,
-      collections: current.collections.map((collection) =>
-        collection.id === "humane-internet" ? { ...collection, visibility } : collection,
-      ),
-    }));
+    setData((current) => applyPublishedVisibility(current, "humane-internet", visibility));
     return published;
   };
 
@@ -86,7 +94,7 @@ test("Mobile publish sheet reflects updated collection visibility after publish"
   const router = { push: () => undefined, replace: () => undefined, refresh: () => undefined, back: () => undefined, forward: () => undefined, prefetch: () => undefined };
   render(
     <AppRouterContext.Provider value={router as never}>
-      <MobilePublishHarness />
+      <MobilePublishParent />
     </AppRouterContext.Provider>,
   );
   assert.match(screen.getByText(/personal collection · private/).textContent ?? "", /private/);

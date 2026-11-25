@@ -74,5 +74,7 @@ test.describe("copy and wayfinding", () => {
     await expect(modal.getByRole("link", { name: /skip, just read/i })).toBeVisible();
     const skipHref = await modal.getByRole("link", { name: /skip, just read/i }).getAttribute("href");
     expect(skipHref).toBe("/");
+    await modal.getByRole("link", { name: /skip, just read/i }).click();
+    await expect(modal).toHaveCount(0);
   });
 });

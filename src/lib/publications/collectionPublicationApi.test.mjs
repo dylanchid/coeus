@@ -372,9 +372,13 @@ test("handleListFollowed requires auth and returns only the caller's followed pu
   const unauthorized = await handleListFollowed(dependencies(store, null));
   assert.equal(unauthorized.status, 401);
 
-  const forFollower = await handleListFollowed(dependencies(store, "follower-1"));
+  const forFollower = await handleListFollowed({
+    ...dependencies(store, "follower-1"),
+    resolveCuratorHandles: async () => new Map([["user-1", "curator-ada"]]),
+  });
   const followerBody = await forFollower.json();
   assert.equal(followerBody.publications.length, 1);
+  assert.equal(followerBody.publications[0].curatorHandle, "curator-ada");
 
   const forStranger = await handleListFollowed(dependencies(store, "someone-else"));
   const strangerBody = await forStranger.json();
@@ -401,14 +405,14 @@ test("handleListFollowed keeps unlisted and omits followers-tier unless the view
 
   const beforeProfileFollow = await handleListFollowed(dependencies(store, "follower-1"));
   const beforeBody = await beforeProfileFollow.json();
-  assert.deepEqual(beforeBody.publications.map((entry) => entry.collectionLocalId), ["unlisted"]);
+  assert.deepEqual(beforeBody.publications.map((entry) => entry.slug), ["unlisted-slug"]);
 
   store.profileFollows.add("follower-1:user-1");
   const afterProfileFollow = await handleListFollowed(dependencies(store, "follower-1"));
   const afterBody = await afterProfileFollow.json();
   assert.deepEqual(
-    afterBody.publications.map((entry) => entry.collectionLocalId).sort(),
-    ["followers", "unlisted"],
+    afterBody.publications.map((entry) => entry.slug).sort(),
+    ["followers-slug", "unlisted-slug"],
   );
 });
 

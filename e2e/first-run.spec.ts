@@ -21,6 +21,16 @@ test.describe("guided first-run setup", () => {
     await expect(page.getByRole("dialog", { name: /pick a few worlds/i })).toHaveCount(0);
   });
 
+  test("skip dismisses setup and Reader columns load", async ({ page }) => {
+    await page.goto("/");
+    const dialog = page.getByRole("dialog", { name: /pick a few worlds/i });
+    await expect(dialog).toBeVisible({ timeout: 20_000 });
+    await dialog.getByRole("button", { name: "Skip, just read" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole("status")).toContainText(/Loading sources|stories from/i, { timeout: 20_000 });
+    await expect(page.locator('.source-col[data-source="lithub"]')).toBeVisible({ timeout: 30_000 });
+  });
+
   test("topic picks survive skip on step two", async ({ page }) => {
     await page.goto("/");
     const dialog = page.getByRole("dialog", { name: /pick a few worlds/i });
@@ -30,6 +40,7 @@ test.describe("guided first-run setup", () => {
     await dialog.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("dialog", { name: /claim an @handle/i })).toBeVisible();
     await page.getByRole("button", { name: "Skip, just read" }).click();
+    await expect.poll(async () => page.evaluate(() => window.localStorage.getItem("coeus.prefs.v1"))).toBeTruthy();
     const stored = await page.evaluate(() => window.localStorage.getItem("coeus.prefs.v1"));
     const prefs = JSON.parse(stored ?? "{}");
     expect(prefs.sourceOrder).toEqual([

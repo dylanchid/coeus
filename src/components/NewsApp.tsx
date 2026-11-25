@@ -32,7 +32,7 @@ import { useAuth } from "./AuthProvider";
 const EMPTY_SOURCE_IDS: string[] = [];
 
 export function NewsApp() {
-  const { prefs, updatePrefs } = usePreferences();
+  const { prefs, updatePrefs, flushPersistence } = usePreferences();
   const { status: authStatus, profile } = useAuth();
   const { setupOpen, hintVisible, refresh: refreshSetupGate } = useFirstRunSetupGate(
     prefs,
@@ -239,6 +239,7 @@ export function NewsApp() {
         open={setupOpen}
         prefs={prefs}
         onUpdatePrefs={(update) => updatePrefs(update)}
+        onFlushPrefs={flushPersistence}
         onFinished={refreshSetupGate}
       />
     </AppShell>

@@ -144,6 +144,30 @@
 @media (max-width: 640px) {
   .first-run-dialog {
     max-height: 92vh;
-    padding: var(--space-md);
+    padding: var(--space-md) var(--space-md) var(--space-md) var(--space-lg);
+  }
+
+  .first-run-topic {
+    padding-inline: var(--space-sm);
+  }
+
+  .first-run-topic-toggle {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+  }
+
+  .first-run-topic-count {
+    flex: 1 1 100%;
+    text-align: left;
+  }
+}
+
+@media (max-width: 390px) {
+  .first-run-dialog {
+    padding-inline: var(--space-md);
+  }
+
+  .first-run-topics {
+    margin-inline: var(--space-xs);
   }
 }

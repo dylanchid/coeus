@@ -66,9 +66,15 @@ export function isUnsafeIp(address: string): boolean {
   return isIP(address) === 4 ? ipv4IsUnsafe(address) : isIP(address) === 6 ? ipv6IsUnsafe(address) : true;
 }
 
+function hostnameForIpCheck(hostname: string): string {
+  if (hostname.startsWith("[") && hostname.endsWith("]")) return hostname.slice(1, -1);
+  return hostname;
+}
+
 async function validatedAddresses(hostname: string, resolve: AddressResolver = dnsLookup) {
-  const addresses = isIP(hostname)
-    ? [{ address: hostname, family: isIP(hostname) as 4 | 6 }]
+  const ipHost = hostnameForIpCheck(hostname);
+  const addresses = isIP(ipHost)
+    ? [{ address: ipHost, family: isIP(ipHost) as 4 | 6 }]
     : await resolve(hostname, { all: true, verbatim: true });
   if (!addresses.length || addresses.some(({ address }) => isUnsafeIp(address))) throw new UnsafeOutboundUrlError();
   return addresses;

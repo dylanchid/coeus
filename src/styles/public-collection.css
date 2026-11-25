@@ -1,4 +1,8 @@
 /* Published collection page — archival index layout (pub-1). */
+.public-collection-page--missing .public-collection-hero {
+  padding-bottom: var(--space-lg);
+}
+
 .public-collection-page {
   max-width: 52rem;
   margin: 0 auto;

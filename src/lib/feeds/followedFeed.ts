@@ -24,18 +24,7 @@ export interface FollowedFeedCollection {
   curatorHandle?: string;
 }
 
-export interface FollowedFeedPost {
-  kind: "post";
-  publishedAt: string;
-  title: string;
-  url: string;
-  sourceName: string;
-  author: string;
-  excerpt: string;
-  commentary: string;
-}
-
-export type FollowedFeedItem = FollowedFeedCollection | FollowedFeedPost;
+export type FollowedFeedItem = FollowedFeedCollection;
 
 export function isFollowedFeedCollection(item: FollowedFeedItem): item is FollowedFeedCollection {
   return item.kind === "collection";
