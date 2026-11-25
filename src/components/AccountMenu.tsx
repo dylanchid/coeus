@@ -36,7 +36,7 @@ export function AccountMenu() {
           <UiDialog.Backdrop className="profile-gate-backdrop" />
           <UiDialog.Popup className="profile-gate-modal auth-modal" aria-modal="true" aria-labelledby="signin-heading">
             <UiDialog.Close className="ui-button ui-button--quiet ui-dialog-close" aria-label="Close sign-in">×</UiDialog.Close>
-            <SignInPanel next={back} devSignIn={localDevSignIn} compact />
+            <SignInPanel next={back} devSignIn={localDevSignIn} compact onSkip={() => setSigninOpen(false)} />
           </UiDialog.Popup>
         </UiDialog.Portal>
       </UiDialog.Root>

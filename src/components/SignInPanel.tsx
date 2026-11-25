@@ -27,12 +27,18 @@ export function SignInPanel({
   errorMessage,
   devSignIn = false,
   compact = false,
+  embedded = false,
+  onSkip,
 }: {
   next?: string;
   errorMessage?: string | null;
   devSignIn?: boolean;
   /** Modal variant: the heading is the centred Coeus wordmark (full text stays as the accessible name). */
   compact?: boolean;
+  /** Embedded in another dialog: no heading or lede; providers only. */
+  embedded?: boolean;
+  /** When set, Skip invokes this instead of only navigating (e.g. close a modal on "/"). */
+  onSkip?: () => void;
 }) {
   const { signIn, unavailable } = useAuth();
   const [pending, setPending] = useState<OAuthProvider | null>(null);
@@ -49,25 +55,47 @@ export function SignInPanel({
     // On success the browser navigates away; leave the button in its pending state.
   };
 
+  const skipControl = embedded ? null : (
+    <p className="signin-lede">
+      {onSkip ? (
+        <Link
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            onSkip();
+          }}
+        >
+          Skip, just read →
+        </Link>
+      ) : (
+        <Link href="/">Skip, just read →</Link>
+      )}
+    </p>
+  );
+
   return (
-    <section className="signin-panel" aria-labelledby="signin-heading">
-      <header className="signin-head">
-        {compact ? (
-          <h1 id="signin-heading" className="signin-wordmark">
-            <span aria-hidden="true">Coeus</span>
-            <span className="sr-only">Sign in to Coeus</span>
-          </h1>
-        ) : (
-          <h1 id="signin-heading">Sign in to Coeus</h1>
-        )}
-        <p className="signin-lede">
-          Claim an @handle so your published collections have an address. Signing in also syncs your archive across
-          devices. Reading never needs an account.
-        </p>
-        <p className="signin-lede">
-          <Link href="/">Skip, just read →</Link>
-        </p>
-      </header>
+    <section
+      className={embedded ? "signin-panel signin-panel--embedded" : "signin-panel"}
+      aria-label={embedded ? "Sign in providers" : undefined}
+      aria-labelledby={embedded ? undefined : "signin-heading"}
+    >
+      {embedded ? null : (
+        <header className="signin-head">
+          {compact ? (
+            <h1 id="signin-heading" className="signin-wordmark">
+              <span aria-hidden="true">Coeus</span>
+              <span className="sr-only">Sign in to Coeus</span>
+            </h1>
+          ) : (
+            <h1 id="signin-heading">Sign in to Coeus</h1>
+          )}
+          <p className="signin-lede">
+            Claim an @handle so your published collections have an address. Signing in also syncs your archive across
+            devices. Reading never needs an account.
+          </p>
+          {skipControl}
+        </header>
+      )}
 
       {error ? (
         <p className="signin-error" role="alert">

@@ -243,7 +243,7 @@ test("a profile follower loses a private collection after revocation", async ({ 
     expect(privatePublication.status(), await privatePublication.text()).toBe(201);
 
     await followerPage.goto(`/c/${publication.slug}`);
-    await expect(followerPage.getByText("404")).toBeVisible();
+    await expect(followerPage.getByRole("heading", { name: /Collection not found/i })).toBeVisible();
   } finally {
     await signOut(followerPage);
     await followerContext.close();

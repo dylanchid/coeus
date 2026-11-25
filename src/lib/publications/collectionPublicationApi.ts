@@ -18,8 +18,17 @@ export interface DiscoverCollectionsApiDependencies {
   store: PublicCollectionReader;
 }
 
+export type FollowedCollectionListRow = {
+  id: string;
+  slug: string;
+  name: string;
+  ownerId: string;
+  curatorHandle?: string;
+};
+
 export interface CollectionFollowApiDependencies extends Authenticated {
   store: CollectionFollowStore;
+  resolveCuratorHandles?(ownerIds: readonly string[]): Promise<Map<string, string>>;
 }
 
 function headers(): HeadersInit {
@@ -189,7 +198,19 @@ export async function handleListFollowed(dependencies: CollectionFollowApiDepend
   const userId = await owner(dependencies);
   if (userId instanceof Response) return userId;
   try {
-    return Response.json({ publications: await dependencies.store.listFollowed(userId) }, { headers: headers() });
+    const publications = await dependencies.store.listFollowed(userId);
+    const ownerIds = [...new Set(publications.map((entry) => entry.ownerId))];
+    const handles = dependencies.resolveCuratorHandles
+      ? await dependencies.resolveCuratorHandles(ownerIds)
+      : new Map<string, string>();
+    const rows: FollowedCollectionListRow[] = publications.map((entry) => ({
+      id: entry.id,
+      slug: entry.slug,
+      name: entry.name,
+      ownerId: entry.ownerId,
+      curatorHandle: handles.get(entry.ownerId),
+    }));
+    return Response.json({ publications: rows }, { headers: headers() });
   } catch {
     return errorResponse("Followed collections are unavailable", 503);
   }

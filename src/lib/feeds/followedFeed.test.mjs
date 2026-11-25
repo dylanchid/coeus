@@ -23,19 +23,12 @@ function collection(overrides = {}) {
   };
 }
 
-function post(overrides = {}) {
+function nonCollectionCandidate(publishedAt) {
   return {
-    visibility: overrides.visibility ?? "public",
+    visibility: "public",
     item: {
-      kind: "post",
-      publishedAt: "2026-05-05T00:00:00.000Z",
-      title: "Clip",
-      url: "https://example.com/x",
-      sourceName: "example.com",
-      author: "",
-      excerpt: "e",
-      commentary: "c",
-      ...overrides.item,
+      kind: "saved-item",
+      publishedAt,
     },
   };
 }
@@ -44,7 +37,7 @@ test("returns collections only, newest first", () => {
   const page = combineFollowedFeed(
     [
       collection({ item: { publishedAt: "2026-01-01T00:00:00.000Z", slug: "old" } }),
-      post({ item: { publishedAt: "2026-09-09T00:00:00.000Z", title: "new" } }),
+      nonCollectionCandidate("2026-09-09T00:00:00.000Z"),
       collection({ item: { publishedAt: "2026-06-06T00:00:00.000Z", slug: "mid" } }),
     ],
     FOLLOWER,

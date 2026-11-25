@@ -60,6 +60,26 @@ const { defaultSourceOrder } = await import("@/lib/feeds/sources");
 const { readStoredPrefsSnapshot } = await import("@/lib/prefs");
 const { SETUP_STORAGE_KEY } = await import("@/lib/setup/firstRun");
 const { FirstRunSetup, FirstRunReaderHint, dismissFirstRunHint } = await import("./FirstRunSetup");
+const { AuthProvider } = await import("./AuthProvider");
+
+function fakeAuthClient() {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+      signInWithOAuth: async () => ({ error: null }),
+      signOut: async () => ({ error: null }),
+    },
+  };
+}
+
+function renderFirstRun(props: Parameters<typeof FirstRunSetup>[0]) {
+  return render(
+    <AuthProvider client={fakeAuthClient() as never}>
+      <FirstRunSetup {...props} />
+    </AuthProvider>,
+  );
+}
 
 function makePrefs() {
   return {
@@ -113,6 +133,59 @@ test("FirstRunSetup step one renders dialog copy and Skip control", () => {
   assert.match(html, /Pick a few worlds to start with/);
   assert.match(html, /Skip, just read/);
   assert.equal((html.match(/Subject areas/g) ?? []).length, 1);
+});
+
+test("FirstRunSetup Continue moves to step two with Claim an @handle heading", async () => {
+  renderFirstRun({
+    open: true,
+    prefs: makePrefs(),
+    onUpdatePrefs: () => undefined,
+    onFinished: () => undefined,
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /Culture/i }));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  });
+  assert.ok(await screen.findByRole("heading", { name: /Claim an @handle/i }));
+  assert.equal(screen.queryByRole("heading", { name: /Sign in to Coeus/i }), null);
+});
+
+test("FirstRunSetup step two Skip writes done", async () => {
+  renderFirstRun({
+    open: true,
+    prefs: makePrefs(),
+    onUpdatePrefs: () => undefined,
+    onFinished: () => undefined,
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /Culture/i }));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  });
+  await act(async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "Skip, just read" }));
+  });
+  const record = JSON.parse(localStorage.getItem(SETUP_STORAGE_KEY) ?? "{}");
+  assert.equal(record.status, "done");
+});
+
+test("FirstRunSetup dialog exposes modal semantics for the focus trap", async () => {
+  renderFirstRun({
+    open: true,
+    prefs: makePrefs(),
+    onUpdatePrefs: () => undefined,
+    onFinished: () => undefined,
+  });
+  const dialog = screen.getByRole("dialog");
+  assert.equal(dialog.getAttribute("aria-modal"), "true");
+  assert.equal(dialog.getAttribute("tabindex"), "-1");
+  await act(async () => {
+    fireEvent.keyDown(document, { key: "Tab", code: "Tab", bubbles: true });
+  });
+  assert.ok(dialog.contains(document.activeElement));
 });
 
 test("FirstRunSetup escape on step one writes skipped", async () => {

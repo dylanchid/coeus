@@ -78,11 +78,13 @@ export function FirstRunSetup({
   open,
   prefs,
   onUpdatePrefs,
+  onFlushPrefs,
   onFinished,
 }: {
   open: boolean;
   prefs: UserPrefs;
   onUpdatePrefs(update: Partial<UserPrefs>): void;
+  onFlushPrefs?(): void;
   onFinished(): void;
 }) {
   const searchParams = useSearchParams();
@@ -111,21 +113,28 @@ export function FirstRunSetup({
   }, [searchParams, onFinished]);
 
   const finish = useCallback(
-    (status: "skipped" | "done", topicAreaIds: string[] | undefined, showHint: boolean) => {
+    (
+      status: "skipped" | "done",
+      topicAreaIds: string[] | undefined,
+      showHint: boolean,
+      flushPrefs = false,
+    ) => {
       writeSetupRecord({
         version: 1,
         status,
         topicAreaIds,
         hintDismissed: status === "skipped" || !showHint,
       });
+      if (flushPrefs) onFlushPrefs?.();
       onFinished();
     },
-    [onFinished]
+    [onFinished, onFlushPrefs]
   );
 
   const skipSetup = useCallback(
     (status: "skipped" | "done") => {
-      finish(status, status === "done" ? topicAreasRef.current : undefined, status === "done");
+      const topicAreaIds = status === "done" ? topicAreasRef.current : undefined;
+      finish(status, topicAreaIds, status === "done", status === "done");
     },
     [finish]
   );
@@ -152,6 +161,7 @@ export function FirstRunSetup({
     topicAreasRef.current = selectedAreas;
     const next = applyTopicPicks(prefs, selectedAreas);
     onUpdatePrefs(next);
+    onFlushPrefs?.();
     writeSetupRecord({
       version: 1,
       status: "in_progress",
@@ -223,14 +233,14 @@ export function FirstRunSetup({
             <header className="first-run-head">
               <h1 id="first-run-handle-heading">Claim an @handle</h1>
               <p className="first-run-lede">
-                Your collections get an address: <span className="first-run-address">coeus.com/@____</span>
+                Your collections get an address: <span className="first-run-address">coeuscoeus.com/@____</span>
               </p>
               <p className="first-run-lede">
                 Sign in when you are ready. Reading never needs an account.
               </p>
             </header>
             <div className="first-run-signin">
-              <SignInPanel next="/?setup=done" compact />
+              <SignInPanel next="/?setup=done" embedded />
             </div>
             <footer className="first-run-actions">
               <UiButton type="button" variant="unstyled" className="first-run-skip" onClick={() => skipSetup("done")}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   COLLECTION_SOURCE_TAG,
   parseCollectionSourceId,
@@ -10,6 +10,8 @@ import { useAuth } from "../AuthProvider";
 import { AddSourceForm } from "../AddSourceForm";
 import type { SettingsChange } from "./SettingsControls";
 
+type FollowedPublicationRow = { id: string; slug: string; curatorHandle?: string };
+
 async function unfollowPublication(publicationId: string): Promise<void> {
   const response = await fetch("/api/collections/unfollow", {
     method: "POST",
@@ -18,6 +20,15 @@ async function unfollowPublication(publicationId: string): Promise<void> {
     body: JSON.stringify({ publicationId }),
   });
   if (!response.ok && response.status !== 401) throw new Error("Unfollow failed");
+}
+
+async function loadFollowedPublications(): Promise<FollowedPublicationRow[]> {
+  const response = await fetch("/api/collections/followed", { credentials: "same-origin", cache: "no-store" });
+  if (!response.ok) return [];
+  const body = await response.json() as {
+    publications: { id: string; slug: string; curatorHandle?: string }[];
+  };
+  return body.publications;
 }
 
 export function SourcesPanel({ prefs, onChange }: { prefs: UserPrefs; onChange: SettingsChange }) {
@@ -43,21 +54,20 @@ export function SourcesPanel({ prefs, onChange }: { prefs: UserPrefs; onChange: 
 
   const publicationIds = useRef(new Map<string, string>());
 
+  const hydratePublicationIds = useCallback(async (): Promise<Map<string, string>> => {
+    const rows = await loadFollowedPublications();
+    const next = new Map<string, string>();
+    for (const row of rows) next.set(row.slug, row.id);
+    publicationIds.current = next;
+    return next;
+  }, []);
+
   useEffect(() => {
     if (!signedIn) return;
-    void (async () => {
-      try {
-        const response = await fetch("/api/collections/followed", { credentials: "same-origin", cache: "no-store" });
-        if (!response.ok) return;
-        const body = await response.json() as { publications: { id: string; slug: string }[] };
-        const next = new Map<string, string>();
-        for (const row of body.publications) next.set(row.slug, row.id);
-        publicationIds.current = next;
-      } catch {
-        // ignore
-      }
-    })();
-  }, [signedIn]);
+    void hydratePublicationIds().catch(() => {
+      // ignore — unfollow will hydrate again before calling the API
+    });
+  }, [signedIn, hydratePublicationIds]);
 
   const toggleHidden = (id: string) => {
     const next = new Set(prefs.hiddenSources);
@@ -72,7 +82,11 @@ export function SourcesPanel({ prefs, onChange }: { prefs: UserPrefs; onChange: 
     setUnfollowBusy(source.id);
     try {
       if (signedIn) {
-        const publicationId = publicationIds.current.get(slug);
+        let publicationId = publicationIds.current.get(slug);
+        if (!publicationId) {
+          const hydrated = await hydratePublicationIds();
+          publicationId = hydrated.get(slug);
+        }
         if (publicationId) await unfollowPublication(publicationId);
       }
       onChange(removeFollowedCollectionFromPrefs(prefs, slug));

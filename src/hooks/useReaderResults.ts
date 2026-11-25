@@ -26,7 +26,9 @@ export function useReaderResults({ sources, scopedSources, search, prefs, topic,
   const loadedSourceCount = sources.length - failedSources.length;
   // Lead with what loaded; unavailable sources get a quiet disclosure in
   // ReaderFeedback and an inline note on their own column, not the headline.
-  const statusText = `${totalCount} ${totalCount === 1 ? "story" : "stories"} from ${loadedSourceCount} ${loadedSourceCount === 1 ? "source" : "sources"}`;
+  const statusText = loading && sources.length === 0
+    ? "Loading sources…"
+    : `${totalCount} ${totalCount === 1 ? "story" : "stories"} from ${loadedSourceCount} ${loadedSourceCount === 1 ? "source" : "sources"}`;
 
   const emptyMessage = useMemo(() => {
     if (!prefs) return undefined;
