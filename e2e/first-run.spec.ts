@@ -27,7 +27,7 @@ test.describe("guided first-run setup", () => {
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     await dialog.getByRole("button", { name: "Skip, just read" }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole("status")).toContainText(/Loading sources|stories from/i, { timeout: 20_000 });
+    await expect(page.locator(".feed-status")).toContainText(/Loading sources|stories from/i, { timeout: 20_000 });
     await expect(page.locator('.source-col[data-source="lithub"]')).toBeVisible({ timeout: 30_000 });
   });
 

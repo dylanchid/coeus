@@ -243,7 +243,7 @@ test("a profile follower loses a private collection after revocation", async ({ 
     expect(privatePublication.status(), await privatePublication.text()).toBe(201);
 
     await followerPage.goto(`/c/${publication.slug}`);
-    await expect(followerPage.getByText("404")).toBeVisible();
+    await expect(followerPage.getByRole("heading", { name: /Collection not found/i })).toBeVisible();
   } finally {
     await signOut(followerPage);
     await followerContext.close();
@@ -293,7 +293,7 @@ test("profile feed and thread cursor links walk real page boundaries", async ({ 
   try {
     const visitorPage = await visitorContext.newPage();
     await visitorPage.goto(`/@${handle}/replies/${root}`);
-    await expect(visitorPage.getByText("404")).toBeVisible();
+    await expect(visitorPage.getByRole("heading", { name: /Collection not found/i })).toBeVisible();
   } finally {
     await visitorContext.close();
   }
