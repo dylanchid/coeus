@@ -75,10 +75,9 @@ function fakeAuthClient() {
 
 function renderFirstRun(props: Parameters<typeof FirstRunSetup>[0]) {
   return render(
-    React.createElement(AuthProvider, {
-      client: fakeAuthClient() as never,
-      children: React.createElement(FirstRunSetup, props),
-    }),
+    <AuthProvider client={fakeAuthClient() as never}>
+      <FirstRunSetup {...props} />
+    </AuthProvider>,
   );
 }
 
