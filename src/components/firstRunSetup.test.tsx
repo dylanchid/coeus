@@ -75,11 +75,10 @@ function fakeAuthClient() {
 
 function renderFirstRun(props: Parameters<typeof FirstRunSetup>[0]) {
   return render(
-    React.createElement(
-      AuthProvider,
-      { client: fakeAuthClient() as never },
-      React.createElement(FirstRunSetup, props),
-    ),
+    React.createElement(AuthProvider, {
+      client: fakeAuthClient() as never,
+      children: React.createElement(FirstRunSetup, props),
+    }),
   );
 }
 
