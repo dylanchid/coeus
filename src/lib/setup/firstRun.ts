@@ -95,9 +95,11 @@ export function prefsDifferOnlyByCollectionSources(stored: UserPrefs): boolean {
   if (JSON.stringify(stored.sourceOrder) !== JSON.stringify(expectedOrder)) return false;
 
   if (stored.customSources.some((source) => !isCollectionSourceId(source.id))) return false;
-  const collectionCustomIds = new Set(stored.customSources.map((source) => source.id));
-  if (collectionCustomIds.size !== collectionIds.length) return false;
-  if (collectionIds.some((id) => !collectionCustomIds.has(id))) return false;
+  if (stored.customSources.length > 0) {
+    const collectionCustomIds = new Set(stored.customSources.map((source) => source.id));
+    if (collectionCustomIds.size !== collectionIds.length) return false;
+    if (collectionIds.some((id) => !collectionCustomIds.has(id))) return false;
+  }
 
   const { sourceOrder: storedSansCheck, customSources: storedCustom, ...storedRest } = stored;
   const { sourceOrder: baselineSansCheck, customSources: baselineCustom, ...baselineRest } = baseline;
