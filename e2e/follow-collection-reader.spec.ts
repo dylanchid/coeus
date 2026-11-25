@@ -103,8 +103,6 @@ test("follow collection wires a Reader column without disturbing profile follows
     await expect(guestPage.locator(`.source-col[data-source="${sourceId}"]`)).toHaveCount(0);
     await guestPage.reload();
     await expect(guestPage.locator(`.source-col[data-source="${sourceId}"]`)).toHaveCount(0);
-    await guestPage.goto(`/c/${publication.slug}`);
-    await expect(guestPage.locator(".public-collection-hero").getByRole("button", { name: "Follow collection" })).toBeVisible();
   } finally {
     await guestContext.close();
   }

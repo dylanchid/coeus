@@ -89,8 +89,10 @@ test.describe("guided first-run setup", () => {
     await page.goto("/");
     await expect(page.getByRole("dialog", { name: /pick a few worlds/i })).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: "Skip, just read" }).click();
-    const stored = await page.evaluate(() => window.localStorage.getItem("coeus.prefs.v1"));
-    const prefs = JSON.parse(stored ?? "{}");
-    expect(prefs.sourceOrder).toContain("c:curators-desk");
+    await expect.poll(async () => {
+      const stored = await page.evaluate(() => window.localStorage.getItem("coeus.prefs.v1"));
+      const order = JSON.parse(stored ?? "{}").sourceOrder as string[] | undefined;
+      return order?.includes("c:curators-desk") ?? false;
+    }).toBe(true);
   });
 });
