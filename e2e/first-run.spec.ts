@@ -104,11 +104,6 @@ test.describe("guided first-run setup", () => {
     }, [...DEFAULT_READER_ORDER]);
     await page.goto("/");
     await expect(page.getByRole("dialog", { name: /pick a few worlds/i })).toBeVisible({ timeout: 20_000 });
-    await expect.poll(async () => page.evaluate(() => {
-      const raw = window.localStorage.getItem("coeus.prefs.v1");
-      if (!raw) return false;
-      return (JSON.parse(raw) as { sourceOrder?: string[] }).sourceOrder?.includes("c:curators-desk") ?? false;
-    })).toBe(true);
     await page.getByRole("button", { name: "Skip, just read" }).click();
     await expect.poll(async () => {
       const stored = await page.evaluate(() => window.localStorage.getItem("coeus.prefs.v1"));

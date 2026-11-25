@@ -55,6 +55,30 @@ test("prefsDifferOnlyByCollectionSources accepts follow-only diffs", () => {
   assert.equal(prefsDifferOnlyByCollectionSources({ ...prefs, theme: "dark" }), false);
 });
 
+test("prefsDifferOnlyByCollectionSources accepts collection customSources", () => {
+  const prefs = {
+    ...baseline,
+    sourceOrder: [...baseline.sourceOrder, "c:curators-desk"],
+    customSources: [{
+      id: "c:curators-desk",
+      name: "Curator's desk",
+      feedUrl: "/c/curators-desk/rss.xml",
+      homeUrl: "/c/curators-desk",
+      topic: "all",
+      topics: [],
+      tags: ["coeus-collection"],
+      description: "Published collection on Coeus",
+      language: "Unknown",
+      region: "Global",
+      sourceType: "publisher",
+      cadence: "daily",
+      depth: "mixed",
+      defaultRank: 50,
+    }],
+  };
+  assert.equal(prefsDifferOnlyByCollectionSources(prefs), true);
+});
+
 test("shouldOfferSetup gate truth table", () => {
   const signedIn = { signedInWithProfile: true, hasStoredPrefs: false, storedPrefsParseable: true, mergedPrefs: baseline };
   assert.equal(
